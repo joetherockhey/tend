@@ -39,7 +39,7 @@ window.TEND_CONFIG = {
      repository's Issues tab. Issues are public and permanent, which makes them
      a good place for feedback about the app - and a poor place for anyone's
      private to-do list. Leave blank to hide the link. */
-  GITHUB_REPO: '',
+  GITHUB_REPO: 'joetherockhey/tend',
 
   /* Where the Supabase client library is loaded from. Change this only if you
      want to self-host the library instead of using the CDN. */
