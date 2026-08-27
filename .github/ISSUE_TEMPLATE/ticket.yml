@@ -1,0 +1,48 @@
+name: Ticket
+description: Ask for something to be added, changed or fixed in Tend
+title: "[ticket] "
+labels: ["ticket"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Anything filed here is stored in this repository permanently, so it is
+        a good place for requests that should outlive a conversation.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of ticket is this?
+      options:
+        - Something is broken
+        - I would like a new feature
+        - A question about how it works
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like?
+      description: One or two sentences is plenty.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: If something is broken, what did you do first?
+      placeholder: |
+        1. Signed in
+        2. Added a ticket with a due date
+        3. ...
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: Chrome on Windows / Safari on iPhone
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Which mode are you running?
+      options:
+        - Local mode (no sign-in)
+        - Cloud mode (email and password)
+        - Not sure

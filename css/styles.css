@@ -302,7 +302,10 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 1080px) {
+/* Below 1332px the sidebar wraps onto its own full-width row. A sticky element
+   there would slide up and hover over the columns above it as you scroll, so
+   sticky is only on while the sidebar genuinely sits beside the content. */
+@media (max-width: 1331px) {
   .sidebar, .garden-col { position: static; }
 }
 
@@ -1952,3 +1955,92 @@ body.gated { overflow: hidden; }
   nav.tabs button { padding: 10px 12px; font-size: 0.9rem; }
   .garden-toggle-btn { font-size: 0.72rem; padding: 5px 9px; }
 }
+
+/* ============================================================
+   World chooser: sign-up card and settings
+   ============================================================ */
+
+.chooser {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 2px;
+}
+
+.chooser-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chooser-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  width: 44px;
+  flex: none;
+}
+
+.choice-group {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.choice {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+}
+
+.choice:hover { border-color: var(--accent); }
+
+.choice.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.choice-name { display: block; }
+
+.world-preview {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+  height: 104px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  padding: 0 10px;
+}
+
+.world-preview .wp-item {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  padding-bottom: 10px;
+}
+
+.world-preview svg {
+  display: block;
+  image-rendering: pixelated;
+  transform: scale(1.6);
+  transform-origin: bottom center;
+}
+
+.chooser-blurb {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+#world-settings .chooser { margin-top: 2px; }

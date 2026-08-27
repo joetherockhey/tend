@@ -37,7 +37,7 @@
     </div>
   </div>
   <h1 id="page-title">Tickets</h1>
-  <p class="subtitle" id="page-subtitle">Every ticket you finish plants something in your garden.</p>
+  <p class="subtitle" id="page-subtitle">Every ticket you finish earns a coin. Coins buy plants for the garden.</p>
   <nav class="tabs">
     <button id="tab-list" class="active" onclick="App.switchView('list')">Tickets</button>
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
@@ -51,7 +51,7 @@
 
 <div class="garden-col">
   <div class="panel">
-    <h2>My Garden</h2>
+    <h2 id="garden-panel-title">My Garden</h2>
     <div class="garden-gardener-row">
       <div id="garden-gardener"></div>
       <div class="garden-status" id="garden-status"></div>
@@ -62,10 +62,12 @@
       <div class="garden-side-labels" id="garden-side-labels"></div>
     </div>
     <ul class="garden-hint">
-      <li>Click the garden, then move with WASD or the arrow keys.</li>
+      <li id="garden-move-hint">Click the garden, then move with WASD or the arrow keys.</li>
       <li>Press E to pick up, plant, or use whatever you are next to.</li>
+      <li id="garden-buy-hint">Finish a ticket to earn a coin, then buy a plant in the shop below.</li>
     </ul>
     <div class="garden-help-icons">
+      <button class="help-icon-btn" onclick="showHelpTopic('coins')" title="Coins and plants">&#x1FA99;</button>
       <button class="help-icon-btn" onclick="showHelpTopic('water')" title="Watering">&#x1F4A7;</button>
       <button class="help-icon-btn" onclick="showHelpTopic('pickup')" title="Picking things up">&#x270B;</button>
       <button class="help-icon-btn" onclick="showHelpTopic('axe')" title="Axe">&#x1FA93;</button>
@@ -84,6 +86,8 @@
     <div class="shop-coins" id="shop-coins-row">&#x1FA99; <span id="shop-coins-amt">0</span></div>
     <div class="shop-columns">
       <div class="shop-column">
+        <div class="shop-section-title">Plants</div>
+        <div id="shop-plants"></div>
         <div class="shop-section-title">Pets</div>
         <div id="shop-pets"></div>
         <div class="shop-section-title">Treats</div>
@@ -167,7 +171,7 @@
 
   <div class="panel">
     <h2>Categories</h2>
-    <p class="category-hint">Colour-codes your tickets and the plant pots in the garden.</p>
+    <p class="category-hint" id="category-hint">Colour-codes your tickets and the pots in your garden.</p>
     <div class="key-list" id="category-key"></div>
   </div>
 </aside>
@@ -296,6 +300,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/util.js"></script>
+<script src="js/worlds.js"></script>
 <script src="js/store.js"></script>
 <script src="js/garden.js"></script>
 <script src="js/app.js"></script>

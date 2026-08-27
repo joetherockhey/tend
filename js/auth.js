@@ -18,6 +18,57 @@ const Auth = (function () {
   let view = 'signin';     // signin | signup | reset | profiles | newprofile
   let busy = false;
 
+  /* What the new account will look like. Set by the chooser, saved on the way in. */
+  let pickedWorld = Worlds.DEFAULT_WORLD;
+  let pickedHero = Worlds.DEFAULT_HERO;
+
+  /* The world chooser: two rows of choices and a live preview of the result. */
+  function chooserHTML() {
+    const worldBtns = Worlds.list().map(w =>
+      `<button type="button" class="choice ${w.id === pickedWorld ? 'on' : ''}" data-world="${w.id}">
+         <span class="choice-name">${Util.escapeHtml(w.label)}</span>
+       </button>`).join('');
+
+    const world = Worlds.get(pickedWorld);
+    const heroBtns = ['male', 'female'].map(g =>
+      `<button type="button" class="choice ${g === pickedHero ? 'on' : ''}" data-hero="${g}">
+         <span class="choice-name">${Util.escapeHtml(world.heroLabels[g])}</span>
+       </button>`).join('');
+
+    return `
+      <div class="chooser">
+        <div class="chooser-row">
+          <span class="chooser-label">World</span>
+          <div class="choice-group" id="world-choices">${worldBtns}</div>
+        </div>
+        <div class="chooser-row">
+          <span class="chooser-label">You</span>
+          <div class="choice-group" id="hero-choices">${heroBtns}</div>
+        </div>
+        <div id="world-preview-slot">${Worlds.previewHTML(pickedWorld, pickedHero)}</div>
+        <p class="chooser-blurb">${Util.escapeHtml(world.blurb)}</p>
+      </div>`;
+  }
+
+  /* Rebinds after every redraw, since the preview markup is replaced wholesale. */
+  function wireChooser(host) {
+    const box = host.querySelector('.chooser');
+    if (!box) return;
+    box.querySelectorAll('[data-world]').forEach(btn => {
+      btn.onclick = () => { pickedWorld = btn.dataset.world; redrawChooser(host); };
+    });
+    box.querySelectorAll('[data-hero]').forEach(btn => {
+      btn.onclick = () => { pickedHero = btn.dataset.hero; redrawChooser(host); };
+    });
+  }
+
+  function redrawChooser(host) {
+    const box = host.querySelector('.chooser');
+    if (!box) return;
+    box.outerHTML = chooserHTML();
+    wireChooser(host);
+  }
+
   const el = {};
 
   function cache() {
@@ -100,14 +151,27 @@ const Auth = (function () {
     return local.charAt(0).toUpperCase() + local.slice(1);
   }
 
+  /* A brand new account starts in the world its owner picked; an existing one
+     keeps whatever it already had. */
+  function applyChoiceIfNew(meta) {
+    const prefs = Store.prefs();
+    if (prefs.world) return;                       /* an existing account keeps its own */
+    const m = meta || {};
+    prefs.world = m.world || pickedWorld;
+    prefs.hero = m.hero || pickedHero;
+    Store.savePrefs();
+  }
+
   async function enterCloud(user) {
     await Store.open({ id: user.id, name: displayNameFor(user), email: user.email || '' });
+    applyChoiceIfNew(user.user_metadata);
     hideGate();
     onReady();
   }
 
   async function enterLocal(profile) {
     await Store.open({ id: profile.id, name: profile.name, email: '' });
+    applyChoiceIfNew(null);
     hideGate();
     onReady();
   }
@@ -199,6 +263,7 @@ const Auth = (function () {
           <label for="auth-password">Password</label>
           <input type="password" id="auth-password" autocomplete="new-password" minlength="8" required>
         </div>
+        ${chooserHTML()}
         <button type="submit" class="auth-submit">Create account</button>
       </form>
       <div class="auth-alt">
@@ -206,6 +271,7 @@ const Auth = (function () {
       </div>`;
 
     document.getElementById('auth-form').addEventListener('submit', submitSignup);
+    wireChooser(el.body);
     document.getElementById('link-signin').onclick = () => { view = 'signin'; render(); };
   }
 
@@ -221,7 +287,7 @@ const Auth = (function () {
     const { data, error } = await Store.client().auth.signUp({
       email,
       password,
-      options: { data: { display_name: name } }
+      options: { data: { display_name: name, world: pickedWorld, hero: pickedHero } }
     });
     setBusy(false);
     if (error) { message('error', friendlyError(error)); return; }
@@ -350,10 +416,12 @@ const Auth = (function () {
           <label for="auth-name">Name</label>
           <input type="text" id="auth-name" placeholder="Your name" required>
         </div>
+        ${chooserHTML()}
         <button type="submit" class="auth-submit">Create profile</button>
       </form>
       ${first ? '' : '<div class="auth-alt"><button class="auth-link" id="link-back">Back to profiles</button></div>'}`;
 
+    wireChooser(el.body);
     document.getElementById('auth-form').addEventListener('submit', function (e) {
       e.preventDefault();
       const name = document.getElementById('auth-name').value.trim();

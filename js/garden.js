@@ -13,6 +13,26 @@ const Garden = (function () {
 
   const NEUTRAL_POT = '#8a8f98';
 
+  /* The active skin. Everything visual comes through here, so switching world
+     is a preference change and a re-render - no data moves. */
+  function W() {
+    const prefs = Store.prefs() || {};
+    return Worlds.get(prefs.world || Worlds.DEFAULT_WORLD);
+  }
+
+  function heroGender() {
+    const prefs = Store.prefs() || {};
+    return prefs.hero === 'female' ? 'female' : 'male';
+  }
+
+  function terms() {
+    return W().terms;
+  }
+
+  function cap(word) {
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }
+
   /* The gardener sprite is named after whoever is signed in. */
   function heroName() {
     const n = (Store.displayName() || '').trim();
@@ -23,193 +43,78 @@ const Garden = (function () {
   const GARDEN_LAYOUT_KEY = 'garden-layout-v5';
   const HERO_POS_KEY = 'garden-hero-v5';
   const GARDEN_COLS = 8;
-  const CELL_SIZE = 34;
+  const CELL_SIZE = Worlds.TILE;
   const SECTION_ROWS = 8;
   const TICKETS_PER_SECTION = 10;
   const WATER_COOLDOWN_MS = 60000;
   const SECTIONS_SHOWN_AHEAD = 1;
 
-  const SECTIONS = [
-    { name: 'Garden', icon: '\u{1F331}', theme: 'grass' },
-    { name: 'Greenhouse', icon: '\u{1F33F}', theme: 'glass' },
-    { name: 'House', icon: '\u{1F3E1}', theme: 'wood' },
-    { name: 'Yard', icon: '\u{1F333}', theme: 'patio' },
-    { name: 'Hedge Maze', icon: '\u{1F343}', theme: 'maze' },
-    { name: 'Pond', icon: '\u{1F438}', theme: 'water' },
-    { name: 'Vegetable Patch', icon: '\u{1F955}', theme: 'soil' },
-    { name: 'Orchard', icon: '\u{1F34E}', theme: 'orchard' }
-  ];
-  const THEME_COLORS = {
-    grass: ['#dcefd7', '#eef7ec'],
-    glass: ['#cfe8f0', '#e4f4f8'],
-    wood: ['#c9a06a', '#dab883'],
-    patio: ['#d7d9c8', '#e8e9dc'],
-    maze: ['#dcefd7', '#eef7ec'],
-    water: ['#a9d8e6', '#c9e9f2'],
-    soil: ['#b98a55', '#c89a68'],
-    orchard: ['#d3ecc8', '#e6f5df']
-  };
-  const THEME_ORDER = ['grass', 'glass', 'wood', 'patio', 'maze', 'water', 'soil', 'orchard'];
 
-  function wallPattern(theme) {
-    if (theme === 'grass') return 'repeating-linear-gradient(90deg, #a97a45 0 4px, #8a5a2e 4px 5px, transparent 5px 8px)';
-    if (theme === 'glass') return 'repeating-linear-gradient(90deg, #6bb6c9 0 10px, #4f96a8 10px 12px)';
-    if (theme === 'wood') return 'repeating-linear-gradient(90deg, #8a5a2e 0 13px, #6b4423 13px 16px)';
-    if (theme === 'patio') return 'repeating-linear-gradient(90deg, #9a9a90 0 11px, #7d7d74 11px 14px)';
-    if (theme === 'maze') return 'repeating-linear-gradient(90deg, #2f6b32 0 6px, #3f9142 6px 9px)';
-    if (theme === 'water') return 'repeating-linear-gradient(90deg, #5a8fa0 0 5px, #3f9142 5px 7px)';
-    if (theme === 'soil') return 'repeating-linear-gradient(90deg, #8a5a2e 0 6px, #a97a45 6px 7px, transparent 7px 10px)';
-    if (theme === 'orchard') return 'repeating-linear-gradient(45deg, #8a5a2e 0 4px, #a97a45 4px 8px)';
-    return '#8a5a2e';
-  }
+
+
+
+
 
   function sectionInfo(i) {
-    if (SECTIONS[i]) return SECTIONS[i];
-    return { name: `Garden Plot ${i + 1}`, icon: '\u{1FAB4}', theme: THEME_ORDER[i % THEME_ORDER.length] };
+    if (W().sections[i]) return W().sections[i];
+    return { name: `Garden Plot ${i + 1}`, icon: '\u{1FAB4}', theme: W().themeOrder[i % THEME_ORDER.length] };
   }
 
   function checkerBackground(theme) {
-    const [c1, c2] = THEME_COLORS[theme];
+    const [c1, c2] = W().themeColors[theme];
     const size = CELL_SIZE * 2;
     return `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
   }
 
-  function surfaceBackground(kind) {
-    if (kind === 'bed') return 'repeating-linear-gradient(0deg, #6b4423 0 5px, #5a3a1e 5px 9px)';
-    if (kind === 'porch') return 'repeating-linear-gradient(90deg, #c9a06a 0 7px, #b58e58 7px 14px)';
-    if (kind === 'sand') return 'repeating-radial-gradient(circle at center, #e8d9a8 0 2px, #ddc98f 2px 3px, #e8d9a8 3px 7px)';
-    if (kind === 'dock') return 'repeating-linear-gradient(0deg, #a97a45 0 6px, #8a5a2e 6px 8px)';
-    if (kind === 'blanket') return 'repeating-linear-gradient(45deg, #e34948 0 6px, #f7f7f2 6px 12px)';
-    return '#cccccc';
-  }
+
 
   function unlockedSectionCount(completedCount) {
     return Math.floor(completedCount / TICKETS_PER_SECTION) + 1;
   }
 
-  function treeSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="6" y="13" width="4" height="6" fill="#6b4423"/><rect x="2" y="2" width="12" height="10" fill="#2f7a34"/><rect x="4" y="0" width="8" height="3" fill="#3f9142"/><rect x="3" y="5" width="3" height="3" fill="#3f9142"/></svg>`;
-  }
 
-  function fruitTreeSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="6" y="13" width="4" height="6" fill="#6b4423"/><rect x="2" y="2" width="12" height="10" fill="#2f7a34"/><rect x="4" y="4" width="2" height="2" fill="#d0353a"/><rect x="9" y="6" width="2" height="2" fill="#d0353a"/><rect x="6" y="9" width="2" height="2" fill="#eb6834"/></svg>`;
-  }
 
-  function washingLineSVG(width) {
-    const w = width * CELL_SIZE - 4;
-    return `<svg width="${w}" height="34" viewBox="0 0 32 20" preserveAspectRatio="none" shape-rendering="crispEdges"><rect x="1" y="4" width="1" height="10" fill="#8a8f98"/><rect x="30" y="4" width="1" height="10" fill="#8a8f98"/><rect x="1" y="4" width="30" height="1" fill="#8a8f98"/><rect x="4" y="5" width="4" height="4" fill="#f7f7f2"/><rect x="10" y="5" width="4" height="5" fill="#4361ee"/><rect x="16" y="5" width="4" height="4" fill="#eda100"/><rect x="22" y="5" width="4" height="5" fill="#e87ba4"/></svg>`;
-  }
 
-  function wheelbarrowSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="2" y="14" width="4" height="4" fill="#3b3f45"/><rect x="3" y="15" width="2" height="2" fill="#6b7280"/><rect x="5" y="9" width="8" height="5" fill="#8a8f98"/><rect x="6" y="8" width="6" height="1" fill="#a4aab3"/><rect x="12" y="10" width="3" height="1" fill="#6b4423"/><rect x="12" y="12" width="3" height="1" fill="#6b4423"/></svg>`;
-  }
 
-  function bushSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="2" y="10" width="12" height="7" fill="#2f7a34"/><rect x="4" y="6" width="8" height="6" fill="#3f9142"/><rect x="6" y="5" width="4" height="3" fill="#4fa754"/></svg>`;
-  }
 
-  function mowerSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="9" y="2" width="2" height="8" fill="#6b7280"/><rect x="10" y="1" width="3" height="2" fill="#3b3f45"/><rect x="3" y="10" width="9" height="5" fill="#e34948"/><rect x="4" y="15" width="3" height="3" fill="#1f2430"/><rect x="9" y="15" width="3" height="3" fill="#1f2430"/><rect x="5" y="16" width="1" height="1" fill="#8a8f98"/><rect x="10" y="16" width="1" height="1" fill="#8a8f98"/></svg>`;
-  }
 
-  function hoeSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="4" width="2" height="14" fill="#8a5a2e"/><rect x="4" y="1" width="8" height="3" fill="#8a8f98"/><rect x="4" y="1" width="8" height="1" fill="#c9ccd1"/></svg>`;
-  }
 
-  function hoseSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="3" y="9" width="6" height="6" fill="#3b3f45"/><rect x="5" y="11" width="2" height="2" fill="#4361ee"/><rect x="9" y="8" width="5" height="2" fill="#4c8c3c"/><rect x="12" y="6" width="2" height="2" fill="#4c8c3c"/><rect x="12" y="4" width="2" height="2" fill="#eda100"/></svg>`;
-  }
 
-  function bucketSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="4" y="10" width="8" height="6" fill="#8a8f98"/><rect x="3" y="9" width="10" height="1" fill="#a4aab3"/><rect x="5" y="6" width="6" height="1" fill="#6b7280"/></svg>`;
-  }
 
-  function axeSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="4" width="2" height="14" fill="#8a5a2e"/><rect x="9" y="2" width="6" height="7" fill="#a4aab3"/><rect x="9" y="2" width="6" height="2" fill="#d3d6db"/><rect x="14" y="4" width="1" height="4" fill="#6b7280"/></svg>`;
-  }
 
-  function logSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="2" y="14" width="12" height="4" fill="#8a5a2e"/><rect x="2" y="14" width="12" height="1" fill="#a97a45"/><rect x="4" y="15" width="2" height="2" fill="#6b4423"/><rect x="10" y="15" width="2" height="2" fill="#6b4423"/><rect x="7" y="15" width="2" height="2" fill="#6b4423"/></svg>`;
-  }
 
-  function shovelSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="2" width="2" height="12" fill="#8a5a2e"/><rect x="5" y="13" width="6" height="6" fill="#a4aab3"/><rect x="6" y="14" width="4" height="4" fill="#8a8f98"/></svg>`;
-  }
 
-  function saplingSVG() {
-    return `<svg width="18" height="22" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="14" width="2" height="5" fill="#6b4423"/><rect x="5" y="9" width="6" height="6" fill="#4fa754"/><rect x="6" y="7" width="4" height="4" fill="#6bc06e"/></svg>`;
-  }
 
-  function cabinSVG(logCount) {
-    const p = Math.max(0, Math.min(10, logCount));
-    if (p < 2) return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"></svg>`;
 
-    // Stage 1 (p2-2): foundation footing
-    let rects = `<rect x="0" y="18" width="16" height="2" fill="#5a3a1e"/>`;
 
-    // Stage 2 (p3-7): walls rise from the foundation up to full height
-    if (p >= 3) {
-      const wallH = Math.round((Math.min(p, 7) - 2) / 5 * 12);
-      rects += `<rect x="1" y="${19 - wallH}" width="14" height="${wallH}" fill="#8a5a2e"/>`;
-      for (let y = 19 - wallH; y < 19; y += 2) rects += `<rect x="1" y="${y}" width="14" height="1" fill="#6b4423"/>`;
-    }
 
-    // Stage 3 (p7-9): roof eave, then ridge cap
-    if (p >= 7) {
-      rects += `<rect x="0" y="5" width="16" height="3" fill="#5a3a1e"/>`;
-    }
-    if (p >= 9) {
-      rects += `<rect x="2" y="3" width="12" height="2" fill="#6b4423"/>`;
-    }
 
-    // Stage 4 (p10, complete): door with handle, and wooden shutter windows
-    if (p >= 10) {
-      rects += `<rect x="6" y="12" width="4" height="7" fill="#3b2a18"/><rect x="9" y="15" width="1" height="1" fill="#eda100"/>`;
-      rects += `<rect x="2" y="9" width="3" height="3" fill="#6b4423"/><rect x="3" y="10" width="1" height="1" fill="#5a3a1e"/>`;
-      rects += `<rect x="11" y="9" width="3" height="3" fill="#6b4423"/><rect x="12" y="10" width="1" height="1" fill="#5a3a1e"/>`;
-    }
 
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges">${rects}</svg>`;
-  }
 
-  function dogSVG() {
-    return `<svg width="24" height="22" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="8" width="10" height="5" fill="#a97a45"/><rect x="10" y="5" width="5" height="5" fill="#a97a45"/><rect x="12" y="3" width="2" height="2" fill="#8a5a2e"/><rect x="9" y="4" width="2" height="2" fill="#8a5a2e"/><rect x="0" y="8" width="2" height="3" fill="#8a5a2e"/><rect x="2" y="13" width="2" height="2" fill="#5a3a1e"/><rect x="7" y="13" width="2" height="2" fill="#5a3a1e"/></svg>`;
-  }
 
-  function catSVG() {
-    return `<svg width="24" height="22" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="9" width="9" height="4" fill="#8a8f98"/><rect x="9" y="6" width="4" height="4" fill="#8a8f98"/><rect x="9" y="4" width="1" height="2" fill="#6b7280"/><rect x="11" y="4" width="1" height="2" fill="#6b7280"/><rect x="0" y="7" width="2" height="1" fill="#8a8f98"/><rect x="3" y="13" width="2" height="1" fill="#5a3a1e"/></svg>`;
-  }
 
-  function rabbitSVG() {
-    return `<svg width="24" height="22" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="3" y="9" width="8" height="4" fill="#c9a06a"/><rect x="9" y="6" width="3" height="4" fill="#c9a06a"/><rect x="9" y="1" width="1" height="5" fill="#c9a06a"/><rect x="11" y="1" width="1" height="5" fill="#c9a06a"/><rect x="10" y="7" width="1" height="1" fill="#e87ba4"/></svg>`;
-  }
 
-  function birdSVG() {
-    return `<svg width="24" height="22" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="4" y="8" width="6" height="4" fill="#4361ee"/><rect x="9" y="7" width="2" height="2" fill="#4361ee"/><rect x="11" y="8" width="2" height="1" fill="#eda100"/><rect x="4" y="9" width="3" height="2" fill="#2c3e8f"/></svg>`;
-  }
 
-  const PET_TYPES = {
-    dog: { label: 'Dog', icon: '\u{1F415}', cost: 10, temperament: 'friendly', svg: dogSVG },
-    cat: { label: 'Cat', icon: '\u{1F408}', cost: 8, temperament: 'neutral', svg: catSVG },
-    rabbit: { label: 'Rabbit', icon: '\u{1F430}', cost: 5, temperament: 'skittish', svg: rabbitSVG },
-    bird: { label: 'Bird', icon: '\u{1F426}', cost: 5, temperament: 'skittish', svg: birdSVG }
-  };
 
-  const PET_TREATS = {
-    dog: { label: 'Dog treat', icon: '\u{1F9B4}', cost: 1, gain: 15 },
-    cat: { label: 'Cat treat', icon: '\u{1F41F}', cost: 1, gain: 15 },
-    rabbit: { label: 'Rabbit treat', icon: '\u{1F955}', cost: 1, gain: 20 },
-    bird: { label: 'Bird seed', icon: '\u{1F33E}', cost: 1, gain: 20 }
-  };
 
-  const SHOP_ITEMS = {
-    hoe: { label: 'Hoe', icon: '\u{26CF}\u{FE0F}', cost: 3, svg: hoeSVG },
-    hose: { label: 'Hose', icon: '\u{1F6BF}', cost: 4, svg: hoseSVG },
-    bucket: { label: 'Bucket', icon: '\u{1FAA3}', cost: 2, svg: bucketSVG },
-    axe: { label: 'Axe', icon: '\u{1FA93}', cost: 6, svg: axeSVG },
-    shovel: { label: 'Shovel', icon: '\u{1FACF}', cost: 6, svg: shovelSVG }
-  };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  const PLANT_COST = 1;
   const SAPLING_COST = 5;
   const SAPLING_WATERS_NEEDED = 5;
   const CABIN_LOGS_NEEDED = 10;
@@ -218,13 +123,7 @@ const Garden = (function () {
   const UNLOCK_PET_COST = 50;
   const RESET_PURCHASES_COST = 100;
 
-  const OUTFITS = {
-    classic: { label: 'Classic', icon: '\u{1F455}', cost: 0, hat: '#6b4423', shirt: '#3f9142', pants: '#2c3e8f' },
-    strawhat: { label: 'Straw Hat & Overalls', icon: '\u{1F33E}', cost: 15, hat: '#eda100', shirt: '#4361ee', pants: '#2c5aa0' },
-    flannel: { label: 'Red Flannel', icon: '\u{1F9E5}', cost: 12, hat: '#6b4423', shirt: '#d0353a', pants: '#3b3f45' },
-    explorer: { label: 'Explorer Vest', icon: '\u{1F9ED}', cost: 18, hat: '#b98a55', shirt: '#6b8e4e', pants: '#5a4a35' },
-    royal: { label: 'Royal Robes', icon: '\u{1F451}', cost: 25, hat: '#6a4fb0', shirt: '#7536ff', pants: '#4a3aa7' }
-  };
+
 
   const OUTFITS_KEY = 'garden-outfits-v1';
   let ownedOutfits = ['classic'];
@@ -246,11 +145,11 @@ const Garden = (function () {
   }
 
   function getEquippedOutfit() {
-    return OUTFITS[equippedOutfit] || OUTFITS.classic;
+    return W().outfits[equippedOutfit] || W().outfits.classic;
   }
 
   function buyOutfit(id) {
-    const def = OUTFITS[id];
+    const def = W().outfits[id];
     if (!def || ownedOutfits.includes(id) || coins < def.cost) return;
     coins -= def.cost;
     saveCoins();
@@ -259,7 +158,7 @@ const Garden = (function () {
     saveOutfits();
     renderCoins();
     positionHero();
-    document.getElementById('garden-gardener').innerHTML = gardenerSVG('down', getEquippedOutfit());
+    document.getElementById('garden-gardener').innerHTML = heroSVG('down', getEquippedOutfit());
   }
 
   function equipOutfit(id) {
@@ -267,29 +166,19 @@ const Garden = (function () {
     equippedOutfit = id;
     saveOutfits();
     positionHero();
-    document.getElementById('garden-gardener').innerHTML = gardenerSVG('down', getEquippedOutfit());
+    document.getElementById('garden-gardener').innerHTML = heroSVG('down', getEquippedOutfit());
     renderShop();
   }
 
-  function treatSVG() {
-    return `<svg width="20" height="20" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="3" y="8" width="10" height="5" fill="#8a8f98"/><rect x="4" y="7" width="8" height="2" fill="#a97a45"/><rect x="6" y="6" width="2" height="2" fill="#eda100"/></svg>`;
-  }
 
-  function tableSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="4" y="8" width="8" height="6" fill="#a97a45"/><rect x="1" y="9" width="2" height="3" fill="#6b4423"/><rect x="13" y="9" width="2" height="3" fill="#6b4423"/><rect x="5" y="14" width="1" height="3" fill="#6b4423"/><rect x="10" y="14" width="1" height="3" fill="#6b4423"/></svg>`;
-  }
 
-  function grillSVG() {
-    return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="4" y="8" width="8" height="4" fill="#3b3f45"/><rect x="5" y="9" width="6" height="2" fill="#6b7280"/><rect x="5" y="12" width="1" height="4" fill="#1f2430"/><rect x="10" y="12" width="1" height="4" fill="#1f2430"/><rect x="7" y="4" width="2" height="4" fill="#8a8f98"/></svg>`;
-  }
 
-  function hedgeSVG() {
-    return `<svg width="${CELL_SIZE}" height="${CELL_SIZE}" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="0" y="0" width="16" height="16" fill="#2f6b32"/><rect x="2" y="2" width="3" height="3" fill="#3f9142"/><rect x="9" y="4" width="3" height="3" fill="#3f9142"/><rect x="5" y="9" width="3" height="3" fill="#3f9142"/><rect x="11" y="10" width="3" height="3" fill="#3f9142"/></svg>`;
-  }
 
-  function lilyPadSVG() {
-    return `<svg width="26" height="26" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="3" y="6" width="10" height="6" fill="#4c9c4f"/><rect x="5" y="8" width="4" height="2" fill="#e87ba4"/></svg>`;
-  }
+
+
+
+
+
 
   const MAZE_PATTERN = [
     '..#...#.',
@@ -306,7 +195,7 @@ const Garden = (function () {
     const list = [];
     MAZE_PATTERN.forEach((rowStr, r) => {
       for (let c = 0; c < rowStr.length; c++) {
-        if (rowStr[c] === '#') list.push({ row: r, col: c, width: 1, height: 1, blocking: true, svg: hedgeSVG() });
+        if (rowStr[c] === '#') list.push({ row: r, col: c, width: 1, height: 1, blocking: true, art: 'hedge' });
       }
     });
     return list;
@@ -314,15 +203,15 @@ const Garden = (function () {
 
   const DECORATIONS_BY_THEME = {
     grass: [
-      { row: 0, col: 2, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree1', svg: treeSVG() },
-      { row: 0, col: 5, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree2', svg: treeSVG() },
-      { row: 2, col: 3, width: 2, height: 1, blocking: true, svg: washingLineSVG(2) },
-      { row: 6, col: 3, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'shovel', id: 'bush1', svg: bushSVG() },
-      { row: 7, col: 5, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'shovel', id: 'bush2', svg: bushSVG() },
+      { row: 0, col: 2, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree1', art: 'tree' },
+      { row: 0, col: 5, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree2', art: 'tree' },
+      { row: 2, col: 3, width: 2, height: 1, blocking: true, art: 'washingLine' },
+      { row: 6, col: 3, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'shovel', id: 'bush1', art: 'bush' },
+      { row: 7, col: 5, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'shovel', id: 'bush2', art: 'bush' },
       { row: 1, col: 0, width: 2, height: 5, blocking: false, kind: 'bed' },
       { row: 1, col: 6, width: 2, height: 5, blocking: false, kind: 'bed' },
-      { row: 6, col: 5, width: 1, height: 1, blocking: true, movable: true, id: 'mower', svg: mowerSVG() },
-      { row: 7, col: 2, width: 1, height: 1, blocking: true, movable: true, id: 'wheelbarrow', svg: wheelbarrowSVG() }
+      { row: 6, col: 5, width: 1, height: 1, blocking: true, movable: true, id: 'mower', art: 'mower' },
+      { row: 7, col: 2, width: 1, height: 1, blocking: true, movable: true, id: 'wheelbarrow', art: 'wheelbarrow' }
     ],
     glass: [
       { row: 1, col: 0, width: 4, height: 1, blocking: false, kind: 'bed' },
@@ -331,27 +220,27 @@ const Garden = (function () {
       { row: 5, col: 4, width: 4, height: 1, blocking: false, kind: 'bed' }
     ],
     wood: [
-      { row: 1, col: 2, width: 1, height: 1, blocking: true, svg: tableSVG() },
-      { row: 1, col: 5, width: 1, height: 1, blocking: true, svg: tableSVG() },
+      { row: 1, col: 2, width: 1, height: 1, blocking: true, art: 'table' },
+      { row: 1, col: 5, width: 1, height: 1, blocking: true, art: 'table' },
       { row: 6, col: 0, width: 8, height: 2, blocking: false, kind: 'porch' }
     ],
     patio: [
-      { row: 0, col: 3, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree1', svg: treeSVG() },
-      { row: 2, col: 6, width: 1, height: 1, blocking: true, svg: tableSVG() },
-      { row: 6, col: 6, width: 1, height: 1, blocking: true, svg: grillSVG() },
+      { row: 0, col: 3, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree1', art: 'tree' },
+      { row: 2, col: 6, width: 1, height: 1, blocking: true, art: 'table' },
+      { row: 6, col: 6, width: 1, height: 1, blocking: true, art: 'grill' },
       { row: 3, col: 2, width: 4, height: 4, blocking: false, kind: 'sand' }
     ],
     maze: mazeDecorations(),
     water: [
       { row: 2, col: 0, width: 2, height: 4, blocking: false, kind: 'dock' },
-      { row: 1, col: 3, width: 1, height: 1, blocking: true, svg: lilyPadSVG() },
-      { row: 1, col: 5, width: 1, height: 1, blocking: true, svg: lilyPadSVG() },
-      { row: 3, col: 3, width: 1, height: 1, blocking: true, svg: lilyPadSVG() },
-      { row: 3, col: 6, width: 1, height: 1, blocking: true, svg: lilyPadSVG() },
-      { row: 5, col: 2, width: 1, height: 1, blocking: true, svg: lilyPadSVG() },
-      { row: 5, col: 5, width: 1, height: 1, blocking: true, svg: lilyPadSVG() },
-      { row: 6, col: 4, width: 1, height: 1, blocking: true, svg: lilyPadSVG() },
-      { row: 2, col: 7, width: 1, height: 1, blocking: true, svg: lilyPadSVG() }
+      { row: 1, col: 3, width: 1, height: 1, blocking: true, art: 'lilyPad' },
+      { row: 1, col: 5, width: 1, height: 1, blocking: true, art: 'lilyPad' },
+      { row: 3, col: 3, width: 1, height: 1, blocking: true, art: 'lilyPad' },
+      { row: 3, col: 6, width: 1, height: 1, blocking: true, art: 'lilyPad' },
+      { row: 5, col: 2, width: 1, height: 1, blocking: true, art: 'lilyPad' },
+      { row: 5, col: 5, width: 1, height: 1, blocking: true, art: 'lilyPad' },
+      { row: 6, col: 4, width: 1, height: 1, blocking: true, art: 'lilyPad' },
+      { row: 2, col: 7, width: 1, height: 1, blocking: true, art: 'lilyPad' }
     ],
     soil: [
       { row: 1, col: 0, width: 4, height: 1, blocking: false, kind: 'bed' },
@@ -360,14 +249,14 @@ const Garden = (function () {
       { row: 4, col: 4, width: 4, height: 1, blocking: false, kind: 'bed' }
     ],
     orchard: [
-      { row: 0, col: 1, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree1', svg: fruitTreeSVG() },
-      { row: 0, col: 4, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree2', svg: fruitTreeSVG() },
-      { row: 4, col: 7, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree3', svg: fruitTreeSVG() },
-      { row: 3, col: 0, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree4', svg: fruitTreeSVG() },
-      { row: 3, col: 3, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree5', svg: fruitTreeSVG() },
-      { row: 3, col: 6, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree6', svg: fruitTreeSVG() },
-      { row: 6, col: 1, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree7', svg: fruitTreeSVG() },
-      { row: 6, col: 5, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree8', svg: fruitTreeSVG() },
+      { row: 0, col: 1, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree1', art: 'fruitTree' },
+      { row: 0, col: 4, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree2', art: 'fruitTree' },
+      { row: 4, col: 7, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree3', art: 'fruitTree' },
+      { row: 3, col: 0, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree4', art: 'fruitTree' },
+      { row: 3, col: 3, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree5', art: 'fruitTree' },
+      { row: 3, col: 6, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree6', art: 'fruitTree' },
+      { row: 6, col: 1, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree7', art: 'fruitTree' },
+      { row: 6, col: 5, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'axe', id: 'tree8', art: 'fruitTree' },
       { row: 5, col: 2, width: 4, height: 3, blocking: false, kind: 'blanket' }
     ]
   };
@@ -394,6 +283,7 @@ const Garden = (function () {
   const CABIN_SITES_KEY = 'garden-cabins-v1';
   const SAPLINGS_KEY = 'garden-saplings-v1';
   const DUG_TILES_KEY = 'garden-dug-v1';
+  const COINS_AWARDED_KEY = 'coins-awarded-v1';
 
   let movableLayout = {};
   let purchasedItems = [];
@@ -407,6 +297,55 @@ const Garden = (function () {
   let heldLog = null;
   let heldSapling = null;
   let dugTiles = new Set();
+
+  /* One coin per completed ticket, paid once. The ledger of ticket ids that
+     have already paid out lives alongside the coin count, so ticking a ticket
+     off and on again cannot mint coins. */
+  let awardedCoins = new Set();
+  let stateLoaded = false;
+
+  function loadAwardedCoins() {
+    try {
+      awardedCoins = new Set(JSON.parse(Store.kv.getItem(COINS_AWARDED_KEY)) || []);
+    } catch (e) {
+      awardedCoins = new Set();
+    }
+  }
+
+  function saveAwardedCoins() {
+    Store.kv.setItem(COINS_AWARDED_KEY, JSON.stringify([...awardedCoins]));
+  }
+
+  /* Reconciles coins against the ticket list. Idempotent, so it is safe to run
+     on every render - which is also what makes it work across devices and after
+     an import. Un-completing a ticket takes its coin back; deleting a ticket
+     outright does not, since that work was still done. */
+  function syncCompletionCoins() {
+    const tickets = App.tickets();
+    const completedIds = new Set(tickets.filter(t => t.completedAt).map(t => t.id));
+    const existingIds = new Set(tickets.map(t => t.id));
+
+    let delta = 0;
+    let changed = false;
+
+    completedIds.forEach(id => {
+      if (!awardedCoins.has(id)) {
+        awardedCoins.add(id);
+        delta += 1;
+        changed = true;
+      }
+    });
+
+    [...awardedCoins].forEach(id => {
+      if (completedIds.has(id)) return;
+      awardedCoins.delete(id);
+      changed = true;
+      if (existingIds.has(id)) delta -= 1;
+    });
+
+    if (changed) saveAwardedCoins();
+    if (delta !== 0) addCoins(delta);
+  }
 
   function loadDugTiles() {
     try {
@@ -476,7 +415,6 @@ const Garden = (function () {
     saveSaplings();
     spawnSparkleAt(row, col);
     playWaterSound();
-    addCoins(1);
   }
 
   function findUnplantedSaplingAt(row, col) {
@@ -548,7 +486,7 @@ const Garden = (function () {
     Store.kv.setItem(COINS_KEY, String(coins));
   }
   function addCoins(n) {
-    coins += n;
+    coins = Math.max(0, coins + n);
     saveCoins();
     renderCoins();
     if (n > 0) {
@@ -585,6 +523,7 @@ const Garden = (function () {
   let gardenMaxUnlockedRow = SECTION_ROWS - 1;
   let heldPlantId = null;
   let heldPlantVariety = null;
+  let heldPlantPot = null;
   let heldDecoration = null;
   let pendingTreats = [];
   let heldTreat = null;
@@ -672,10 +611,7 @@ const Garden = (function () {
     setTimeout(() => playTone(160, 0.1, 'sawtooth', 0.05), 40);
   }
 
-  const THEME_STEP_SOUND = {
-    grass: 'grass', glass: 'stone', wood: 'wood', patio: 'stone',
-    maze: 'grass', water: 'water', soil: 'dirt', orchard: 'grass'
-  };
+
 
   function playStepSound(kind) {
     if (kind === 'water') { playNoiseBurst(0.1, 1400, 0.045); return; }
@@ -716,57 +652,14 @@ const Garden = (function () {
     Store.kv.setItem(HERO_POS_KEY, JSON.stringify({ row: heroPos.row, col: heroPos.col, direction: heroDirection }));
   }
 
-  function gardenerFrontSVG(o) {
-    return `<svg width="30" height="32" viewBox="0 0 19 20" shape-rendering="crispEdges">
-      <rect x="6" y="0" width="6" height="2" fill="${o.hat}"/>
-      <rect x="3" y="2" width="12" height="2" fill="${o.hat}"/>
-      <rect x="4" y="4" width="8" height="6" fill="#f2c48d"/>
-      <rect x="6" y="7" width="1" height="1" fill="#1f2430"/>
-      <rect x="9" y="7" width="1" height="1" fill="#1f2430"/>
-      <rect x="3" y="10" width="10" height="6" fill="${o.shirt}"/>
-      <rect x="1" y="10" width="2" height="5" fill="#f2c48d"/>
-      <rect x="13" y="10" width="2" height="4" fill="#f2c48d"/>
-      <rect x="4" y="16" width="3" height="4" fill="${o.pants}"/>
-      <rect x="9" y="16" width="3" height="4" fill="${o.pants}"/>
-      <rect x="15" y="11" width="3" height="4" fill="#8a8f98"/>
-      <rect x="18" y="10" width="1" height="2" fill="#8a8f98"/>
-    </svg>`;
-  }
 
-  function gardenerBackSVG(o) {
-    return `<svg width="30" height="32" viewBox="0 0 19 20" shape-rendering="crispEdges">
-      <rect x="6" y="0" width="6" height="2" fill="${o.hat}"/>
-      <rect x="3" y="2" width="12" height="2" fill="${o.hat}"/>
-      <rect x="4" y="4" width="8" height="6" fill="#5a3a1e"/>
-      <rect x="3" y="10" width="10" height="6" fill="${o.shirt}"/>
-      <rect x="1" y="10" width="2" height="5" fill="#f2c48d"/>
-      <rect x="13" y="10" width="2" height="4" fill="#f2c48d"/>
-      <rect x="4" y="16" width="3" height="4" fill="${o.pants}"/>
-      <rect x="9" y="16" width="3" height="4" fill="${o.pants}"/>
-    </svg>`;
-  }
 
-  function gardenerSideSVG(o) {
-    return `<svg width="30" height="32" viewBox="0 0 19 20" shape-rendering="crispEdges">
-      <rect x="7" y="0" width="7" height="2" fill="${o.hat}"/>
-      <rect x="6" y="2" width="9" height="2" fill="${o.hat}"/>
-      <rect x="7" y="4" width="6" height="6" fill="#f2c48d"/>
-      <rect x="12" y="6" width="2" height="1" fill="#f2c48d"/>
-      <rect x="11" y="7" width="1" height="1" fill="#1f2430"/>
-      <rect x="6" y="10" width="8" height="6" fill="${o.shirt}"/>
-      <rect x="12" y="10" width="3" height="5" fill="#f2c48d"/>
-      <rect x="7" y="16" width="3" height="4" fill="${o.pants}"/>
-      <rect x="11" y="16" width="3" height="4" fill="${o.pants}"/>
-      <rect x="15" y="11" width="3" height="4" fill="#8a8f98"/>
-      <rect x="18" y="10" width="1" height="2" fill="#8a8f98"/>
-    </svg>`;
-  }
 
-  function gardenerSVG(direction, outfit) {
-    const o = outfit || OUTFITS.classic;
-    if (direction === 'up') return gardenerBackSVG(o);
-    if (direction === 'left' || direction === 'right') return gardenerSideSVG(o);
-    return gardenerFrontSVG(o);
+
+
+
+  function heroSVG(direction, outfit) {
+    return Worlds.heroSVG(W().id, heroGender(), direction, outfit || getEquippedOutfit());
   }
 
   function sparkleSVG(size) {
@@ -780,40 +673,17 @@ const Garden = (function () {
     </svg>`;
   }
 
-  const PLANT_VARIETIES = [
-    { name: 'Rose', plant: '<rect x="6" y="8" width="1" height="6" fill="#3f9142"/><rect x="4" y="10" width="2" height="1" fill="#2f7a34"/><rect x="8" y="9" width="2" height="1" fill="#2f7a34"/><rect x="4" y="3" width="6" height="5" fill="#d0353a"/><rect x="5" y="2" width="1" height="1" fill="#d0353a"/><rect x="8" y="2" width="1" height="1" fill="#d0353a"/>' },
-    { name: 'Tulip', plant: '<rect x="6" y="7" width="1" height="7" fill="#3f9142"/><rect x="3" y="10" width="3" height="1" fill="#2f7a34"/><rect x="4" y="3" width="6" height="5" fill="#e0546a"/><rect x="5" y="2" width="4" height="1" fill="#e0546a"/>' },
-    { name: 'Sunflower', plant: '<rect x="6" y="9" width="1" height="5" fill="#3f9142"/><rect x="3" y="11" width="2" height="1" fill="#2f7a34"/><rect x="9" y="10" width="2" height="1" fill="#2f7a34"/><rect x="2" y="2" width="10" height="8" fill="#f4c430"/><rect x="5" y="5" width="4" height="4" fill="#6b4423"/>' },
-    { name: 'Daisy', plant: '<rect x="6" y="8" width="1" height="6" fill="#3f9142"/><rect x="3" y="3" width="8" height="6" fill="#f7f7f2"/><rect x="6" y="5" width="2" height="2" fill="#f4c430"/>' },
-    { name: 'Lavender', plant: '<rect x="6" y="5" width="1" height="9" fill="#3f9142"/><rect x="4" y="1" width="1" height="1" fill="#9b8ad4"/><rect x="6" y="0" width="1" height="1" fill="#9b8ad4"/><rect x="8" y="1" width="1" height="1" fill="#9b8ad4"/><rect x="5" y="3" width="1" height="1" fill="#6a4fb0"/><rect x="7" y="3" width="1" height="1" fill="#6a4fb0"/><rect x="6" y="2" width="1" height="1" fill="#6a4fb0"/>' },
-    { name: 'Cactus', plant: '<rect x="5" y="3" width="4" height="10" fill="#4c8c3c"/><rect x="2" y="6" width="2" height="5" fill="#4c8c3c"/><rect x="9" y="5" width="2" height="5" fill="#4c8c3c"/><rect x="6" y="1" width="2" height="2" fill="#e87ba4"/>' },
-    { name: 'Succulent', plant: '<rect x="5" y="7" width="4" height="4" fill="#3fb8a8"/><rect x="3" y="8" width="2" height="2" fill="#3fb8a8"/><rect x="9" y="8" width="2" height="2" fill="#3fb8a8"/><rect x="4" y="5" width="2" height="2" fill="#6bc06e"/><rect x="8" y="5" width="2" height="2" fill="#6bc06e"/><rect x="6" y="4" width="2" height="2" fill="#6bc06e"/>' },
-    { name: 'Bonsai Tree', plant: '<rect x="6" y="8" width="2" height="6" fill="#6b4423"/><rect x="3" y="2" width="8" height="6" fill="#2f7a34"/><rect x="5" y="1" width="4" height="2" fill="#3f9142"/>' },
-    { name: 'Fern', plant: '<rect x="6" y="2" width="1" height="12" fill="#3f9142"/><rect x="2" y="4" width="3" height="1" fill="#6bc06e"/><rect x="2" y="7" width="3" height="1" fill="#6bc06e"/><rect x="2" y="10" width="3" height="1" fill="#6bc06e"/><rect x="9" y="5" width="3" height="1" fill="#6bc06e"/><rect x="9" y="8" width="3" height="1" fill="#6bc06e"/>' },
-    { name: 'Ivy', plant: '<rect x="1" y="8" width="2" height="1" fill="#3f9142"/><rect x="0" y="10" width="2" height="1" fill="#2f7a34"/><rect x="11" y="8" width="2" height="1" fill="#3f9142"/><rect x="12" y="10" width="2" height="1" fill="#2f7a34"/><rect x="5" y="6" width="4" height="4" fill="#3f9142"/>' },
-    { name: 'Orchid', plant: '<rect x="6" y="6" width="1" height="7" fill="#3f9142"/><rect x="7" y="5" width="1" height="1" fill="#3f9142"/><rect x="7" y="2" width="3" height="3" fill="#6a4fb0"/><rect x="4" y="4" width="3" height="3" fill="#e87ba4"/>' },
-    { name: 'Bamboo', plant: '<rect x="4" y="1" width="2" height="12" fill="#3f9142"/><rect x="8" y="1" width="2" height="12" fill="#6bc06e"/><rect x="4" y="5" width="2" height="1" fill="#2f7a34"/><rect x="8" y="8" width="2" height="1" fill="#2f7a34"/><rect x="4" y="9" width="2" height="1" fill="#2f7a34"/><rect x="3" y="0" width="2" height="1" fill="#6bc06e"/><rect x="9" y="0" width="2" height="1" fill="#6bc06e"/>' },
-    { name: 'Venus Flytrap', plant: '<rect x="5" y="8" width="1" height="5" fill="#3f9142"/><rect x="8" y="8" width="1" height="5" fill="#3f9142"/><rect x="3" y="5" width="4" height="3" fill="#2f7a34"/><rect x="4" y="6" width="2" height="1" fill="#d0353a"/><rect x="7" y="4" width="4" height="3" fill="#2f7a34"/><rect x="8" y="5" width="2" height="1" fill="#d0353a"/>' },
-    { name: 'Pumpkin Vine', plant: '<rect x="2" y="8" width="4" height="3" fill="#3f9142"/><rect x="8" y="7" width="4" height="3" fill="#3f9142"/><rect x="5" y="8" width="4" height="4" fill="#eb6834"/><rect x="6" y="7" width="1" height="1" fill="#2f7a34"/>' },
-    { name: 'Tomato Plant', plant: '<rect x="6" y="11" width="1" height="2" fill="#3f9142"/><rect x="3" y="5" width="8" height="6" fill="#2f7a34"/><rect x="4" y="6" width="2" height="2" fill="#d0353a"/><rect x="8" y="8" width="2" height="2" fill="#d0353a"/><rect x="6" y="5" width="2" height="2" fill="#d0353a"/>' },
-    { name: 'Blueberry Bush', plant: '<rect x="6" y="11" width="1" height="2" fill="#6b4423"/><rect x="3" y="5" width="8" height="6" fill="#3f9142"/><rect x="4" y="6" width="1" height="1" fill="#4361ee"/><rect x="7" y="7" width="1" height="1" fill="#4361ee"/><rect x="9" y="6" width="1" height="1" fill="#4361ee"/><rect x="5" y="9" width="1" height="1" fill="#4361ee"/>' },
-    { name: 'Basil Herb', plant: '<rect x="6" y="11" width="1" height="2" fill="#2f7a34"/><rect x="3" y="6" width="4" height="5" fill="#3f9142"/><rect x="7" y="5" width="4" height="6" fill="#6bc06e"/>' },
-    { name: 'Clover', plant: '<rect x="6" y="10" width="1" height="3" fill="#2f7a34"/><rect x="4" y="7" width="3" height="3" fill="#6bc06e"/><rect x="7" y="7" width="3" height="3" fill="#6bc06e"/><rect x="5" y="5" width="3" height="3" fill="#3f9142"/>' },
-    { name: 'Aloe Vera', plant: '<rect x="6" y="2" width="1" height="9" fill="#3fb8a8"/><rect x="5" y="8" width="3" height="2" fill="#3fb8a8"/><rect x="3" y="5" width="1" height="6" fill="#3fb8a8"/><rect x="2" y="9" width="3" height="1" fill="#3fb8a8"/><rect x="9" y="5" width="1" height="6" fill="#3fb8a8"/><rect x="9" y="9" width="3" height="1" fill="#3fb8a8"/>' },
-    { name: 'Marigold', plant: '<rect x="6" y="9" width="1" height="5" fill="#3f9142"/><rect x="4" y="3" width="6" height="6" fill="#eb9c34"/><rect x="6" y="5" width="2" height="2" fill="#f4c430"/>' },
-    { name: 'Peace Lily', plant: '<rect x="3" y="6" width="8" height="6" fill="#2f7a34"/><rect x="6" y="2" width="3" height="5" fill="#f7f7f2"/><rect x="7" y="2" width="1" height="2" fill="#f4c430"/>' },
-    { name: 'Snake Plant', plant: '<rect x="4" y="2" width="2" height="11" fill="#2f7a34"/><rect x="7" y="0" width="2" height="13" fill="#3f9142"/><rect x="10" y="3" width="2" height="10" fill="#2f7a34"/><rect x="4" y="5" width="2" height="1" fill="#6bc06e"/><rect x="7" y="6" width="2" height="1" fill="#6bc06e"/>' }
-  ];
 
-  function buildPlantSVG(variety, potColor, planted) {
-    const potHtml = planted ? '' : `
-      <rect x="2" y="15" width="10" height="1" fill="${potColor}"/>
-      <rect x="3" y="16" width="8" height="3" fill="${potColor}"/>
-      <rect x="4" y="18" width="6" height="1" fill="rgba(0,0,0,0.18)"/>`;
-    return `<svg width="24" height="34" viewBox="0 0 14 20" shape-rendering="crispEdges">
-      ${variety.plant}
-      ${potHtml}
-    </svg>`;
+
+
+
+  /* Plants are bought, not derived from a ticket, so their pot colour is their
+     own. Legacy plants (grown automatically before plants were purchasable)
+     have no stored colour, so one is derived from their id instead. */
+  const POT_COLORS = ['#c56a4e', '#8a8f98', '#4a7fb5', '#5c9e6b', '#b58a3c', '#8e6bb0', '#c26a8a', '#4f8f8a'];
+
+  function potColorFor(id) {
+    return POT_COLORS[hashStr(String(id)) % POT_COLORS.length];
   }
 
   function findPlantAt(row, col) {
@@ -856,13 +726,13 @@ const Garden = (function () {
 
   function heldItemPreviewHtml() {
     if (heldPlantId != null && heldPlantVariety != null) {
-      const variety = PLANT_VARIETIES[heldPlantVariety] || PLANT_VARIETIES[0];
-      return buildPlantSVG(variety, NEUTRAL_POT);
+      const variety = W().plants[heldPlantVariety] || W().plants[0];
+      return W().plantSVG(variety, heldPlantPot || NEUTRAL_POT);
     }
     if (heldDecoration) return heldDecoration.svg;
-    if (heldTreat) return treatSVG();
-    if (heldLog) return logSVG();
-    if (heldSapling) return saplingSVG();
+    if (heldTreat) return W().art.treat();
+    if (heldLog) return W().art.log();
+    if (heldSapling) return W().art.sapling();
     return '';
   }
 
@@ -875,7 +745,7 @@ const Garden = (function () {
       heroEl.style.transform = `translate(${x}px, ${y}px) scaleX(${heroFacing})`;
       const heldHtml = heldItemPreviewHtml();
       const heldWrap = heldHtml ? `<div class="garden-held-indicator">${heldHtml}</div>` : '';
-      heroEl.innerHTML = `${heldWrap}<div class="sprite-shadow"></div>${gardenerSVG(heroDirection, getEquippedOutfit())}`;
+      heroEl.innerHTML = `${heldWrap}<div class="sprite-shadow"></div>${heroSVG(heroDirection, getEquippedOutfit())}`;
     }
   }
 
@@ -940,7 +810,6 @@ const Garden = (function () {
     wateredCooldown.set(taskId, Date.now());
     spawnSparkleAt(row, col);
     playWaterSound();
-    addCoins(1);
   }
 
   function findAdjacentPlant() {
@@ -1054,7 +923,7 @@ const Garden = (function () {
     }
     const dist = Math.abs(pet.row - heroPos.row) + Math.abs(pet.col - heroPos.col);
     if (dist <= 1) {
-      const treatDef = PET_TREATS[pet.type];
+      const treatDef = W().treats[pet.type];
       pet.friendship = Math.min(100, pet.friendship + (treatDef ? treatDef.gain : 15));
       savePets();
       spawnHeartsAt(pet.row, pet.col);
@@ -1151,7 +1020,7 @@ const Garden = (function () {
     heroPos = { row: targetRow, col: targetCol };
     saveHeroPos();
     positionHero();
-    playStepSound(THEME_STEP_SOUND[sectionInfo(Math.floor(targetRow / SECTION_ROWS)).theme] || 'grass');
+    playStepSound(W().stepSound[sectionInfo(Math.floor(targetRow / SECTION_ROWS)).theme] || 'grass');
     reactPetsToHero();
     checkTreatDelivery();
     checkAnimalSounds();
@@ -1172,9 +1041,13 @@ const Garden = (function () {
 
   function togglePickup() {
     if (heldPlantId) {
-      gardenLayout[heldPlantId] = { row: heroPos.row, col: heroPos.col, variety: heldPlantVariety };
+      gardenLayout[heldPlantId] = {
+        row: heroPos.row, col: heroPos.col,
+        variety: heldPlantVariety, potColor: heldPlantPot
+      };
       heldPlantId = null;
       heldPlantVariety = null;
+      heldPlantPot = null;
       saveGardenLayout();
       playDirtSound();
       renderGarden();
@@ -1286,6 +1159,7 @@ const Garden = (function () {
     const taskId = findAdjacentPlant();
     if (taskId) {
       heldPlantVariety = gardenLayout[taskId].variety;
+      heldPlantPot = gardenLayout[taskId].potColor || potColorFor(taskId);
       heldPlantId = taskId;
       delete gardenLayout[taskId];
       saveGardenLayout();
@@ -1334,8 +1208,6 @@ const Garden = (function () {
     if (!wrap) return;
     wrap.style.height = (bandsToRender * SECTION_ROWS * CELL_SIZE) + 'px';
 
-    const completed = App.tickets().filter(t => t.completedAt);
-
     let html = '';
     for (let i = 0; i < bandsToRender; i++) {
       const info = sectionInfo(i);
@@ -1344,10 +1216,9 @@ const Garden = (function () {
 
       const counts = {};
       let total = 0;
-      completed.forEach(t => {
-        const pos = gardenLayout[t.id];
-        if (!pos || Math.floor(pos.row / SECTION_ROWS) !== i) return;
-        const variety = PLANT_VARIETIES[pos.variety] || PLANT_VARIETIES[0];
+      Object.values(gardenLayout).forEach(pos => {
+        if (Math.floor(pos.row / SECTION_ROWS) !== i) return;
+        const variety = W().plants[pos.variety] || W().plants[0];
         counts[variety.name] = (counts[variety.name] || 0) + 1;
         total++;
       });
@@ -1386,7 +1257,7 @@ const Garden = (function () {
   }
 
   function buyPet(type) {
-    const def = PET_TYPES[type];
+    const def = W().pets[type];
     if (!def || coins < def.cost || ownedPets.length >= MAX_PETS) return;
     coins -= def.cost;
     saveCoins();
@@ -1407,7 +1278,7 @@ const Garden = (function () {
     if (coins < UNLOCK_PET_COST || ownedPets.length >= MAX_PETS) return;
     coins -= UNLOCK_PET_COST;
     saveCoins();
-    const types = Object.keys(PET_TYPES);
+    const types = Object.keys(W().pets);
     const type = types[Math.floor(Math.random() * types.length)];
     const cell = findFreeCellNearHero();
     ownedPets.push({
@@ -1423,7 +1294,7 @@ const Garden = (function () {
   }
 
   function buyItem(kind) {
-    const def = SHOP_ITEMS[kind];
+    const def = W().items[kind];
     if (!def || coins < def.cost) return;
     coins -= def.cost;
     saveCoins();
@@ -1435,6 +1306,26 @@ const Garden = (function () {
       col: cell.col
     });
     savePurchasedItems();
+    renderCoins();
+    renderGarden();
+  }
+
+  /* A plant is now something you buy with a coin you earned by finishing a
+     ticket, rather than something that appears on its own. */
+  function buyPlant() {
+    if (coins < PLANT_COST) return;
+    coins -= PLANT_COST;
+    saveCoins();
+    const cell = findFreeCellNearHero();
+    const id = 'plant-' + hashStr('plant' + Object.keys(gardenLayout).length + Date.now() + Math.random());
+    gardenLayout[id] = {
+      row: cell.row,
+      col: cell.col,
+      variety: Math.floor(Math.random() * W().plants.length),
+      potColor: POT_COLORS[Math.floor(Math.random() * POT_COLORS.length)]
+    };
+    saveGardenLayout();
+    playPickupSound();
     renderCoins();
     renderGarden();
   }
@@ -1468,6 +1359,7 @@ const Garden = (function () {
     heldSapling = null;
     heldPlantId = null;
     heldPlantVariety = null;
+    heldPlantPot = null;
 
     purchasedItems = [];
     ownedPets = [];
@@ -1492,14 +1384,14 @@ const Garden = (function () {
     saveOutfits();
 
     renderCoins();
-    document.getElementById('garden-gardener').innerHTML = gardenerSVG('down', getEquippedOutfit());
+    document.getElementById('garden-gardener').innerHTML = heroSVG('down', getEquippedOutfit());
     positionHero();
     renderGarden();
   }
 
   function buyTreat(petId) {
     const pet = ownedPets.find(p => p.id === petId);
-    const treatDef = pet && PET_TREATS[pet.type];
+    const treatDef = pet && W().treats[pet.type];
     if (!pet || !treatDef || coins < treatDef.cost) return;
     coins -= treatDef.cost;
     saveCoins();
@@ -1518,7 +1410,7 @@ const Garden = (function () {
     const petsWrap = document.getElementById('shop-pets');
     if (petsWrap) {
       const capped = ownedPets.length >= MAX_PETS;
-      const tiles = Object.entries(PET_TYPES).map(([type, def]) => `
+      const tiles = Object.entries(W().pets).map(([type, def]) => `
         <button class="shop-tile" ${(coins < def.cost || capped) ? 'disabled' : ''} onclick="buyPet('${type}')">
           <span class="shop-tile-icon">${def.icon}</span>
           <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
@@ -1532,9 +1424,23 @@ const Garden = (function () {
       petsWrap.innerHTML = `<div class="shop-info">Pets: ${ownedPets.length}/${MAX_PETS}</div><div class="shop-grid">${tiles}</div>`;
     }
 
+    const plantsWrap = document.getElementById('shop-plants');
+    if (plantsWrap) {
+      const owned = Object.keys(gardenLayout).length;
+      plantsWrap.innerHTML =
+        `<div class="shop-info">Growing: ${owned} ${owned === 1 ? terms().plant : terms().plants}</div>
+         <div class="shop-grid">
+           <button class="shop-tile" ${coins < PLANT_COST ? 'disabled' : ''} onclick="buyPlant()">
+             <span class="shop-tile-icon">\u{1F33B}</span>
+             <span class="shop-tile-label">${Util.escapeHtml(cap(terms().plant))} (random variety)</span>
+             <span class="shop-tile-action">\u{1FA99}${PLANT_COST}</span>
+           </button>
+         </div>`;
+    }
+
     const itemsWrap = document.getElementById('shop-items');
     if (itemsWrap) {
-      const tiles = Object.entries(SHOP_ITEMS).map(([kind, def]) => `
+      const tiles = Object.entries(W().items).map(([kind, def]) => `
         <button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyItem('${kind}')">
           <span class="shop-tile-icon">${def.icon}</span>
           <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
@@ -1542,12 +1448,12 @@ const Garden = (function () {
         </button>`).join('') +
         `<button class="shop-tile" ${coins < SAPLING_COST ? 'disabled' : ''} onclick="buySapling()">
           <span class="shop-tile-icon">\u{1F331}</span>
-          <span class="shop-tile-label">Sapling (water 5x to grow)</span>
+          <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))} (water 5x to grow)</span>
           <span class="shop-tile-action">\u{1FA99}${SAPLING_COST}</span>
         </button>` +
         `<button class="shop-tile" ${coins < RESET_PURCHASES_COST ? 'disabled' : ''} onclick="resetGarden()">
           <span class="shop-tile-icon">\u{267B}</span>
-          <span class="shop-tile-label">Reset garden</span>
+          <span class="shop-tile-label">Reset ${Util.escapeHtml(terms().place)}</span>
           <span class="shop-tile-action">\u{1FA99}${RESET_PURCHASES_COST}</span>
         </button>`;
       itemsWrap.innerHTML = `<div class="shop-grid">${tiles}</div>`;
@@ -1559,8 +1465,8 @@ const Garden = (function () {
         treatsWrap.innerHTML = '<div class="shop-empty">Buy a pet to unlock treats.</div>';
       } else {
         const tiles = ownedPets.map(p => {
-          const petDef = PET_TYPES[p.type];
-          const treatDef = PET_TREATS[p.type];
+          const petDef = W().pets[p.type];
+          const treatDef = W().treats[p.type];
           const waiting = pendingTreats.some(t => t.petId === p.id) || (heldTreat && heldTreat.petId === p.id);
           return `<button class="shop-tile" ${(coins < treatDef.cost || waiting) ? 'disabled' : ''} onclick="buyTreat('${p.id}')">
             <span class="shop-tile-icon">${petDef.icon}</span>
@@ -1574,7 +1480,7 @@ const Garden = (function () {
 
     const outfitsWrap = document.getElementById('shop-outfits');
     if (outfitsWrap) {
-      const tiles = Object.entries(OUTFITS).map(([id, def]) => {
+      const tiles = Object.entries(W().outfits).map(([id, def]) => {
         const owned = ownedOutfits.includes(id);
         const equipped = equippedOutfit === id;
         let action, onclick, disabled, cls = '';
@@ -1603,7 +1509,7 @@ const Garden = (function () {
   }
 
   function stepPet(p) {
-    const def = PET_TYPES[p.type];
+    const def = W().pets[p.type];
     if (!def) return;
     const dist = Math.abs(p.row - heroPos.row) + Math.abs(p.col - heroPos.col);
     const isFriendly = def.temperament === 'friendly' || p.friendship >= 60;
@@ -1670,16 +1576,18 @@ const Garden = (function () {
   }
 
   function renderGarden() {
-    const completed = App.tickets().filter(t => t.completedAt);
-    const completedIds = new Set(completed.map(t => t.id));
+    /* Never draw - and above all never save - before this account's garden has
+       been read in. Rendering first would write an empty layout over a real
+       one, which is how you lose someone's garden. */
+    if (!stateLoaded) return;
 
-    Object.keys(gardenLayout).forEach(id => {
-      if (!completedIds.has(id)) delete gardenLayout[id];
-    });
+    /* Completed tickets pay out coins; they no longer plant anything by
+       themselves. Plants are bought from the shop and stay put until moved. */
+    syncCompletionCoins();
 
-    const sorted = completed.slice().sort((a, b) => a.completedAt < b.completedAt ? -1 : 1);
+    const completedCount = App.tickets().filter(t => t.completedAt).length;
 
-    const unlockedCount = unlockedSectionCount(sorted.length);
+    const unlockedCount = unlockedSectionCount(completedCount);
     const bandsToRender = unlockedCount + SECTIONS_SHOWN_AHEAD;
     const maxUnlockedRow = unlockedCount * SECTION_ROWS - 1;
 
@@ -1691,7 +1599,9 @@ const Garden = (function () {
         let row = i * SECTION_ROWS + d.row;
         let col = d.col;
         let instanceId = null;
-        let svg = d.svg;
+        /* Art is looked up per render, so the same layout table serves every
+           world and a world switch redraws without touching saved state. */
+        let svg = d.art ? W().art[d.art](d.width) : d.svg;
 
         if (d.movable || d.choppable) instanceId = i + ':' + d.id;
 
@@ -1717,7 +1627,7 @@ const Garden = (function () {
     purchasedItems.forEach(it => {
       const instanceId = 'item:' + it.id;
       if (heldDecoration && heldDecoration.instanceId === instanceId) return;
-      const def = SHOP_ITEMS[it.kind];
+      const def = W().items[it.kind];
       if (!def) return;
       placedDecorations.push({
         row: it.row, col: it.col, width: 1, height: 1, blocking: true, movable: true,
@@ -1727,40 +1637,8 @@ const Garden = (function () {
     saplings.filter(s => s.planted).forEach(s => {
       placedDecorations.push({
         row: s.row, col: s.col, width: 1, height: 1, blocking: true, movable: false, choppable: false,
-        svg: isSaplingGrown(s) ? treeSVG() : saplingSVG(), source: 'sapling', sourceId: s.id
+        svg: isSaplingGrown(s) ? W().art.tree() : W().art.sapling(), source: 'sapling', sourceId: s.id
       });
-    });
-
-    const occupied = new Set(
-      placedDecorations.filter(d => d.blocking).flatMap(d => {
-        const cells = [];
-        for (let dr = 0; dr < d.height; dr++) {
-          for (let dc = 0; dc < d.width; dc++) cells.push((d.row + dr) + ':' + (d.col + dc));
-        }
-        return cells;
-      })
-    );
-    Object.values(gardenLayout).forEach(p => occupied.add(p.row + ':' + p.col));
-
-    function firstFreeCell() {
-      for (let r = 0; r <= maxUnlockedRow; r++) {
-        for (let c = 0; c < GARDEN_COLS; c++) {
-          const key = r + ':' + c;
-          if (!occupied.has(key)) return { row: r, col: c };
-        }
-      }
-      return null;
-    }
-
-    sorted.forEach(t => {
-      if (!gardenLayout[t.id] && t.id !== heldPlantId) {
-        const cell = firstFreeCell();
-        if (cell) {
-          const variety = hashStr(t.id) % PLANT_VARIETIES.length;
-          gardenLayout[t.id] = { row: cell.row, col: cell.col, variety };
-          occupied.add(cell.row + ':' + cell.col);
-        }
-      }
     });
 
     saveGardenLayout();
@@ -1780,7 +1658,7 @@ const Garden = (function () {
       const dimClass = i === unlockedCount ? ' dim-1' : (i > unlockedCount ? ' dim-2' : '');
       const roofHtml = (info.theme === 'glass' || info.theme === 'wood')
         ? `<div class="garden-section-roof ${info.theme}"></div>` : '';
-      const wallHtml = `<div class="garden-section-wall" style="background:${wallPattern(info.theme)};"></div>`;
+      const wallHtml = `<div class="garden-section-wall" style="background:${W().wallPattern(info.theme)};"></div>`;
 
       const decorHtml = placedDecorations
         .filter(d => d.source === 'theme' && !d.movable && Math.floor(d.row / SECTION_ROWS) === i)
@@ -1791,7 +1669,7 @@ const Garden = (function () {
           if (d.blocking) {
             return `<div class="garden-decor" style="left:${d.col * CELL_SIZE}px; top:${relTop}px; width:${w}px; height:${h}px;"><div class="sprite-shadow"></div>${d.svg}</div>`;
           }
-          return `<div class="garden-surface" style="left:${d.col * CELL_SIZE}px; top:${relTop}px; width:${w}px; height:${h}px; background:${surfaceBackground(d.kind)};"></div>`;
+          return `<div class="garden-surface" style="left:${d.col * CELL_SIZE}px; top:${relTop}px; width:${w}px; height:${h}px; background:${W().surfaceBackground(d.kind)};"></div>`;
         }).join('');
 
       bandsHtml += `<div class="garden-section-band${dimClass}" style="top:${top}px;height:${height}px;${checkerBackground(info.theme)}">
@@ -1801,7 +1679,7 @@ const Garden = (function () {
       </div>`;
 
       if (i === unlockedCount) {
-        const remaining = i * TICKETS_PER_SECTION - sorted.length;
+        const remaining = i * TICKETS_PER_SECTION - completedCount;
         gateHtml = `<div class="garden-gate" style="top:${top - 8}px;">
           <div class="garden-gate-post left"></div>
           <div class="garden-gate-bar"></div>
@@ -1816,26 +1694,25 @@ const Garden = (function () {
     ).join('');
 
     let cellsHtml = '';
-    sorted.forEach(t => {
-      const pos = gardenLayout[t.id];
-      if (!pos) return;
-      const variety = PLANT_VARIETIES[pos.variety] || PLANT_VARIETIES[0];
-      const potColor = App.categoryColor(t.category);
+    Object.keys(gardenLayout).forEach(id => {
+      const pos = gardenLayout[id];
+      const variety = W().plants[pos.variety] || W().plants[0];
+      const potColor = pos.potColor || potColorFor(id);
       const planted = isOnDirt(pos.row, pos.col);
-      cellsHtml += `<div class="garden-cell" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${Util.escapeHtml(t.title)}">
+      cellsHtml += `<div class="garden-cell" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${Util.escapeHtml(variety.name)}">
         <div class="sprite-shadow"></div>
-        ${buildPlantSVG(variety, potColor, planted)}
+        ${W().plantSVG(variety, potColor, planted)}
       </div>`;
     });
 
     const petsHtml = ownedPets.map(p => {
-      const def = PET_TYPES[p.type];
+      const def = W().pets[p.type];
       if (!def) return '';
       return `<div class="garden-pet" id="${p.id}" style="width:${CELL_SIZE}px; height:${CELL_SIZE}px; transform:translate(${p.col * CELL_SIZE}px, ${p.row * CELL_SIZE}px);" title="${Util.escapeHtml(def.label)}"><div class="sprite-shadow"></div>${def.svg()}</div>`;
     }).join('');
 
     const treatsHtml = pendingTreats.map(t =>
-      `<div class="garden-decor" style="left:${t.col * CELL_SIZE}px; top:${t.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;"><div class="sprite-shadow"></div>${treatSVG()}</div>`
+      `<div class="garden-decor" style="left:${t.col * CELL_SIZE}px; top:${t.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;"><div class="sprite-shadow"></div>${W().art.treat()}</div>`
     ).join('');
 
     const saplingsHtml = placedDecorations.filter(d => d.source === 'sapling').map(d =>
@@ -1843,20 +1720,20 @@ const Garden = (function () {
     ).join('');
 
     const unplantedSaplingsHtml = saplings.filter(s => !s.planted && !(heldSapling && heldSapling.id === s.id)).map(s =>
-      `<div class="garden-decor" style="left:${s.col * CELL_SIZE}px; top:${s.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="Sapling — carry it somewhere and press E to plant it"><div class="sprite-shadow"></div>${saplingSVG()}</div>`
+      `<div class="garden-decor" style="left:${s.col * CELL_SIZE}px; top:${s.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${terms().sprout} — carry it somewhere and press E to plant it"><div class="sprite-shadow"></div>${W().art.sapling()}</div>`
     ).join('');
 
     const groundLogsHtml = groundLogs.map(l =>
-      `<div class="garden-decor" style="left:${l.col * CELL_SIZE}px; top:${l.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="Log">${logSVG()}</div>`
+      `<div class="garden-decor" style="left:${l.col * CELL_SIZE}px; top:${l.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${terms().log}">${W().art.log()}</div>`
     ).join('');
 
     const cabinsHtml = cabinSites.map(s =>
-      `<div class="garden-decor" style="left:${s.col * CELL_SIZE}px; top:${s.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${s.complete ? 'Cabin' : 'Cabin site: ' + s.logCount + '/' + CABIN_LOGS_NEEDED + ' logs'}"><div class="sprite-shadow"></div>${cabinSVG(s.logCount)}</div>`
+      `<div class="garden-decor" style="left:${s.col * CELL_SIZE}px; top:${s.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${s.complete ? terms().build : terms().build + ' site: ' + s.logCount + '/' + CABIN_LOGS_NEEDED + ' ' + terms().logs}"><div class="sprite-shadow"></div>${W().art.build(s.logCount)}</div>`
     ).join('');
 
     const dugTilesHtml = [...dugTiles].map(key => {
       const [r, c] = key.split(':').map(Number);
-      return `<div class="garden-surface" style="left:${c * CELL_SIZE}px; top:${r * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px; background:${surfaceBackground('bed')};" title="Tilled dirt"></div>`;
+      return `<div class="garden-surface" style="left:${c * CELL_SIZE}px; top:${r * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px; background:${W().surfaceBackground('bed')};" title="${terms().tilled}"></div>`;
     }).join('');
 
     plot.innerHTML = bandsHtml + dugTilesHtml + cellsHtml + movablesHtml + saplingsHtml + unplantedSaplingsHtml + groundLogsHtml + cabinsHtml + treatsHtml + petsHtml + gateHtml;
@@ -1875,11 +1752,14 @@ const Garden = (function () {
     renderSectionSideLabels(bandsToRender, unlockedCount);
     renderCoins();
 
-    document.getElementById('garden-gardener').innerHTML = gardenerSVG('down', getEquippedOutfit());
+    document.getElementById('garden-gardener').innerHTML = heroSVG('down', getEquippedOutfit());
 
-    const plantWord = sorted.length === 1 ? 'plant' : 'plants';
-    document.getElementById('garden-status').textContent =
-      `${heroName()} is tending ${sorted.length} ${plantWord} in the garden.`;
+    const plantCount = Object.keys(gardenLayout).length;
+    const t = terms();
+    const plantWord = plantCount === 1 ? t.plant : t.plants;
+    document.getElementById('garden-status').textContent = plantCount
+      ? `${heroName()} is tending ${plantCount} ${plantWord} in ${t.place}.`
+      : `${heroName()} has no ${t.plants} yet - finish a ticket to earn a coin, then buy one.`;
   }
 
 
@@ -1887,16 +1767,18 @@ const Garden = (function () {
 
   function helpTopics() {
     const who = heroName();
+    const t = terms();
     return {
-      water: { icon: '\u{1F4A7}', title: 'Watering', body: 'Walk right up next to a plant to water it (once per minute per plant). Each watering earns a coin and plays a splash.' },
-      pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a plant, tool, log, or sapling to pick it up. Press E again to put it down somewhere empty \u2014 or use it, if it is a tool.' },
-      axe: { icon: '\u{1FA93}', title: 'Axe', body: 'Buy an axe from the shop. While holding it, press E next to a tree or a grown sapling to chop it down into a log you can carry off.' },
-      hoe: { icon: '\u{26CF}\u{FE0F}', title: 'Hoe', body: 'Buy a hoe from the shop. While holding it, press E to till the tile ' + who + ' is standing on into plantable dirt \u2014 no need to put the hoe down first.' },
-      shovel: { icon: '\u{1FACF}', title: 'Shovel', body: 'Buy a shovel. While holding it, press E next to a bush \u2014 ' + who + ' drops the shovel and picks up the bush in one go, ready to carry elsewhere.' },
-      sapling: { icon: '\u{1F331}', title: 'Saplings', body: 'Buy a sapling and it appears at the top of the garden. Carry it to an empty spot and press E to plant it. Walk into it to water it \u2014 it needs 5 waterings to grow into a tree, once per minute, just like regular plants. Press F to instantly grow every planted sapling.' },
-      cabin: { icon: '\u{1FAB5}', title: 'Building a cabin', body: 'Carry a log onto a tile with another log to start a cabin site. Keep bringing logs and watch it rise in stages \u2014 foundation, then walls, then a roof, then doors and windows once it finishes at 10 logs.' },
-      pets: { icon: '\u{1F43E}', title: 'Pets', body: 'Buy a pet, or unlock a random one (10 max). Buy treats to feed a pet \u2014 you will need to carry the food to it yourself. Friendly pets stick close, skittish ones flee until you win them over.' },
-      unlock: { icon: '\u{1F512}', title: 'Unlocking sections', body: 'Every 10 completed tickets unlocks the next part of the garden. The next locked section is always visible ahead, dimmed, behind a gate.' }
+      coins: { icon: '\u{1FA99}', title: 'Coins and ' + t.plants, body: 'Every ticket you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each, a random variety - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a ticket and its coin goes back.' },
+      water: { icon: '\u{1F4A7}', title: 'Watering', body: 'Move right up next to a ' + t.plant + ' to water it (once per minute each). Watering is for the pleasure of it - a sparkle and a splash - it earns no coins. ' + t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's are the exception: they need five waterings to grow.' },
+      pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool.' },
+      axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
+      hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
+      shovel: { icon: '\u{1FACF}', title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
+      sapling: { icon: '\u{1F331}', title: t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's', body: 'Buy one and it appears at the top. Carry it to an empty spot and press E to plant it. Move into it to water it - five waterings, once a minute, and it grows into ' + t.sprouted + '. Press F to grow every planted one at once.' },
+      cabin: { icon: '\u{1FAB5}', title: 'Building a ' + t.build, body: 'Carry ' + t.log + ' onto a tile that already has some to start a ' + t.build + ' site. Keep bringing more and watch it rise in stages - foundation, walls, roof, then doors and windows once it finishes at 10.' },
+      pets: { icon: '\u{1F43E}', title: 'Companions', body: 'Buy one, or unlock a random one (10 max). Buy treats to feed them - you carry the food over yourself. Friendly ones stick close, skittish ones flee until you win them over.' },
+      unlock: { icon: '\u{1F512}', title: 'Unlocking sections', body: 'Every 10 completed tickets unlocks the next part of ' + t.place + '. The next locked section is always visible ahead, dimmed, behind a gate.' }
     };
   }
 
@@ -1925,6 +1807,7 @@ const Garden = (function () {
   /* Read every piece of garden state for the account that is currently
      loaded in Store, dropping anything held mid-air from a previous account. */
   function loadAll() {
+    stateLoaded = false;
     heldPlantId = null;
     heldPlantVariety = null;
     heldDecoration = null;
@@ -1949,10 +1832,17 @@ const Garden = (function () {
     loadSaplings();
     loadGardenVisibility();
     loadDugTiles();
+    loadAwardedCoins();
+    stateLoaded = true;
   }
 
   function start() {
-    loadAll();
+    const panel = document.getElementById('garden-panel-title');
+    if (panel) panel.textContent = terms().panel;
+    const hint = document.getElementById('garden-move-hint');
+    if (hint) hint.textContent = terms().moveHint;
+    const buyHint = document.getElementById('garden-buy-hint');
+    if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     render();
     applyGardenVisibility();
     startPetTicker();
@@ -1960,6 +1850,24 @@ const Garden = (function () {
 
   function render() {
     renderGarden();
+  }
+
+  /* Called when the world or the hero changes in settings. Nothing in storage
+     moves - the same garden is simply drawn with the other world's art. */
+  function reskin() {
+    const panel = document.getElementById('garden-panel-title');
+    if (panel) panel.textContent = terms().panel;
+    const hint = document.getElementById('garden-move-hint');
+    if (hint) hint.textContent = terms().moveHint;
+    const buyHint = document.getElementById('garden-buy-hint');
+    if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
+    currentHelpTopic = null;
+    const box = document.getElementById('help-explanation');
+    if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+    render();
+    renderCoins();
+    const g = document.getElementById('garden-gardener');
+    if (g) g.innerHTML = heroSVG('down', getEquippedOutfit());
   }
 
   function stop() {
@@ -1970,6 +1878,7 @@ const Garden = (function () {
   /* Inline handlers in generated markup call these by name. */
   window.buyItem = buyItem;
   window.buyPet = buyPet;
+  window.buyPlant = buyPlant;
   window.buySapling = buySapling;
   window.buyTreat = buyTreat;
   window.unlockRandomPet = unlockRandomPet;
@@ -1983,6 +1892,7 @@ const Garden = (function () {
     start: start,
     stop: stop,
     render: render,
+    reskin: reskin,
     loadAll: loadAll,
     heroName: heroName,
     renderCoins: renderCoins,

@@ -75,6 +75,14 @@ const App = (function () {
   /* ========================= category key panel ========================= */
 
   function renderCategoryKey() {
+    const hint = document.getElementById('category-hint');
+    if (hint) {
+      const ocean = (Store.prefs() || {}).world === 'ocean';
+      hint.textContent = ocean
+        ? 'Colour-codes your tickets and the shells your corals sit in.'
+        : 'Colour-codes your tickets and the plant pots in your garden.';
+    }
+
     const items = categories().map((c, i) =>
       `<div class="key-item person-key-item">
         <span class="highlight-mark" style="background:${Util.hexToRgba(c.color, 0.4)}">${Util.escapeHtml(c.name)}</span>
@@ -704,6 +712,12 @@ const App = (function () {
       </div>
 
       <div class="settings-section">
+        <h4>World</h4>
+        <p>Changes how everything looks. Your ${tickets().length ? 'tickets, coins and ' + (Store.prefs().world === 'ocean' ? 'reef' : 'garden') : 'progress'} come with you &mdash; nothing is reset.</p>
+        <div id="world-settings"></div>
+      </div>
+
+      <div class="settings-section">
         <h4>Where your data lives</h4>
         <p>${isCloud
           ? 'Cloud mode. Your tickets and garden are stored in your account and sync to any device you sign in on. A copy is kept in this browser so the app keeps working offline.'
@@ -723,7 +737,54 @@ const App = (function () {
           <button class="settings-btn danger" onclick="App.eraseEverything()">Erase all my data</button>
         </div>
       </div>`;
+    renderWorldSettings();
     document.getElementById('settings-modal-backdrop').classList.add('active');
+  }
+
+  /* The same chooser as the sign-up card, wired to change the live account. */
+  function renderWorldSettings() {
+    const host = document.getElementById('world-settings');
+    if (!host) return;
+    const prefs = Store.prefs();
+    const worldId = prefs.world || Worlds.DEFAULT_WORLD;
+    const hero = prefs.hero === 'female' ? 'female' : 'male';
+    const world = Worlds.get(worldId);
+
+    host.innerHTML = `
+      <div class="chooser">
+        <div class="chooser-row">
+          <span class="chooser-label">World</span>
+          <div class="choice-group">${Worlds.list().map(w =>
+            `<button type="button" class="choice ${w.id === worldId ? 'on' : ''}" data-set-world="${w.id}">
+               <span class="choice-name">${Util.escapeHtml(w.label)}</span>
+             </button>`).join('')}</div>
+        </div>
+        <div class="chooser-row">
+          <span class="chooser-label">You</span>
+          <div class="choice-group">${['male', 'female'].map(g =>
+            `<button type="button" class="choice ${g === hero ? 'on' : ''}" data-set-hero="${g}">
+               <span class="choice-name">${Util.escapeHtml(world.heroLabels[g])}</span>
+             </button>`).join('')}</div>
+        </div>
+        <div>${Worlds.previewHTML(worldId, hero)}</div>
+        <p class="chooser-blurb">${Util.escapeHtml(world.blurb)}</p>
+      </div>`;
+
+    host.querySelectorAll('[data-set-world]').forEach(btn => {
+      btn.onclick = () => setWorld(btn.dataset.setWorld, null);
+    });
+    host.querySelectorAll('[data-set-hero]').forEach(btn => {
+      btn.onclick = () => setWorld(null, btn.dataset.setHero);
+    });
+  }
+
+  function setWorld(worldId, hero) {
+    const prefs = Store.prefs();
+    if (worldId) prefs.world = worldId;
+    if (hero) prefs.hero = hero;
+    Store.savePrefs();
+    Garden.reskin();
+    renderWorldSettings();
   }
 
   function closeSettings() { document.getElementById('settings-modal-backdrop').classList.remove('active'); }
@@ -858,6 +919,7 @@ const App = (function () {
     calMonth = now.getMonth();
 
     renderHeader();
+    Garden.loadAll();   /* hydrate the garden before anything renders or saves it */
     renderAll();
     Garden.start();
 
@@ -895,7 +957,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
-    toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop,
+    toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
     saveDisplayName, exportBackup, forcePull, eraseEverything,
     signOut, switchProfile
   };

@@ -1,9 +1,14 @@
 # Tend
 
 A personal ticket tracker where finishing things grows a garden. Every ticket you
-complete plants something; every ten unlocks another section of the garden, which
-you walk around with the arrow keys, watering plants and spending the coins you
-earn on tools, saplings and pets.
+complete earns a gold coin; coins buy plants, tools, saplings and pets from the
+shop; and every ten completed tickets unlocks another section of the garden,
+which you walk around with the arrow keys. Watering a plant costs nothing and
+earns nothing - it is just a sparkle and a splash.
+
+Pick your world when you sign up, and change it whenever you like: a **garden**
+tended by a farmer, or an **ocean** reef tended by a merman or mermaid. Same
+rules, same progress, completely different look.
 
 It is a single static site — no build step, no server of your own to run — and it
 works two ways:
@@ -132,6 +137,7 @@ index.html              markup and the page shell
 css/styles.css          all styling, light theme, responsive
 js/config.js            the only file you edit to configure anything
 js/util.js              dates, escaping, colours, debounce
+js/worlds.js            the two skins: sprites, plants, creatures, names
 js/store.js             storage: local and Supabase backends, offline queue
 js/auth.js              the sign-in gate and the local profile picker
 js/app.js               tickets, lists, calendar, stats, categories, settings
@@ -168,9 +174,44 @@ features never need a database migration.
 - **Garden sections** — `SECTIONS` at the top of `js/garden.js`. Add entries and
   every ten completed tickets keeps unlocking new ground.
 - **The unlock rate** — `TICKETS_PER_SECTION` in `js/garden.js`.
+- **What a plant costs** — `PLANT_COST` in `js/garden.js`, alongside
+  `SAPLING_COST` and the pet and item prices.
+- **Worlds** — `js/worlds.js`. Section names, sprites, plant names and art all
+  live in the two world objects.
+- **Tile size** — `TILE` at the top of `js/worlds.js`, used by both files.
 
 After editing anything, re-run `python3 build.py` if you want the standalone file
-to match.
+to match. The standalone build blanks the Supabase keys so the single file always
+opens into on-device profiles; use `python3 build.py --cloud` to keep them.
+
+### Worlds
+
+`js/worlds.js` holds two skins - `garden` and `ocean` - and nothing else. Every
+rule lives in `js/garden.js` and is identical in both. The two are index-matched
+all the way down, which is what makes switching safe: plant variety 7 is a Bonsai
+Tree above water and Staghorn Coral below, the pet stored as `dog` is a dog or a
+clownfish, the tool stored as `axe` is an axe or a coral saw. Changing world is a
+preference change and a redraw - not one byte of saved data moves, so a reef full
+of coral becomes the same garden full of plants and back again.
+
+The layout of every section is shared too: `DECORATIONS_BY_THEME` in `garden.js`
+says where things sit and how they behave, and tags each one with an art name
+that the current world resolves when drawing.
+
+To add a third world, copy one of the two objects in `worlds.js` and keep the
+keys and array lengths the same. Nothing else needs to change.
+
+### How the garden economy works
+
+Completing a ticket pays one coin, once. The ledger of which tickets have already
+paid sits in `coins-awarded-v1`, so un-ticking a ticket takes its coin back and
+re-ticking it does not mint a second one. Deleting a completed ticket leaves the
+coin alone - the work was still done.
+
+Plants are bought, not granted: one coin each, a random variety and pot colour,
+placed next to the gardener. They are objects in their own right, so they stay
+where you put them and survive the ticket that paid for them being edited or
+deleted.
 
 ---
 

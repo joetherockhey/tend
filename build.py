@@ -6,15 +6,20 @@ Inlines css/styles.css and every js/*.js file into index.html and writes
 standalone/tend.html: one self-contained file you can email, drop on any
 static host, or open straight off your desktop with no web server at all.
 
-    python3 build.py
+    python3 build.py           local mode, works anywhere including file://
+    python3 build.py --cloud   keeps the Supabase keys from js/config.js
 
-Local mode works from a file:// path. Cloud mode does not, because browsers
-refuse to load the Supabase library from a page opened as a bare file - host
-the file over http(s) if you want cloud accounts.
+By default the two Supabase values are blanked in the standalone copy, so the
+file always opens straight into on-device profiles. That is deliberate: a
+page opened as a bare file:// cannot load the Supabase library at all (the
+browser blocks it), so a cloud-mode standalone would greet you with an error
+instead of a sign-in box. Pass --cloud when you are hosting the single file
+over http(s) and do want real accounts.
 """
 
 import os
 import re
+import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(ROOT, "standalone")
@@ -35,13 +40,19 @@ def main():
         "<style>\n" + css + "\n</style>",
     )
 
+    keep_cloud = "--cloud" in sys.argv
+
     scripts = re.findall(r'<script src="(js/[^"]+)"></script>', html)
     if not scripts:
         raise SystemExit("No <script src=...> tags found - has index.html changed?")
 
     bundle = []
     for rel in scripts:
-        bundle.append("/* ===== " + rel + " ===== */\n" + read(rel))
+        src = read(rel)
+        if rel.endswith("config.js") and not keep_cloud:
+            src = re.sub(r"SUPABASE_URL: '[^']*'", "SUPABASE_URL: ''", src)
+            src = re.sub(r"SUPABASE_ANON_KEY: '[^']*'", "SUPABASE_ANON_KEY: ''", src)
+        bundle.append("/* ===== " + rel + " ===== */\n" + src)
 
     first = '<script src="%s"></script>' % scripts[0]
     html = html.replace(first, "<script>\n" + "\n\n".join(bundle) + "\n</script>")
@@ -54,7 +65,8 @@ def main():
     with open(OUT, "w", encoding="utf-8") as fh:
         fh.write(html)
 
-    print("wrote %s (%.0f KB)" % (OUT, os.path.getsize(OUT) / 1024))
+    mode = "cloud mode (keys included)" if keep_cloud else "local mode (keys blanked)"
+    print("wrote %s (%.0f KB) - %s" % (OUT, os.path.getsize(OUT) / 1024, mode))
 
 
 if __name__ == "__main__":
