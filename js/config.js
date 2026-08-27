@@ -23,8 +23,8 @@
    ============================================================================ */
 
 window.TEND_CONFIG = {
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: '',
+  SUPABASE_URL: 'https://vhkwqfxykluhbpvofzdx.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_9ySOQl3T9dcmtoHEnQhHpg_Z7E1JFeE',
 
   /* Shown on the sign-in card and in the browser tab. */
   APP_NAME: 'Tend',
