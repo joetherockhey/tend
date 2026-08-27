@@ -1,0 +1,620 @@
+/* ============================================================================
+   Tend - store.js
+   ----------------------------------------------------------------------------
+   One storage API for the whole app, with two interchangeable backends:
+
+     LOCAL MODE  (config.js left blank)
+       Named profiles created on the device. Everything lives in this browser's
+       localStorage. No server, no signup.
+
+     CLOUD MODE  (Supabase URL + anon key filled in)
+       Real accounts. Tickets, categories and garden state live in Postgres,
+       protected by row-level security, and follow the user to any device.
+       localStorage is still written on every change and acts as an offline
+       cache, so the app keeps working with no connection and pushes the
+       backlog once it returns.
+
+   Everything the rest of the app touches is synchronous and in memory.
+   Talking to the network happens behind a debounced flush.
+   ============================================================================ */
+
+const Store = (function () {
+  'use strict';
+
+  const CFG = window.TEND_CONFIG || {};
+  const CLOUD = !!(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY);
+
+  const LS_PROFILES = 'tend:profiles';
+  const LS_LAST_ACCOUNT = 'tend:last-account';
+  const FLUSH_DELAY_MS = 900;
+
+  let client = null;          // supabase client, cloud mode only
+  let account = null;         // { id, name, email }
+  let status = CLOUD ? 'idle' : 'local';
+  let statusListeners = [];
+
+  /* ---- in-memory state for the open account ---- */
+  let tickets = [];
+  let categories = [];
+  let prefs = {};
+  let gardenBag = {};         // the key/value bag garden.js reads and writes
+
+  /* ---- what we believe the server already has ---- */
+  let snapshot = { tickets: {}, categories: {}, state: null };
+
+  /* ---- dirty flags ---- */
+  let dirty = { tickets: false, categories: false, state: false };
+  let retryTimer = null;
+
+  /* ========================= status plumbing ========================= */
+
+  function setStatus(s) {
+    if (status === s) return;
+    status = s;
+    statusListeners.forEach(fn => { try { fn(s); } catch (e) { /* ignore */ } });
+  }
+
+  function onStatus(fn) {
+    statusListeners.push(fn);
+    fn(status);
+  }
+
+  /* ========================= localStorage cache ========================= */
+
+  function cacheKey(part) {
+    return 'tend:cache:' + (account ? account.id : 'anon') + ':' + part;
+  }
+
+  function kvKey(key) {
+    return 'tend:kv:' + (account ? account.id : 'anon') + ':' + key;
+  }
+
+  function lsGet(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw == null ? fallback : JSON.parse(raw);
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function lsSet(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      /* Storage full or blocked (private windows). Memory still holds the
+         truth, and in cloud mode the server does too. */
+    }
+  }
+
+  function writeCache() {
+    if (!account) return;
+    lsSet(cacheKey('tickets'), tickets);
+    lsSet(cacheKey('categories'), categories);
+    lsSet(cacheKey('prefs'), prefs);
+    lsSet(cacheKey('snapshot'), snapshot);
+    lsSet(cacheKey('dirty'), dirty);
+  }
+
+  function readCache() {
+    tickets = lsGet(cacheKey('tickets'), []) || [];
+    categories = lsGet(cacheKey('categories'), []) || [];
+    prefs = lsGet(cacheKey('prefs'), {}) || {};
+    snapshot = lsGet(cacheKey('snapshot'), { tickets: {}, categories: {}, state: null }) || { tickets: {}, categories: {}, state: null };
+    const d = lsGet(cacheKey('dirty'), null);
+    dirty = d && typeof d === 'object' ? d : { tickets: false, categories: false, state: false };
+
+    /* The garden bag is stored as individual keys so garden.js can keep using
+       a plain get/set interface. */
+    gardenBag = {};
+    const prefix = kvKey('');
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(prefix) === 0) gardenBag[k.slice(prefix.length)] = localStorage.getItem(k);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  /* ========================= the garden key/value bag ========================= */
+
+  const kv = {
+    getItem: function (key) {
+      const v = gardenBag[key];
+      return v === undefined ? null : v;
+    },
+    setItem: function (key, value) {
+      gardenBag[key] = String(value);
+      lsRawSet(kvKey(key), String(value));
+      markDirty('state');
+    },
+    removeItem: function (key) {
+      delete gardenBag[key];
+      try { localStorage.removeItem(kvKey(key)); } catch (e) { /* ignore */ }
+      markDirty('state');
+    }
+  };
+
+  function lsRawSet(k, v) {
+    try { localStorage.setItem(k, v); } catch (e) { /* ignore */ }
+  }
+
+  /* ========================= dirty tracking + flush ========================= */
+
+  function markDirty(part) {
+    dirty[part] = true;
+    writeCache();
+    if (CLOUD && account) {
+      setStatus('saving');
+      scheduleFlush();
+    }
+  }
+
+  const scheduleFlush = Util.debounce(function () { flush(); }, FLUSH_DELAY_MS);
+
+  function anyDirty() {
+    return dirty.tickets || dirty.categories || dirty.state;
+  }
+
+  async function flush() {
+    if (!CLOUD || !client || !account || !anyDirty()) {
+      if (!anyDirty() && CLOUD) setStatus('idle');
+      return;
+    }
+    try {
+      if (dirty.tickets) await pushTickets();
+      if (dirty.categories) await pushCategories();
+      if (dirty.state) await pushState();
+      writeCache();
+      setStatus('idle');
+      if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+    } catch (err) {
+      console.warn('[Tend] sync failed, will retry:', err && err.message ? err.message : err);
+      setStatus('offline');
+      if (!retryTimer) {
+        retryTimer = setTimeout(() => { retryTimer = null; flush(); }, 15000);
+      }
+    }
+  }
+
+  /* ---- tickets: diff against the last confirmed push ---- */
+
+  function ticketRow(t, index) {
+    return {
+      id: t.id,
+      user_id: account.id,
+      title: t.title || '',
+      notes: t.notes || '',
+      setting: t.setting || '',
+      category: t.category || '',
+      follow_up: !!t.followUp,
+      priority: !!t.priority,
+      archived: !!t.archived,
+      due_date: t.dueDate || null,
+      created_on: t.createdAt || Util.todayStr(),
+      completed_on: t.completedAt || null,
+      sort_index: index
+    };
+  }
+
+  function rowToTicket(r) {
+    return {
+      id: r.id,
+      title: r.title || '',
+      notes: r.notes || '',
+      setting: r.setting || '',
+      category: r.category || '',
+      followUp: !!r.follow_up,
+      priority: !!r.priority,
+      archived: !!r.archived,
+      dueDate: r.due_date || null,
+      createdAt: r.created_on || Util.todayStr(),
+      completedAt: r.completed_on || null,
+      _sort: r.sort_index == null ? 0 : r.sort_index
+    };
+  }
+
+  async function pushTickets() {
+    const rows = tickets.map(ticketRow);
+    const changed = [];
+    const nextSnap = {};
+
+    rows.forEach(r => {
+      const json = JSON.stringify(r);
+      nextSnap[r.id] = json;
+      if (snapshot.tickets[r.id] !== json) changed.push(r);
+    });
+
+    const removed = Object.keys(snapshot.tickets).filter(id => !nextSnap[id]);
+
+    if (changed.length) {
+      /* Chunked so a big import does not blow past request limits. */
+      for (let i = 0; i < changed.length; i += 200) {
+        const { error } = await client.from('tickets').upsert(changed.slice(i, i + 200));
+        if (error) throw error;
+      }
+    }
+    if (removed.length) {
+      const { error } = await client.from('tickets').delete().in('id', removed).eq('user_id', account.id);
+      if (error) throw error;
+    }
+
+    snapshot.tickets = nextSnap;
+    dirty.tickets = false;
+  }
+
+  async function pushCategories() {
+    const rows = categories.map((c, i) => ({
+      id: c.id,
+      user_id: account.id,
+      name: c.name,
+      color: c.color,
+      sort_index: i
+    }));
+    const nextSnap = {};
+    const changed = [];
+    rows.forEach(r => {
+      const json = JSON.stringify(r);
+      nextSnap[r.id] = json;
+      if (snapshot.categories[r.id] !== json) changed.push(r);
+    });
+    const removed = Object.keys(snapshot.categories).filter(id => !nextSnap[id]);
+
+    if (changed.length) {
+      const { error } = await client.from('categories').upsert(changed);
+      if (error) throw error;
+    }
+    if (removed.length) {
+      const { error } = await client.from('categories').delete().in('id', removed).eq('user_id', account.id);
+      if (error) throw error;
+    }
+    snapshot.categories = nextSnap;
+    dirty.categories = false;
+  }
+
+  async function pushState() {
+    const row = {
+      user_id: account.id,
+      display_name: account.name || '',
+      prefs: prefs,
+      garden: gardenBag,
+      updated_at: new Date().toISOString()
+    };
+    const json = JSON.stringify({ display_name: row.display_name, prefs: row.prefs, garden: row.garden });
+    if (snapshot.state === json) { dirty.state = false; return; }
+    const { error } = await client.from('app_state').upsert(row);
+    if (error) throw error;
+    snapshot.state = json;
+    dirty.state = false;
+  }
+
+  /* ---- pull ---- */
+
+  async function pull() {
+    const [tRes, cRes, sRes] = await Promise.all([
+      client.from('tickets').select('*').eq('user_id', account.id),
+      client.from('categories').select('*').eq('user_id', account.id),
+      client.from('app_state').select('*').eq('user_id', account.id).maybeSingle()
+    ]);
+    if (tRes.error) throw tRes.error;
+    if (cRes.error) throw cRes.error;
+    if (sRes.error) throw sRes.error;
+
+    tickets = (tRes.data || []).map(rowToTicket).sort((a, b) => a._sort - b._sort);
+    tickets.forEach(t => { delete t._sort; });
+
+    categories = (cRes.data || [])
+      .slice()
+      .sort((a, b) => (a.sort_index || 0) - (b.sort_index || 0))
+      .map(r => ({ id: r.id, name: r.name, color: r.color }));
+
+    const st = sRes.data;
+    prefs = (st && st.prefs) || {};
+    gardenBag = (st && st.garden) || {};
+    if (st && st.display_name) account.name = st.display_name;
+
+    /* Rebuild the snapshot so the next flush only sends real changes. */
+    snapshot = { tickets: {}, categories: {}, state: null };
+    tickets.forEach((t, i) => { snapshot.tickets[t.id] = JSON.stringify(ticketRow(t, i)); });
+    categories.forEach((c, i) => {
+      snapshot.categories[c.id] = JSON.stringify({ id: c.id, user_id: account.id, name: c.name, color: c.color, sort_index: i });
+    });
+    snapshot.state = JSON.stringify({ display_name: account.name || '', prefs: prefs, garden: gardenBag });
+
+    dirty = { tickets: false, categories: false, state: false };
+
+    /* Mirror the pulled garden bag into localStorage for offline use. */
+    mirrorGardenBag();
+    writeCache();
+  }
+
+  function mirrorGardenBag() {
+    const prefix = kvKey('');
+    try {
+      const stale = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(prefix) === 0 && !(k.slice(prefix.length) in gardenBag)) stale.push(k);
+      }
+      stale.forEach(k => localStorage.removeItem(k));
+      Object.keys(gardenBag).forEach(k => localStorage.setItem(prefix + k, gardenBag[k]));
+    } catch (e) { /* ignore */ }
+  }
+
+  /* ========================= opening an account ========================= */
+
+  /* Cloud mode: called by auth.js with the signed-in user.
+     Local mode: called with a device profile. */
+  async function open(acct) {
+    account = { id: acct.id, name: acct.name || '', email: acct.email || '' };
+    lsSet(LS_LAST_ACCOUNT, account.id);
+
+    readCache();                       /* instant paint from cache */
+    seedDefaultsIfEmpty();
+
+    if (!CLOUD) {
+      setStatus('local');
+      return { fromCache: false };
+    }
+
+    const hadPendingWrites = anyDirty();
+    try {
+      if (hadPendingWrites) {
+        /* Offline edits made on this device win over the server copy. */
+        await flush();
+      }
+      await pull();
+      setStatus('idle');
+      return { fromCache: false };
+    } catch (err) {
+      console.warn('[Tend] could not reach the server, using the offline copy:', err && err.message);
+      setStatus('offline');
+      return { fromCache: true };
+    }
+  }
+
+  function close() {
+    scheduleFlush.flush();
+    account = null;
+    tickets = [];
+    categories = [];
+    prefs = {};
+    gardenBag = {};
+    snapshot = { tickets: {}, categories: {}, state: null };
+    dirty = { tickets: false, categories: false, state: false };
+  }
+
+  const DEFAULT_CATEGORIES = [
+    { name: 'Home', color: '#2a78d6' },
+    { name: 'Health', color: '#0f9d6a' },
+    { name: 'Money', color: '#eda100' },
+    { name: 'Errands', color: '#e87ba4' },
+    { name: 'Fun', color: '#8c52ff' }
+  ];
+
+  function seedDefaultsIfEmpty() {
+    if (!Array.isArray(categories) || !categories.length) {
+      categories = DEFAULT_CATEGORIES.map(c => ({ id: Util.uid(), name: c.name, color: c.color }));
+      if (CLOUD) markDirty('categories');
+      else writeCache();
+    }
+  }
+
+  /* ========================= public data accessors ========================= */
+
+  function saveTickets() {
+    if (CLOUD) markDirty('tickets');
+    else { writeCache(); }
+  }
+
+  function saveCategories() {
+    if (CLOUD) markDirty('categories');
+    else { writeCache(); }
+  }
+
+  function savePrefs() {
+    if (CLOUD) markDirty('state');
+    else { writeCache(); }
+  }
+
+  function setDisplayName(name) {
+    if (!account) return;
+    account.name = name;
+    if (CLOUD) {
+      markDirty('state');
+    } else {
+      const list = localProfiles();
+      const p = list.find(x => x.id === account.id);
+      if (p) { p.name = name; lsSet(LS_PROFILES, list); }
+    }
+  }
+
+  /* ========================= local-mode profiles ========================= */
+
+  function localProfiles() {
+    const list = lsGet(LS_PROFILES, []);
+    return Array.isArray(list) ? list : [];
+  }
+
+  function createLocalProfile(name) {
+    const list = localProfiles();
+    const p = { id: 'p-' + Util.uid(), name: String(name || 'Me').trim() || 'Me', createdAt: new Date().toISOString() };
+    list.push(p);
+    lsSet(LS_PROFILES, list);
+    return p;
+  }
+
+  function deleteLocalProfile(id) {
+    const list = localProfiles().filter(p => p.id !== id);
+    lsSet(LS_PROFILES, list);
+    /* Remove everything belonging to that profile. */
+    try {
+      const doomed = [];
+      const a = 'tend:cache:' + id + ':';
+      const b = 'tend:kv:' + id + ':';
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.indexOf(a) === 0 || k.indexOf(b) === 0)) doomed.push(k);
+      }
+      doomed.forEach(k => localStorage.removeItem(k));
+    } catch (e) { /* ignore */ }
+  }
+
+  function localProfileTicketCount(id) {
+    const list = lsGet('tend:cache:' + id + ':tickets', []);
+    return Array.isArray(list) ? list.length : 0;
+  }
+
+  function lastAccountId() {
+    return lsGet(LS_LAST_ACCOUNT, null);
+  }
+
+  /* ========================= export / import ========================= */
+
+  function exportData() {
+    return {
+      app: 'tend',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      account: { name: account ? account.name : '', email: account ? account.email : '' },
+      tickets: tickets,
+      categories: categories,
+      prefs: prefs,
+      garden: gardenBag
+    };
+  }
+
+  /* Replaces everything for the open account.
+     Accepts a Tend export, a bare array of tickets, or the { tasks: [...] }
+     shape used by the older single-file tracker this app grew out of. */
+  function importData(data) {
+    let list = null;
+    if (Array.isArray(data)) list = data;
+    else if (data && Array.isArray(data.tickets)) list = data.tickets;
+    else if (data && Array.isArray(data.tasks)) list = data.tasks;
+    if (!list) throw new Error('No tickets found in that file.');
+    if (Array.isArray(data)) data = { tickets: list };
+
+    tickets = list.map(t => ({
+      id: t.id || Util.uid(),
+      title: t.title || '',
+      notes: t.notes || '',
+      setting: t.setting || '',
+      /* Older files from the work version used raisedBy / jiraNeeded. */
+      category: t.category || t.raisedBy || '',
+      followUp: !!(t.followUp || t.jiraNeeded),
+      priority: !!t.priority,
+      archived: !!t.archived,
+      dueDate: t.dueDate || null,
+      createdAt: t.createdAt || Util.todayStr(),
+      completedAt: t.completedAt || null
+    }));
+    if (Array.isArray(data.categories) && data.categories.length) {
+      categories = data.categories.map(c => ({
+        id: c.id || Util.uid(),
+        name: c.name,
+        color: c.color || Util.colorFor(c.name)
+      }));
+    }
+    /* Any category names the tickets mention but the file did not define get
+       created, so nothing lands colourless. */
+    const known = new Set(categories.map(c => c.name.toLowerCase()));
+    tickets.forEach(t => {
+      if (t.category && !known.has(t.category.toLowerCase())) {
+        known.add(t.category.toLowerCase());
+        categories.push({ id: Util.uid(), name: t.category, color: Util.colorFor(t.category) });
+      }
+    });
+
+    if (data.prefs && typeof data.prefs === 'object') prefs = data.prefs;
+    if (data.garden && typeof data.garden === 'object') {
+      gardenBag = {};
+      Object.keys(data.garden).forEach(k => { gardenBag[k] = String(data.garden[k]); });
+      mirrorGardenBag();
+    }
+    if (CLOUD) {
+      markDirty('tickets'); markDirty('categories'); markDirty('state');
+    } else {
+      writeCache();
+    }
+  }
+
+  function eraseAccountData() {
+    tickets = [];
+    categories = [];
+    prefs = {};
+    gardenBag = {};
+    try {
+      const prefix = kvKey('');
+      const doomed = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(prefix) === 0) doomed.push(k);
+      }
+      doomed.forEach(k => localStorage.removeItem(k));
+    } catch (e) { /* ignore */ }
+    seedDefaultsIfEmpty();
+    if (CLOUD) { markDirty('tickets'); markDirty('categories'); markDirty('state'); }
+    else writeCache();
+  }
+
+  /* ========================= startup ========================= */
+
+  /* Loads the Supabase client from a CDN, but only in cloud mode. */
+  async function init() {
+    if (!CLOUD) { setStatus('local'); return { cloud: false }; }
+    const libUrl = CFG.SUPABASE_LIB_URL || 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const mod = await import(/* @vite-ignore */ libUrl);
+    client = mod.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+    return { cloud: true };
+  }
+
+  /* Push anything outstanding before the tab goes away. */
+  window.addEventListener('pagehide', function () {
+    if (CLOUD && anyDirty()) { writeCache(); flush(); }
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden' && CLOUD && anyDirty()) { writeCache(); flush(); }
+  });
+  window.addEventListener('online', function () {
+    if (CLOUD && anyDirty()) flush();
+  });
+
+  return {
+    /* mode + identity */
+    init, open, close,
+    isCloud: function () { return CLOUD; },
+    mode: function () { return CLOUD ? 'cloud' : 'local'; },
+    client: function () { return client; },
+    account: function () { return account; },
+    accountId: function () { return account ? account.id : null; },
+    displayName: function () { return account ? account.name : ''; },
+    email: function () { return account ? account.email : ''; },
+    setDisplayName,
+    config: CFG,
+
+    /* data */
+    tickets: function () { return tickets; },
+    setTickets: function (list) { tickets = list; saveTickets(); },
+    saveTickets,
+    categories: function () { return categories; },
+    saveCategories,
+    prefs: function () { return prefs; },
+    savePrefs,
+    kv,
+
+    /* sync */
+    flush: function () { scheduleFlush.flush(); return flush(); },
+    status: function () { return status; },
+    onStatus,
+    pull,
+
+    /* local profiles */
+    localProfiles, createLocalProfile, deleteLocalProfile, localProfileTicketCount, lastAccountId,
+
+    /* backup */
+    exportData, importData, eraseAccountData
+  };
+})();

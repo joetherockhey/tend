@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Tend - a personal ticket tracker where every task you finish grows a garden.">
+<meta name="theme-color" content="#1d2333">
+<title>Tend</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='1'%20x2='1'%20y2='0'%3E%3Cstop%20offset='0'%20stop-color='%2300d68f'/%3E%3Cstop%20offset='1'%20stop-color='%238c52ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M32%2050%20V31'%20stroke='white'%20stroke-width='4.5'%20stroke-linecap='round'/%3E%3Cpath%20d='M32%2032%20C32%2022%2025%2016.5%2016%2016.5%20C16%2026%2023%2032%2032%2032%20Z'%20fill='white'/%3E%3Cpath%20d='M32%2036%20C32%2027%2039%2021.5%2048%2021.5%20C48%2031%2041%2036%2032%2036%20Z'%20fill='white'%20opacity='0.72'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="gated">
+
+<!-- Brand mark, reused by the header and the sign-in card. -->
+<template id="brand-mark-template"><svg class="brand-mark" viewBox="0 0 64 64" role="img" aria-label="Tend"><defs><linearGradient id="tend-mark-grad" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#00d68f"/><stop offset="1" stop-color="#8c52ff"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#tend-mark-grad)"/><path d="M32 50 V31" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/><path d="M32 32 C32 22 25 16.5 16 16.5 C16 26 23 32 32 32 Z" fill="#ffffff"/><path d="M32 36 C32 27 39 21.5 48 21.5 C48 31 41 36 32 36 Z" fill="#ffffff" opacity="0.72"/></svg></template>
+
+<!-- ============================ AUTH GATE ============================ -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand" id="auth-brand"></div>
+    <p class="auth-tagline" id="auth-tagline"></p>
+    <div id="auth-body"></div>
+  </div>
+</div>
+
+<!-- ============================ APP ============================ -->
+<div id="app-shell" hidden>
+
+<header>
+<div class="header-inner">
+  <div class="header-top-row">
+    <div class="brand-row" id="header-brand"></div>
+    <span class="sync-badge" id="sync-badge"><span class="sync-dot"></span></span>
+    <div class="account-menu">
+      <button class="account-btn" id="account-btn" onclick="App.toggleAccountMenu(event)"></button>
+      <div class="account-dropdown" id="account-dropdown" hidden></div>
+    </div>
+  </div>
+  <h1 id="page-title">Tickets</h1>
+  <p class="subtitle" id="page-subtitle">Every ticket you finish plants something in your garden.</p>
+  <nav class="tabs">
+    <button id="tab-list" class="active" onclick="App.switchView('list')">Tickets</button>
+    <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
+    <button id="garden-toggle-btn" class="garden-toggle-btn" onclick="toggleGardenVisibility()">Hide Garden</button>
+  </nav>
+</div>
+</header>
+
+<main>
+<div class="app-layout">
+
+<div class="garden-col">
+  <div class="panel">
+    <h2>My Garden</h2>
+    <div class="garden-gardener-row">
+      <div id="garden-gardener"></div>
+      <div class="garden-status" id="garden-status"></div>
+      <div class="garden-coins" id="garden-coins">&#x1FA99; 0</div>
+    </div>
+    <div class="garden-plot-wrap">
+      <div class="garden-plot" id="garden-plot" tabindex="0" onkeydown="handleGardenKeydown(event)" onclick="focusGarden()"></div>
+      <div class="garden-side-labels" id="garden-side-labels"></div>
+    </div>
+    <ul class="garden-hint">
+      <li>Click the garden, then move with WASD or the arrow keys.</li>
+      <li>Press E to pick up, plant, or use whatever you are next to.</li>
+    </ul>
+    <div class="garden-help-icons">
+      <button class="help-icon-btn" onclick="showHelpTopic('water')" title="Watering">&#x1F4A7;</button>
+      <button class="help-icon-btn" onclick="showHelpTopic('pickup')" title="Picking things up">&#x270B;</button>
+      <button class="help-icon-btn" onclick="showHelpTopic('axe')" title="Axe">&#x1FA93;</button>
+      <button class="help-icon-btn" onclick="showHelpTopic('hoe')" title="Hoe">&#x26CF;&#xFE0F;</button>
+      <button class="help-icon-btn" onclick="showHelpTopic('shovel')" title="Shovel">&#x1FACF;</button>
+      <button class="help-icon-btn" onclick="showHelpTopic('sapling')" title="Saplings">&#x1F331;</button>
+      <button class="help-icon-btn" onclick="showHelpTopic('cabin')" title="Cabins">&#x1FAB5;</button>
+      <button class="help-icon-btn" onclick="showHelpTopic('pets')" title="Pets">&#x1F43E;</button>
+      <button class="help-icon-btn" onclick="showHelpTopic('unlock')" title="Unlocking sections">&#x1F512;</button>
+    </div>
+    <div class="help-explanation" id="help-explanation"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Shop</h2>
+    <div class="shop-coins" id="shop-coins-row">&#x1FA99; <span id="shop-coins-amt">0</span></div>
+    <div class="shop-columns">
+      <div class="shop-column">
+        <div class="shop-section-title">Pets</div>
+        <div id="shop-pets"></div>
+        <div class="shop-section-title">Treats</div>
+        <div id="shop-treats"></div>
+      </div>
+      <div class="shop-column">
+        <div class="shop-section-title">Items</div>
+        <div id="shop-items"></div>
+        <div class="shop-section-title">Outfits</div>
+        <div id="shop-outfits"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="content-col">
+
+  <div id="view-list" class="view active">
+    <div class="panel search-panel">
+      <input type="text" class="search-input" id="search-input" placeholder="Search tickets by title, notes, category, or where it came up...">
+    </div>
+
+    <div class="active-priority-grid">
+      <section class="list-section">
+        <h2>Priority</h2>
+        <ul class="task-list" id="priority-list"></ul>
+      </section>
+
+      <section class="list-section">
+        <h2>Active</h2>
+        <ul class="task-list" id="active-list"></ul>
+      </section>
+    </div>
+
+    <section class="list-section" id="archived-section" style="display:none;">
+      <h2>Archived</h2>
+      <ul class="task-list" id="archived-list"></ul>
+    </section>
+
+    <section class="list-section" id="completed-section">
+      <div class="section-header">
+        <h2>Completed</h2>
+        <div class="section-toggle-group">
+          <button class="section-toggle-btn" id="toggle-archived-btn" onclick="App.toggleShowArchived()">Show archived</button>
+          <button class="section-toggle-btn" id="toggle-completed-btn" onclick="App.toggleShowCompleted()">Show completed</button>
+        </div>
+      </div>
+      <ul class="task-list" id="completed-list"></ul>
+    </section>
+  </div>
+
+  <div id="view-calendar" class="view">
+    <div class="panel">
+      <div class="cal-header">
+        <div class="cal-title" id="cal-title"></div>
+        <div class="cal-nav">
+          <button onclick="App.changeMonth(-1)">&larr; Prev</button>
+          <button onclick="App.goToday()">Today</button>
+          <button onclick="App.changeMonth(1)">Next &rarr;</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="dot created"></span> Created</span>
+        <span><span class="dot completed"></span> Completed</span>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+  </div>
+
+</div>
+
+<aside class="sidebar">
+  <div class="new-task-btn-row">
+    <button class="new-task-btn" onclick="App.openNewTaskModal()">+ New Ticket</button>
+  </div>
+
+  <div class="panel overview-panel">
+    <h2>Overview</h2>
+    <div id="stats-chart"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Categories</h2>
+    <p class="category-hint">Colour-codes your tickets and the plant pots in the garden.</p>
+    <div class="key-list" id="category-key"></div>
+  </div>
+</aside>
+
+</div>
+</main>
+
+<!-- ============================ MODALS ============================ -->
+
+<div class="modal-backdrop" id="modal-backdrop" onclick="App.closeModalOnBackdrop(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="App.closeModal()">&times;</button>
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="edit-modal-backdrop" onclick="App.closeEditModalOnBackdrop(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="App.closeEditModal()">&times;</button>
+    <h3>Edit ticket</h3>
+    <input type="hidden" id="edit-task-id">
+    <div class="modal-form">
+      <input type="text" id="edit-task-title" placeholder="What needs to be done?" maxlength="200">
+
+      <div class="field-row">
+        <label class="field-label" for="edit-task-setting">Where did it come up?</label>
+        <input type="text" id="edit-task-setting" placeholder="e.g. phone call, letter in the post, sitting in traffic..." maxlength="200">
+      </div>
+
+      <div class="field-row-inline">
+        <div class="field-row">
+          <label class="field-label" for="edit-task-category">Category</label>
+          <select id="edit-task-category" onchange="App.onEditCategoryChange()"></select>
+        </div>
+        <div class="field-row" id="edit-category-other-row" style="display:none;">
+          <label class="field-label" for="edit-task-category-other">New category</label>
+          <input type="text" id="edit-task-category-other" placeholder="Name it" maxlength="100">
+        </div>
+      </div>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="edit-task-followup">
+        Needs a follow-up?
+      </label>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="edit-task-priority">
+        Mark as priority?
+      </label>
+
+      <div class="field-row">
+        <label class="field-label" for="edit-task-duedate">When does it need to be done by?</label>
+        <input type="date" id="edit-task-duedate">
+      </div>
+
+      <textarea id="edit-task-notes" placeholder="Add more details" rows="2"></textarea>
+
+      <div class="modal-actions">
+        <button onclick="App.closeEditModal()">Cancel</button>
+        <button class="primary" onclick="App.saveEditedTask()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="new-task-modal-backdrop" onclick="App.closeNewTaskModalOnBackdrop(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="App.closeNewTaskModal()">&times;</button>
+    <h3>New ticket</h3>
+    <div class="modal-form">
+      <input type="text" id="new-task-input" placeholder="What needs to be done?" maxlength="200">
+
+      <div class="field-row">
+        <label class="field-label" for="new-task-setting">Where did it come up?</label>
+        <input type="text" id="new-task-setting" placeholder="e.g. phone call, letter in the post, sitting in traffic..." maxlength="200">
+      </div>
+
+      <div class="field-row-inline">
+        <div class="field-row">
+          <label class="field-label" for="new-task-category">Category</label>
+          <select id="new-task-category" onchange="App.onCategoryChange()"></select>
+        </div>
+        <div class="field-row" id="category-other-row" style="display:none;">
+          <label class="field-label" for="new-task-category-other">New category</label>
+          <input type="text" id="new-task-category-other" placeholder="Name it" maxlength="100">
+        </div>
+      </div>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="new-task-followup">
+        Needs a follow-up?
+      </label>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="new-task-priority">
+        Mark as priority?
+      </label>
+
+      <div class="field-row">
+        <label class="field-label" for="new-task-duedate">When does it need to be done by?</label>
+        <input type="date" id="new-task-duedate">
+      </div>
+
+      <textarea id="new-task-notes" placeholder="Add more details" rows="2"></textarea>
+
+      <div class="modal-actions">
+        <button onclick="App.closeNewTaskModal()">Cancel</button>
+        <button class="primary" onclick="App.addTask()">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="settings-modal-backdrop" onclick="App.closeSettingsOnBackdrop(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="App.closeSettings()">&times;</button>
+    <h3>Settings &amp; backup</h3>
+    <div id="settings-body"></div>
+  </div>
+</div>
+
+<input type="file" id="import-file" accept="application/json,.json" hidden>
+
+</div><!-- /app-shell -->
+
+<script src="js/config.js"></script>
+<script src="js/util.js"></script>
+<script src="js/store.js"></script>
+<script src="js/garden.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/boot.js"></script>
+
+</body>
+</html>

@@ -1,2 +1,190 @@
-# tend
-Tickets for all
+# Tend
+
+A personal ticket tracker where finishing things grows a garden. Every ticket you
+complete plants something; every ten unlocks another section of the garden, which
+you walk around with the arrow keys, watering plants and spending the coins you
+earn on tools, saplings and pets.
+
+It is a single static site — no build step, no server of your own to run — and it
+works two ways:
+
+| | **Local mode** | **Cloud mode** |
+|---|---|---|
+| Sign-in | None. Pick a profile on the device. | Email and password. |
+| Where data lives | That browser only. | Your Supabase project, plus an offline copy in the browser. |
+| Follows you across devices | No (export/import by hand). | Yes. |
+| Setup | None. | About ten minutes, once. |
+
+Local mode is the default, so the site works the moment you publish it. Filling in
+two values in `js/config.js` switches the whole app to cloud mode.
+
+---
+
+## Quick start: publish it in local mode
+
+1. Create a new repository on GitHub and put these files in it (the root of the
+   repo, so `index.html` sits at the top level).
+2. In the repository, go to **Settings → Pages**. Under *Build and deployment*,
+   set **Source** to `Deploy from a branch`, pick the `main` branch and the
+   `/ (root)` folder, and save.
+3. Wait a minute, then open `https://<your-username>.github.io/<your-repo>/`.
+
+That is the whole deployment. Anyone you send the link to creates their own
+profile in their own browser; nobody can see anyone else's tickets, because
+nothing ever leaves their device.
+
+You can also just open `standalone/tend.html` directly off your desktop — it is
+the same app inlined into one file, no web server needed.
+
+---
+
+## Cloud mode: real accounts that sync across devices
+
+### 1. Create the project
+
+Sign up at [supabase.com](https://supabase.com) and create a new project. The free
+tier is enough for this. Choose a region near you and keep the database password
+somewhere safe — you will not need it for Tend, but you will want it eventually.
+
+### 2. Create the tables
+
+In your project, open **SQL Editor → New query**, paste in the entire contents of
+[`supabase/schema.sql`](supabase/schema.sql), and run it.
+
+That creates three tables — `tickets`, `categories`, `app_state` — turns on
+row-level security, and adds a policy on each one saying *you may only touch rows
+where `user_id` is your own id*. That policy is what makes it safe to publish the
+site: the key in the page grants nothing by itself.
+
+### 3. Point the app at it
+
+In your Supabase project, go to **Project Settings → API** and copy:
+
+- the **Project URL**
+- the **anon public** key
+
+Put both into `js/config.js`:
+
+```js
+window.TEND_CONFIG = {
+  SUPABASE_URL: 'https://abcdefghijk.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOi...',
+  ...
+};
+```
+
+Commit and push. The next load shows a sign-in screen instead of the profile
+picker.
+
+> **On committing that key.** The anon key is designed to be public — it is in the
+> HTML of every Supabase site on the web. It only ever acts on behalf of whoever
+> is signed in, and row-level security decides what that person can see. The key
+> you must never put here is the `service_role` key, which bypasses those policies
+> entirely. If you ever paste that one into a web page, rotate it immediately.
+
+### 4. Decide how people get in
+
+In **Authentication → Providers → Email**, decide whether to require email
+confirmation (on by default, and worth keeping). In **Authentication → URL
+Configuration**, add your GitHub Pages URL to the redirect allow-list so password
+reset links come back to the right place.
+
+If you would rather invite people yourself than let anyone sign up, set
+`ALLOW_SIGNUP: false` in `js/config.js` and add users from
+**Authentication → Users → Add user**.
+
+### 5. Try it
+
+Open the site, create an account, add a ticket, then open the same URL on your
+phone and sign in. The ticket is there. So is the garden, down to where the
+gardener is standing.
+
+---
+
+## "Can people create tickets from GitHub itself?"
+
+Yes, in two quite different senses — worth separating, because one is a good idea
+and the other usually is not.
+
+**Feedback about the app: use GitHub Issues.** Set `GITHUB_REPO` in
+`js/config.js` to `your-username/your-repo` and a *Suggest something on GitHub*
+link appears in the account menu, opening a pre-filled ticket form
+(`.github/ISSUE_TEMPLATE/ticket.yml`). Anything filed there is stored in the
+repository permanently, is searchable, threads into a conversation, and costs you
+nothing to host. This is the right home for "the calendar is wrong in Safari".
+
+**Someone's private to-do list: do not use GitHub Issues.** It is tempting,
+because the storage is free and permanent, but issues in a public repo are
+readable by the entire internet, closing one requires a write token, and everyone
+using it needs a GitHub account. A shared *board* — a family list, a small team,
+a club — could work this way, and the API to do it is
+`GET /repos/{owner}/{repo}/issues`. A personal tracker should not.
+
+Cloud mode exists for the private case, which is why it is built on a database
+with per-user access rules rather than on a public issue tracker.
+
+---
+
+## What is in here
+
+```
+index.html              markup and the page shell
+css/styles.css          all styling, light theme, responsive
+js/config.js            the only file you edit to configure anything
+js/util.js              dates, escaping, colours, debounce
+js/store.js             storage: local and Supabase backends, offline queue
+js/auth.js              the sign-in gate and the local profile picker
+js/app.js               tickets, lists, calendar, stats, categories, settings
+js/garden.js            the garden: sprites, movement, shop, pets, sections
+js/boot.js              wires branding in and starts the gate
+supabase/schema.sql     tables, row-level security, triggers
+test/mock-supabase.js   a fake backend, for exercising cloud mode locally
+build.py                inlines everything into standalone/tend.html
+standalone/tend.html    the whole app as one file
+```
+
+### How saving works
+
+Every change is written to `localStorage` synchronously, so nothing is ever lost
+to a closed tab. In cloud mode the change is also queued and pushed about a
+second later, batched, and diffed against the last confirmed push so only real
+changes go over the wire. If the network is down the queue survives in the browser
+and drains when it comes back — the badge in the header says which of those is
+happening. The garden is stored as one JSON blob per account, so new garden
+features never need a database migration.
+
+---
+
+## Customising
+
+- **Name and tagline** — `APP_NAME` and `TAGLINE` in `js/config.js`.
+- **Colours** — the CSS custom properties at the top of `css/styles.css`.
+  `--header-bg` and `--header-bg-2` are the header gradient; `--accent` is the
+  purple used for buttons and the active tab.
+- **Categories** — the starting five (Home, Health, Money, Errands, Fun) are in
+  `DEFAULT_CATEGORIES` in `js/store.js`. Users can add and remove their own from
+  the Categories panel, and each one colour-codes both its tickets and its plant
+  pots in the garden.
+- **Garden sections** — `SECTIONS` at the top of `js/garden.js`. Add entries and
+  every ten completed tickets keeps unlocking new ground.
+- **The unlock rate** — `TICKETS_PER_SECTION` in `js/garden.js`.
+
+After editing anything, re-run `python3 build.py` if you want the standalone file
+to match.
+
+---
+
+## Known limits
+
+- Cloud mode resolves conflicts last-write-wins. Edit the same ticket on two
+  devices while one of them is offline and the later write survives. For one
+  person on a few devices this is nearly never noticeable; for shared lists it
+  would need real merge logic.
+- There is no sharing or assigning between accounts yet. The schema is per-row
+  rather than one blob per user partly to leave that door open.
+- The garden expects a keyboard, so it is best on a laptop. On a phone the
+  tickets come first and the garden sits at the bottom.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). Do what you like with it.
