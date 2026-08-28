@@ -167,6 +167,8 @@ features never need a database migration.
 - **Colours** — the CSS custom properties at the top of `css/styles.css`.
   `--header-bg` and `--header-bg-2` are the header gradient; `--accent` is the
   purple used for buttons and the active tab.
+- **How many tickets fit in a list-view cell** before it says "+n more" —
+  `AGENDA_ROWS` in `js/app.js`.
 - **What the calendar plots** — the three chips above the calendar toggle
   Created, Due and Completed dates on and off. Due and Completed are on by
   default; the defaults live in `CAL_SERIES` in `js/app.js`. Due and Completed

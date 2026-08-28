@@ -508,6 +508,7 @@ const App = (function () {
     document.getElementById('tab-list').classList.toggle('active', view === 'list');
     document.getElementById('tab-calendar').classList.toggle('active', view === 'calendar');
     if (view === 'calendar') renderCalendar();
+    applyCalendarWidth();
   }
 
   function changeMonth(delta) {
@@ -529,11 +530,45 @@ const App = (function () {
   /* Which dates a ticket is plotted on. "Due" is the one most people want -
      it answers "what is coming up" - so it and Completed are on by default and
      Created is off. Each person's choice is remembered with their preferences. */
+  /* How many ticket rows fit in an agenda cell before it says "+n more". */
+  const AGENDA_ROWS = 3;
+
   const CAL_SERIES = [
     { key: 'created', label: 'Created', on: false },
     { key: 'due', label: 'Due', on: true },
     { key: 'completed', label: 'Complete', on: true }
   ];
+
+  /* 'numbers' = counts per day. 'agenda' = the tickets themselves, the way a
+     wall calendar or Google Calendar shows them. */
+  function calView() {
+    const prefs = Store.prefs();
+    return prefs.calView === 'agenda' ? 'agenda' : 'numbers';
+  }
+
+  function setCalView(view) {
+    Store.prefs().calView = view;
+    Store.savePrefs();
+    renderCalendar();
+    applyCalendarWidth();
+  }
+
+  /* The list view claims the whole row while it is on screen. */
+  function applyCalendarWidth() {
+    const layout = document.querySelector('.app-layout');
+    if (!layout) return;
+    const onCalendar = document.getElementById('view-calendar').classList.contains('active');
+    layout.classList.toggle('cal-wide', onCalendar && calView() === 'agenda');
+  }
+
+  function renderCalViewToggle() {
+    const host = document.getElementById('cal-view-toggle');
+    if (!host) return;
+    const view = calView();
+    host.innerHTML = [['numbers', 'Numbers'], ['agenda', 'List']].map(([key, label]) =>
+      `<button type="button" class="${view === key ? 'on' : ''}" onclick="App.setCalView('${key}')">${label}</button>`
+    ).join('');
+  }
 
   function calSeries() {
     const prefs = Store.prefs();
@@ -576,7 +611,9 @@ const App = (function () {
       if (t.completedAt) (completedByDay[t.completedAt] = completedByDay[t.completedAt] || []).push(t);
     });
     renderCalendarLegend();
+    renderCalViewToggle();
     const series = calSeries();
+    const agenda = calView() === 'agenda';
 
     const firstOfMonth = new Date(calYear, calMonth, 1);
     /* Weeks run Monday to Sunday, so shift getDay()'s Sunday-first numbering. */
@@ -605,23 +642,40 @@ const App = (function () {
       /* A due date that has passed with work still on it is worth shouting about. */
       const overdue = iso < today && dueList.length > 0;
 
-      /* Big for the two that need acting on, small for the one that is just
-         history. Due leads, because it is the only one about the future. */
-      let countsHtml = '';
-      if (dueList.length) {
-        countsHtml += `<span class="cal-stat big due ${overdue ? 'overdue' : ''}">
-            <span class="cal-stat-label">Due</span><span class="cal-stat-num">${dueList.length}</span>
-          </span>`;
-      }
-      if (doneCount) {
-        countsHtml += `<span class="cal-stat big completed">
-            <span class="cal-stat-label">Complete</span><span class="cal-stat-num">${doneCount}</span>
-          </span>`;
-      }
-      if (madeCount) {
-        countsHtml += `<span class="cal-stat small created">
-            <span class="cal-stat-label">Created</span><span class="cal-stat-num">${madeCount}</span>
-          </span>`;
+      let countsHtml;
+
+      if (agenda) {
+        /* One row per ticket, like a wall calendar. Only so many fit in a cell
+           of fixed height, so the rest collapse into a "+n more". */
+        const rows = [];
+        dueList.forEach(t => rows.push({ cls: 'due' + (overdue ? ' overdue' : ''), title: t.title }));
+        if (series.completed) (completedByDay[iso] || []).forEach(t => rows.push({ cls: 'completed', title: t.title }));
+        if (series.created) (createdByDay[iso] || []).forEach(t => rows.push({ cls: 'created', title: t.title }));
+
+        const shown = rows.slice(0, AGENDA_ROWS);
+        const extra = rows.length - shown.length;
+        countsHtml = `<div class="cal-agenda">${
+          shown.map(r => `<span class="cal-event ${r.cls}"><span class="cal-event-dot"></span><span class="cal-event-title">${Util.escapeHtml(r.title)}</span></span>`).join('')
+        }${extra > 0 ? `<span class="cal-more">+${extra} more</span>` : ''}</div>`;
+      } else {
+        /* Big for the two that need acting on, small for the one that is just
+           history. Due leads, because it is the only one about the future. */
+        countsHtml = '';
+        if (dueList.length) {
+          countsHtml += `<span class="cal-stat big due ${overdue ? 'overdue' : ''}">
+              <span class="cal-stat-label">Due</span><span class="cal-stat-num">${dueList.length}</span>
+            </span>`;
+        }
+        if (doneCount) {
+          countsHtml += `<span class="cal-stat big completed">
+              <span class="cal-stat-label">Complete</span><span class="cal-stat-num">${doneCount}</span>
+            </span>`;
+        }
+        if (madeCount) {
+          countsHtml += `<span class="cal-stat small created">
+              <span class="cal-stat-label">Created</span><span class="cal-stat-num">${madeCount}</span>
+            </span>`;
+        }
       }
 
       html += `<div class="cal-cell ${isToday ? 'today' : ''}" onclick="App.showDayModal('${iso}')">
@@ -629,7 +683,9 @@ const App = (function () {
                  <div class="cal-events">${countsHtml}</div>
                </div>`;
     }
-    document.getElementById('cal-grid').innerHTML = html;
+    const grid = document.getElementById('cal-grid');
+    grid.className = 'cal-grid' + (agenda ? ' agenda' : '');
+    grid.innerHTML = html;
   }
 
   function showDayModal(iso) {
@@ -1066,6 +1122,7 @@ const App = (function () {
     renderHeader();
     Garden.loadAll();   /* hydrate the garden before anything renders or saves it */
     renderAll();
+    applyCalendarWidth();
     Garden.start();
 
     if (!booted) {
@@ -1100,7 +1157,7 @@ const App = (function () {
     onCategoryChange, onEditCategoryChange,
     submitAddCategory, removeCategoryByIndex,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
-    showDueToday,
+    setCalView, showDueToday,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

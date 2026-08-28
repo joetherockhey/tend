@@ -1302,7 +1302,11 @@ li.task.dragging {
 }
 
 .cal-cell {
-  min-height: 84px;
+  /* A fixed height, not a minimum: a busy day must never make its row taller
+     than the rest of the month. Anything that does not fit is reachable by
+     clicking the day. */
+  height: 84px;
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
@@ -1345,6 +1349,7 @@ li.task.dragging {
   gap: 3px;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 /* Modal */
@@ -2093,26 +2098,25 @@ body.gated { overflow: hidden; }
    Calendar cells: labelled counts
    ============================================================ */
 
-/* Bubble on top, number under it. A calendar cell can be under 80px wide and
-   "Complete" alone nearly fills that, so laying them side by side made some
-   cells wrap and others not - stacking every one keeps the grid even. */
+/* Bubble and number side by side, sized to fit the narrowest cell the grid
+   produces (about 72px of usable width) without wrapping or clipping. */
 .cal-stat {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
+  align-items: center;
+  gap: 4px;
   line-height: 1;
   max-width: 100%;
+  white-space: nowrap;
 }
 
 /* The word sits in its own tinted bubble with dark text. Coloured words on a
    white cell were the hardest thing on the calendar to read - the number
    carries the colour, the label carries the meaning. */
 .cal-stat-label {
-  font-size: 0.62rem;
-  font-weight: 600;
+  font-size: 0.58rem;
+  font-weight: 700;
   line-height: 1;
-  padding: 3px 6px;
+  padding: 3px 5px;
   border-radius: 999px;
   white-space: nowrap;
 }
@@ -2122,8 +2126,8 @@ body.gated { overflow: hidden; }
   font-weight: 700;
 }
 
-.cal-stat.big .cal-stat-num { font-size: 1.45rem; }
-.cal-stat.small .cal-stat-num { font-size: 0.95rem; }
+.cal-stat.big .cal-stat-num { font-size: 1.15rem; }
+.cal-stat.small .cal-stat-num { font-size: 0.85rem; }
 .cal-stat.small .cal-stat-num { opacity: 0.85; }
 
 /* Numbers keep the series colour; bubbles pair a soft tint with text dark
@@ -2222,6 +2226,130 @@ body.gated { overflow: hidden; }
 }
 
 .day-summary .cal-stat-label { font-size: 0.75rem; padding: 4px 9px; }
+
+/* ============================================================
+   Calendar: agenda view
+   ============================================================ */
+
+/* The legend and the view switch share one row; the legend is redrawn on every
+   render, so the switch lives beside it rather than inside it. */
+.cal-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.cal-legend-row .legend { margin-bottom: 0; }
+
+.cal-view-toggle {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.cal-view-toggle button {
+  border: none;
+  background: none;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.cal-view-toggle button:hover { color: var(--text); }
+
+.cal-view-toggle button.on {
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(31, 36, 48, 0.12);
+}
+
+/* Agenda cells are taller than number cells, but still all the same height. */
+.cal-grid.agenda .cal-cell { height: 118px; }
+.cal-grid.agenda .cal-cell.empty { height: 118px; }
+
+.cal-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.cal-event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cal-event-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.cal-event-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.cal-event.due { background: #fdf0d8; color: #8a5500; }
+.cal-event.due .cal-event-dot { background: var(--series-over); }
+
+.cal-event.due.overdue { background: #fbe9ec; color: #a12b41; }
+.cal-event.due.overdue .cal-event-dot { background: var(--danger); }
+
+.cal-event.completed { background: var(--green-soft); color: #0b6b4a; }
+.cal-event.completed .cal-event-dot { background: var(--series-done); }
+.cal-event.completed .cal-event-title { text-decoration: line-through; opacity: 0.75; }
+
+.cal-event.created { background: var(--accent-soft); color: #5b28c9; }
+.cal-event.created .cal-event-dot { background: var(--series-made); }
+
+.cal-more {
+  font-size: 0.66rem;
+  color: var(--muted);
+  padding: 1px 5px;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .cal-grid.agenda .cal-cell { height: 86px; }
+  .cal-grid.agenda .cal-cell.empty { height: 86px; }
+  .cal-event { font-size: 0.6rem; padding: 1px 3px; gap: 3px; }
+  .cal-view-toggle button { padding: 5px 9px; font-size: 0.72rem; }
+}
+
+/* The list view needs room: at a third of the page a cell is 84px wide and every
+   ticket title truncates to two words. While it is showing, the calendar takes
+   the full width and the garden and sidebar stack underneath it. */
+.app-layout.cal-wide { flex-direction: column; flex-wrap: nowrap; }
+.app-layout.cal-wide .content-col { order: 1; flex: 1 1 auto; width: 100%; }
+.app-layout.cal-wide .sidebar { order: 2; flex: 1 1 auto; width: 100%; position: static; top: auto; }
+.app-layout.cal-wide .garden-col { order: 3; flex: 1 1 auto; width: 100%; position: static; top: auto; }
 
 </style>
 </head>
@@ -2365,7 +2493,10 @@ body.gated { overflow: hidden; }
           <button onclick="App.changeMonth(1)">Next &rarr;</button>
         </div>
       </div>
-      <div class="legend" id="cal-legend"></div>
+      <div class="cal-legend-row">
+        <div class="legend" id="cal-legend"></div>
+        <div class="cal-view-toggle" id="cal-view-toggle"></div>
+      </div>
       <div class="cal-grid" id="cal-grid"></div>
     </div>
   </div>
@@ -6453,6 +6584,7 @@ const App = (function () {
     document.getElementById('tab-list').classList.toggle('active', view === 'list');
     document.getElementById('tab-calendar').classList.toggle('active', view === 'calendar');
     if (view === 'calendar') renderCalendar();
+    applyCalendarWidth();
   }
 
   function changeMonth(delta) {
@@ -6474,11 +6606,45 @@ const App = (function () {
   /* Which dates a ticket is plotted on. "Due" is the one most people want -
      it answers "what is coming up" - so it and Completed are on by default and
      Created is off. Each person's choice is remembered with their preferences. */
+  /* How many ticket rows fit in an agenda cell before it says "+n more". */
+  const AGENDA_ROWS = 3;
+
   const CAL_SERIES = [
     { key: 'created', label: 'Created', on: false },
     { key: 'due', label: 'Due', on: true },
     { key: 'completed', label: 'Complete', on: true }
   ];
+
+  /* 'numbers' = counts per day. 'agenda' = the tickets themselves, the way a
+     wall calendar or Google Calendar shows them. */
+  function calView() {
+    const prefs = Store.prefs();
+    return prefs.calView === 'agenda' ? 'agenda' : 'numbers';
+  }
+
+  function setCalView(view) {
+    Store.prefs().calView = view;
+    Store.savePrefs();
+    renderCalendar();
+    applyCalendarWidth();
+  }
+
+  /* The list view claims the whole row while it is on screen. */
+  function applyCalendarWidth() {
+    const layout = document.querySelector('.app-layout');
+    if (!layout) return;
+    const onCalendar = document.getElementById('view-calendar').classList.contains('active');
+    layout.classList.toggle('cal-wide', onCalendar && calView() === 'agenda');
+  }
+
+  function renderCalViewToggle() {
+    const host = document.getElementById('cal-view-toggle');
+    if (!host) return;
+    const view = calView();
+    host.innerHTML = [['numbers', 'Numbers'], ['agenda', 'List']].map(([key, label]) =>
+      `<button type="button" class="${view === key ? 'on' : ''}" onclick="App.setCalView('${key}')">${label}</button>`
+    ).join('');
+  }
 
   function calSeries() {
     const prefs = Store.prefs();
@@ -6521,7 +6687,9 @@ const App = (function () {
       if (t.completedAt) (completedByDay[t.completedAt] = completedByDay[t.completedAt] || []).push(t);
     });
     renderCalendarLegend();
+    renderCalViewToggle();
     const series = calSeries();
+    const agenda = calView() === 'agenda';
 
     const firstOfMonth = new Date(calYear, calMonth, 1);
     /* Weeks run Monday to Sunday, so shift getDay()'s Sunday-first numbering. */
@@ -6550,23 +6718,40 @@ const App = (function () {
       /* A due date that has passed with work still on it is worth shouting about. */
       const overdue = iso < today && dueList.length > 0;
 
-      /* Big for the two that need acting on, small for the one that is just
-         history. Due leads, because it is the only one about the future. */
-      let countsHtml = '';
-      if (dueList.length) {
-        countsHtml += `<span class="cal-stat big due ${overdue ? 'overdue' : ''}">
-            <span class="cal-stat-label">Due</span><span class="cal-stat-num">${dueList.length}</span>
-          </span>`;
-      }
-      if (doneCount) {
-        countsHtml += `<span class="cal-stat big completed">
-            <span class="cal-stat-label">Complete</span><span class="cal-stat-num">${doneCount}</span>
-          </span>`;
-      }
-      if (madeCount) {
-        countsHtml += `<span class="cal-stat small created">
-            <span class="cal-stat-label">Created</span><span class="cal-stat-num">${madeCount}</span>
-          </span>`;
+      let countsHtml;
+
+      if (agenda) {
+        /* One row per ticket, like a wall calendar. Only so many fit in a cell
+           of fixed height, so the rest collapse into a "+n more". */
+        const rows = [];
+        dueList.forEach(t => rows.push({ cls: 'due' + (overdue ? ' overdue' : ''), title: t.title }));
+        if (series.completed) (completedByDay[iso] || []).forEach(t => rows.push({ cls: 'completed', title: t.title }));
+        if (series.created) (createdByDay[iso] || []).forEach(t => rows.push({ cls: 'created', title: t.title }));
+
+        const shown = rows.slice(0, AGENDA_ROWS);
+        const extra = rows.length - shown.length;
+        countsHtml = `<div class="cal-agenda">${
+          shown.map(r => `<span class="cal-event ${r.cls}"><span class="cal-event-dot"></span><span class="cal-event-title">${Util.escapeHtml(r.title)}</span></span>`).join('')
+        }${extra > 0 ? `<span class="cal-more">+${extra} more</span>` : ''}</div>`;
+      } else {
+        /* Big for the two that need acting on, small for the one that is just
+           history. Due leads, because it is the only one about the future. */
+        countsHtml = '';
+        if (dueList.length) {
+          countsHtml += `<span class="cal-stat big due ${overdue ? 'overdue' : ''}">
+              <span class="cal-stat-label">Due</span><span class="cal-stat-num">${dueList.length}</span>
+            </span>`;
+        }
+        if (doneCount) {
+          countsHtml += `<span class="cal-stat big completed">
+              <span class="cal-stat-label">Complete</span><span class="cal-stat-num">${doneCount}</span>
+            </span>`;
+        }
+        if (madeCount) {
+          countsHtml += `<span class="cal-stat small created">
+              <span class="cal-stat-label">Created</span><span class="cal-stat-num">${madeCount}</span>
+            </span>`;
+        }
       }
 
       html += `<div class="cal-cell ${isToday ? 'today' : ''}" onclick="App.showDayModal('${iso}')">
@@ -6574,7 +6759,9 @@ const App = (function () {
                  <div class="cal-events">${countsHtml}</div>
                </div>`;
     }
-    document.getElementById('cal-grid').innerHTML = html;
+    const grid = document.getElementById('cal-grid');
+    grid.className = 'cal-grid' + (agenda ? ' agenda' : '');
+    grid.innerHTML = html;
   }
 
   function showDayModal(iso) {
@@ -7011,6 +7198,7 @@ const App = (function () {
     renderHeader();
     Garden.loadAll();   /* hydrate the garden before anything renders or saves it */
     renderAll();
+    applyCalendarWidth();
     Garden.start();
 
     if (!booted) {
@@ -7045,7 +7233,7 @@ const App = (function () {
     onCategoryChange, onEditCategoryChange,
     submitAddCategory, removeCategoryByIndex,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
-    showDueToday,
+    setCalView, showDueToday,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
