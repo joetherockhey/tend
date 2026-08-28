@@ -2044,3 +2044,49 @@ body.gated { overflow: hidden; }
 }
 
 #world-settings .chooser { margin-top: 2px; }
+
+/* ============================================================
+   Calendar: pick which dates are plotted
+   ============================================================ */
+
+.legend-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.legend-toggle:hover { border-color: var(--accent); }
+
+.legend-toggle.on {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--bg);
+}
+
+/* An off series keeps its colour but drains it, so the row still reads as a key. */
+.legend-toggle:not(.on) .dot { opacity: 0.3; }
+.legend-toggle:not(.on) { text-decoration: line-through; }
+
+.dot.due { background: var(--series-over); }
+
+.cal-count-num.due { color: var(--series-over); }
+.cal-count-num.due.overdue { color: var(--danger); }
+
+.day-task-note {
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.day-task-note.overdue { background: #fbe9ec; color: var(--danger); }
+.day-task-note.done { background: var(--green-soft); color: var(--green); }

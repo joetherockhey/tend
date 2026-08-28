@@ -2055,6 +2055,52 @@ body.gated { overflow: hidden; }
 
 #world-settings .chooser { margin-top: 2px; }
 
+/* ============================================================
+   Calendar: pick which dates are plotted
+   ============================================================ */
+
+.legend-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.legend-toggle:hover { border-color: var(--accent); }
+
+.legend-toggle.on {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--bg);
+}
+
+/* An off series keeps its colour but drains it, so the row still reads as a key. */
+.legend-toggle:not(.on) .dot { opacity: 0.3; }
+.legend-toggle:not(.on) { text-decoration: line-through; }
+
+.dot.due { background: var(--series-over); }
+
+.cal-count-num.due { color: var(--series-over); }
+.cal-count-num.due.overdue { color: var(--danger); }
+
+.day-task-note {
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.day-task-note.overdue { background: #fbe9ec; color: var(--danger); }
+.day-task-note.done { background: var(--green-soft); color: var(--green); }
+
 </style>
 </head>
 <body class="gated">
@@ -2197,10 +2243,7 @@ body.gated { overflow: hidden; }
           <button onclick="App.changeMonth(1)">Next &rarr;</button>
         </div>
       </div>
-      <div class="legend">
-        <span><span class="dot created"></span> Created</span>
-        <span><span class="dot completed"></span> Completed</span>
-      </div>
+      <div class="legend" id="cal-legend"></div>
       <div class="cal-grid" id="cal-grid"></div>
     </div>
   </div>
@@ -6252,18 +6295,59 @@ const App = (function () {
     renderCalendar();
   }
 
-  let createdByDay = {}, completedByDay = {};
+  let createdByDay = {}, dueByDay = {}, completedByDay = {};
+
+  /* Which dates a ticket is plotted on. "Due" is the one most people want -
+     it answers "what is coming up" - so it and Completed are on by default and
+     Created is off. Each person's choice is remembered with their preferences. */
+  const CAL_SERIES = [
+    { key: 'created', label: 'Created', on: false },
+    { key: 'due', label: 'Due', on: true },
+    { key: 'completed', label: 'Completed', on: true }
+  ];
+
+  function calSeries() {
+    const prefs = Store.prefs();
+    if (!prefs.calSeries) {
+      prefs.calSeries = {};
+      CAL_SERIES.forEach(sr => { prefs.calSeries[sr.key] = sr.on; });
+    }
+    return prefs.calSeries;
+  }
+
+  function toggleCalSeries(key) {
+    const series = calSeries();
+    series[key] = !series[key];
+    Store.savePrefs();
+    renderCalendar();
+  }
+
+  function renderCalendarLegend() {
+    const host = document.getElementById('cal-legend');
+    if (!host) return;
+    const series = calSeries();
+    host.innerHTML = CAL_SERIES.map(sr =>
+      `<button type="button" class="legend-toggle ${series[sr.key] ? 'on' : ''}"
+               onclick="App.toggleCalSeries('${sr.key}')"
+               title="${series[sr.key] ? 'Hide' : 'Show'} ${sr.label.toLowerCase()} dates">
+         <span class="dot ${sr.key}"></span>${sr.label}
+       </button>`).join('');
+  }
 
   function renderCalendar() {
     const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     document.getElementById('cal-title').textContent = `${monthNames[calMonth]} ${calYear}`;
 
     createdByDay = {};
+    dueByDay = {};
     completedByDay = {};
     tickets().forEach(t => {
       if (t.createdAt) (createdByDay[t.createdAt] = createdByDay[t.createdAt] || []).push(t);
+      if (t.dueDate) (dueByDay[t.dueDate] = dueByDay[t.dueDate] || []).push(t);
       if (t.completedAt) (completedByDay[t.completedAt] = completedByDay[t.completedAt] || []).push(t);
     });
+    renderCalendarLegend();
+    const series = calSeries();
 
     const firstOfMonth = new Date(calYear, calMonth, 1);
     const startWeekday = firstOfMonth.getDay();
@@ -6278,11 +6362,17 @@ const App = (function () {
     for (let day = 1; day <= daysInMonth; day++) {
       const iso = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const isToday = iso === today;
-      const madeCount = (createdByDay[iso] || []).length;
-      const doneCount = (completedByDay[iso] || []).length;
+      const madeCount = series.created ? (createdByDay[iso] || []).length : 0;
+      const dueList = series.due ? (dueByDay[iso] || []) : [];
+      const doneCount = series.completed ? (completedByDay[iso] || []).length : 0;
+
+      /* A due date that has passed with the ticket still open is worth
+         shouting about, so it takes the overdue colour. */
+      const overdue = iso < today && dueList.some(t => !t.completedAt);
 
       let countsHtml = '';
       if (madeCount) countsHtml += `<span class="cal-count-num created">${madeCount}</span>`;
+      if (dueList.length) countsHtml += `<span class="cal-count-num due ${overdue ? 'overdue' : ''}">${dueList.length}</span>`;
       if (doneCount) countsHtml += `<span class="cal-count-num completed">${doneCount}</span>`;
 
       html += `<div class="cal-cell ${isToday ? 'today' : ''}" onclick="App.showDayModal('${iso}')">
@@ -6294,19 +6384,29 @@ const App = (function () {
   }
 
   function showDayModal(iso) {
-    const created = createdByDay[iso] || [];
-    const completed = completedByDay[iso] || [];
-    if (!created.length && !completed.length) return;
+    const series = calSeries();
+    const groups = [
+      { title: 'Due', list: series.due ? (dueByDay[iso] || []) : [] },
+      { title: 'Created', list: series.created ? (createdByDay[iso] || []) : [] },
+      { title: 'Completed', list: series.completed ? (completedByDay[iso] || []) : [] }
+    ].filter(g => g.list.length);
+
+    if (!groups.length) return;
 
     document.getElementById('modal-title').textContent = Util.formatDate(iso);
 
-    let body = '';
-    if (created.length) {
-      body += `<div class="modal-group"><h4>Created</h4><ul>${created.map(t => `<li class="day-task" onclick="App.showTaskDetail('${t.id}', '${iso}')">${Util.escapeHtml(t.title)}</li>`).join('')}</ul></div>`;
-    }
-    if (completed.length) {
-      body += `<div class="modal-group"><h4>Completed</h4><ul>${completed.map(t => `<li class="day-task" onclick="App.showTaskDetail('${t.id}', '${iso}')">${Util.escapeHtml(t.title)}</li>`).join('')}</ul></div>`;
-    }
+    const today = Util.todayStr();
+    const body = groups.map(g => {
+      const items = g.list.map(t => {
+        const late = g.title === 'Due' && !t.completedAt && iso < today;
+        const done = g.title === 'Due' && t.completedAt;
+        const note = late ? ' <span class="day-task-note overdue">overdue</span>'
+                   : (done ? ' <span class="day-task-note done">done</span>' : '');
+        return `<li class="day-task" onclick="App.showTaskDetail('${t.id}', '${iso}')">${Util.escapeHtml(t.title)}${note}</li>`;
+      }).join('');
+      return `<div class="modal-group"><h4>${g.title}</h4><ul>${items}</ul></div>`;
+    }).join('');
+
     document.getElementById('modal-body').innerHTML = body;
     document.getElementById('modal-backdrop').classList.add('active');
   }
@@ -6732,7 +6832,7 @@ const App = (function () {
     openEditModal, saveEditedTask, closeEditModal, closeEditModalOnBackdrop,
     onCategoryChange, onEditCategoryChange,
     submitAddCategory, removeCategoryByIndex,
-    switchView, changeMonth, goToday, showDayModal, showTaskDetail,
+    switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

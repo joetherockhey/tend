@@ -167,6 +167,9 @@ features never need a database migration.
 - **Colours** — the CSS custom properties at the top of `css/styles.css`.
   `--header-bg` and `--header-bg-2` are the header gradient; `--accent` is the
   purple used for buttons and the active tab.
+- **What the calendar plots** — the three chips above the calendar toggle
+  Created, Due and Completed dates on and off. Due and Completed are on by
+  default; the defaults live in `CAL_SERIES` in `js/app.js`.
 - **Categories** — the starting five (Home, Health, Money, Errands, Fun) are in
   `DEFAULT_CATEGORIES` in `js/store.js`. Users can add and remove their own from
   the Categories panel, and each one colour-codes both its tickets and its plant
