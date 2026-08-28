@@ -1329,22 +1329,13 @@ li.task.dragging {
 
 .cal-events {
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: center;
-  gap: 10px;
+  gap: 3px;
   flex: 1;
   min-width: 0;
 }
-
-.cal-count-num {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.cal-count-num.created { color: var(--series-made); }
-.cal-count-num.completed { color: var(--series-done); }
 
 /* Modal */
 .modal-backdrop {
@@ -2077,8 +2068,6 @@ body.gated { overflow: hidden; }
 
 .dot.due { background: var(--series-over); }
 
-.cal-count-num.due { color: var(--series-over); }
-.cal-count-num.due.overdue { color: var(--danger); }
 
 .day-task-note {
   font-size: 0.72rem;
@@ -2090,3 +2079,98 @@ body.gated { overflow: hidden; }
 
 .day-task-note.overdue { background: #fbe9ec; color: var(--danger); }
 .day-task-note.done { background: var(--green-soft); color: var(--green); }
+
+/* ============================================================
+   Calendar cells: labelled counts
+   ============================================================ */
+
+.cal-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  line-height: 1;
+}
+
+.cal-stat-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.cal-stat-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.cal-stat.big .cal-stat-num { font-size: 1.45rem; }
+.cal-stat.small .cal-stat-num { font-size: 0.95rem; }
+.cal-stat.small { opacity: 0.75; }
+
+.cal-stat.due { color: var(--series-over); }
+.cal-stat.due.overdue { color: var(--danger); }
+.cal-stat.completed { color: var(--series-done); }
+.cal-stat.created { color: var(--series-made); }
+
+/* ============================================================
+   Due today button
+   ============================================================ */
+
+.due-today-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.due-today-btn:hover { border-color: var(--accent); }
+
+.due-today-count {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  min-width: 22px;
+  text-align: center;
+}
+
+.due-today-btn.has-due { border-color: #f0d49a; background: #fdf6e7; }
+.due-today-btn.has-due .due-today-count { color: var(--series-over); }
+
+.due-today-btn.has-overdue { border-color: #f3c9d1; background: #fdf0f2; }
+.due-today-btn.has-overdue .due-today-count { color: var(--danger); }
+
+.due-today-text { display: flex; flex-direction: column; gap: 2px; }
+
+.due-today-title { font-size: 0.9rem; font-weight: 600; }
+
+.due-today-sub {
+  font-size: 0.75rem;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .due-today-btn { margin-bottom: 16px; }
+}
+
+/* On a phone a calendar cell is about 48px wide, which is not enough for a word
+   and a number side by side. The legend chips above carry the meaning, so drop
+   the labels and keep the coloured numbers. */
+@media (max-width: 640px) {
+  .cal-stat-label { display: none; }
+  .cal-events { align-items: center; gap: 1px; }
+  .cal-stat.big .cal-stat-num { font-size: 1.15rem; }
+  .cal-stat.small .cal-stat-num { font-size: 0.8rem; }
+}

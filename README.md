@@ -169,7 +169,9 @@ features never need a database migration.
   purple used for buttons and the active tab.
 - **What the calendar plots** — the three chips above the calendar toggle
   Created, Due and Completed dates on and off. Due and Completed are on by
-  default; the defaults live in `CAL_SERIES` in `js/app.js`.
+  default; the defaults live in `CAL_SERIES` in `js/app.js`. Due and Completed
+  are drawn large, Created small, and a day's Due count is the work still
+  outstanding on that date, not everything that was ever due then.
 - **Categories** — the starting five (Home, Health, Money, Errands, Fun) are in
   `DEFAULT_CATEGORIES` in `js/store.js`. Users can add and remove their own from
   the Categories panel, and each one colour-codes both its tickets and its plant

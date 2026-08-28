@@ -424,6 +424,56 @@ const App = (function () {
 
   /* ========================= stats ========================= */
 
+  /* Open tickets due today, and anything already past its date. */
+  function dueToday() {
+    const today = Util.todayStr();
+    return tickets().filter(t => !t.completedAt && !t.archived && t.dueDate === today);
+  }
+
+  function overdueTickets() {
+    const today = Util.todayStr();
+    return tickets().filter(t => !t.completedAt && !t.archived && t.dueDate && t.dueDate < today)
+      .sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1));
+  }
+
+  function renderDueToday() {
+    const btn = document.getElementById('due-today-btn');
+    if (!btn) return;
+    const due = dueToday().length;
+    const late = overdueTickets().length;
+
+    btn.className = 'due-today-btn' + (late ? ' has-overdue' : (due ? ' has-due' : ''));
+    btn.innerHTML = `
+      <span class="due-today-count">${due}</span>
+      <span class="due-today-text">
+        <span class="due-today-title">Due today</span>
+        ${late ? `<span class="due-today-sub">${late} overdue</span>` : ''}
+      </span>`;
+  }
+
+  function showDueToday() {
+    const today = Util.todayStr();
+    const due = dueToday();
+    const late = overdueTickets();
+
+    document.getElementById('modal-title').textContent = 'Due today \u2014 ' + Util.formatDate(today);
+
+    let body = '';
+    if (due.length) {
+      body += `<div class="modal-group"><h4>Today</h4><ul>${due.map(t =>
+        `<li class="day-task" onclick="App.showTaskDetail('${t.id}')">${Util.escapeHtml(t.title)}</li>`).join('')}</ul></div>`;
+    } else {
+      body += '<p class="empty-note">Nothing is due today.</p>';
+    }
+    if (late.length) {
+      body += `<div class="modal-group"><h4>Overdue</h4><ul>${late.map(t =>
+        `<li class="day-task" onclick="App.showTaskDetail('${t.id}')">${Util.escapeHtml(t.title)}
+           <span class="day-task-note overdue">${Util.formatDate(t.dueDate)}</span></li>`).join('')}</ul></div>`;
+    }
+    document.getElementById('modal-body').innerHTML = body;
+    document.getElementById('modal-backdrop').classList.add('active');
+  }
+
   function renderStats() {
     const list = tickets();
     const priorityCount = list.filter(t => !t.completedAt && !t.archived && t.priority).length;
@@ -529,11 +579,12 @@ const App = (function () {
     const series = calSeries();
 
     const firstOfMonth = new Date(calYear, calMonth, 1);
-    const startWeekday = firstOfMonth.getDay();
+    /* Weeks run Monday to Sunday, so shift getDay()'s Sunday-first numbering. */
+    const startWeekday = (firstOfMonth.getDay() + 6) % 7;
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
     const today = Util.todayStr();
 
-    const dows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const dows = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     let html = dows.map(d => `<div class="dow">${d}</div>`).join('');
 
     for (let i = 0; i < startWeekday; i++) html += '<div class="cal-cell empty"></div>';
@@ -542,17 +593,36 @@ const App = (function () {
       const iso = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const isToday = iso === today;
       const madeCount = series.created ? (createdByDay[iso] || []).length : 0;
-      const dueList = series.due ? (dueByDay[iso] || []) : [];
       const doneCount = series.completed ? (completedByDay[iso] || []).length : 0;
 
-      /* A due date that has passed with the ticket still open is worth
-         shouting about, so it takes the overdue colour. */
-      const overdue = iso < today && dueList.some(t => !t.completedAt);
+      /* Only work still outstanding counts as due - a ticket you have finished
+         is not due any more, and it already shows under Completed on the day you
+         did it. Clicking the day still lists the finished ones, marked done. */
+      const dueList = series.due
+        ? (dueByDay[iso] || []).filter(t => !t.completedAt && !t.archived)
+        : [];
 
+      /* A due date that has passed with work still on it is worth shouting about. */
+      const overdue = iso < today && dueList.length > 0;
+
+      /* Big for the two that need acting on, small for the one that is just
+         history. Due leads, because it is the only one about the future. */
       let countsHtml = '';
-      if (madeCount) countsHtml += `<span class="cal-count-num created">${madeCount}</span>`;
-      if (dueList.length) countsHtml += `<span class="cal-count-num due ${overdue ? 'overdue' : ''}">${dueList.length}</span>`;
-      if (doneCount) countsHtml += `<span class="cal-count-num completed">${doneCount}</span>`;
+      if (dueList.length) {
+        countsHtml += `<span class="cal-stat big due ${overdue ? 'overdue' : ''}">
+            <span class="cal-stat-label">Due</span><span class="cal-stat-num">${dueList.length}</span>
+          </span>`;
+      }
+      if (doneCount) {
+        countsHtml += `<span class="cal-stat big completed">
+            <span class="cal-stat-label">Completed</span><span class="cal-stat-num">${doneCount}</span>
+          </span>`;
+      }
+      if (madeCount) {
+        countsHtml += `<span class="cal-stat small created">
+            <span class="cal-stat-label">Created</span><span class="cal-stat-num">${madeCount}</span>
+          </span>`;
+      }
 
       html += `<div class="cal-cell ${isToday ? 'today' : ''}" onclick="App.showDayModal('${iso}')">
                  <div class="cal-daynum">${day}</div>
@@ -959,6 +1029,7 @@ const App = (function () {
   /* ========================= boot ========================= */
 
   function renderAll() {
+    renderDueToday();
     renderCategoryKey();
     populateCategorySelects();
     renderList();
@@ -1012,6 +1083,7 @@ const App = (function () {
     onCategoryChange, onEditCategoryChange,
     submitAddCategory, removeCategoryByIndex,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
+    showDueToday,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
