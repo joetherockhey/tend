@@ -2093,19 +2093,28 @@ body.gated { overflow: hidden; }
    Calendar cells: labelled counts
    ============================================================ */
 
+/* Bubble on top, number under it. A calendar cell can be under 80px wide and
+   "Complete" alone nearly fills that, so laying them side by side made some
+   cells wrap and others not - stacking every one keeps the grid even. */
 .cal-stat {
   display: flex;
-  align-items: baseline;
-  gap: 5px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   line-height: 1;
+  max-width: 100%;
 }
 
+/* The word sits in its own tinted bubble with dark text. Coloured words on a
+   white cell were the hardest thing on the calendar to read - the number
+   carries the colour, the label carries the meaning. */
 .cal-stat-label {
   font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   font-weight: 600;
-  opacity: 0.75;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .cal-stat-num {
@@ -2115,12 +2124,21 @@ body.gated { overflow: hidden; }
 
 .cal-stat.big .cal-stat-num { font-size: 1.45rem; }
 .cal-stat.small .cal-stat-num { font-size: 0.95rem; }
-.cal-stat.small { opacity: 0.75; }
+.cal-stat.small .cal-stat-num { opacity: 0.85; }
 
-.cal-stat.due { color: var(--series-over); }
-.cal-stat.due.overdue { color: var(--danger); }
-.cal-stat.completed { color: var(--series-done); }
-.cal-stat.created { color: var(--series-made); }
+/* Numbers keep the series colour; bubbles pair a soft tint with text dark
+   enough to read comfortably against it. */
+.cal-stat.due .cal-stat-num { color: var(--series-over); }
+.cal-stat.due .cal-stat-label { background: #fdf0d8; color: #8a5500; }
+
+.cal-stat.due.overdue .cal-stat-num { color: var(--danger); }
+.cal-stat.due.overdue .cal-stat-label { background: #fbe9ec; color: #a12b41; }
+
+.cal-stat.completed .cal-stat-num { color: var(--series-done); }
+.cal-stat.completed .cal-stat-label { background: var(--green-soft); color: #0b6b4a; }
+
+.cal-stat.created .cal-stat-num { color: var(--series-made); }
+.cal-stat.created .cal-stat-label { background: var(--accent-soft); color: #5b28c9; }
 
 /* ============================================================
    Due today button
@@ -2183,6 +2201,27 @@ body.gated { overflow: hidden; }
   .cal-stat.big .cal-stat-num { font-size: 1.15rem; }
   .cal-stat.small .cal-stat-num { font-size: 0.8rem; }
 }
+
+/* The counts from the calendar square, repeated at the top of the day it opens. */
+.day-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* The modal has room a calendar cell does not, so the bubble sits beside its
+   number here rather than above it. */
+.day-summary .cal-stat {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.day-summary .cal-stat-label { font-size: 0.75rem; padding: 4px 9px; }
 
 </style>
 </head>
@@ -6438,7 +6477,7 @@ const App = (function () {
   const CAL_SERIES = [
     { key: 'created', label: 'Created', on: false },
     { key: 'due', label: 'Due', on: true },
-    { key: 'completed', label: 'Completed', on: true }
+    { key: 'completed', label: 'Complete', on: true }
   ];
 
   function calSeries() {
@@ -6521,7 +6560,7 @@ const App = (function () {
       }
       if (doneCount) {
         countsHtml += `<span class="cal-stat big completed">
-            <span class="cal-stat-label">Completed</span><span class="cal-stat-num">${doneCount}</span>
+            <span class="cal-stat-label">Complete</span><span class="cal-stat-num">${doneCount}</span>
           </span>`;
       }
       if (madeCount) {
@@ -6543,7 +6582,7 @@ const App = (function () {
     const groups = [
       { title: 'Due', list: series.due ? (dueByDay[iso] || []) : [] },
       { title: 'Created', list: series.created ? (createdByDay[iso] || []) : [] },
-      { title: 'Completed', list: series.completed ? (completedByDay[iso] || []) : [] }
+      { title: 'Complete', list: series.completed ? (completedByDay[iso] || []) : [] }
     ].filter(g => g.list.length);
 
     if (!groups.length) return;
@@ -6551,7 +6590,24 @@ const App = (function () {
     document.getElementById('modal-title').textContent = Util.formatDate(iso);
 
     const today = Util.todayStr();
-    const body = groups.map(g => {
+
+    /* The same labelled counts the square shows, so opening a day confirms what
+       you clicked rather than making you count the rows. Due counts only work
+       still outstanding, exactly as the square does. */
+    const openDue = (dueByDay[iso] || []).filter(t => !t.completedAt && !t.archived).length;
+    const doneCount = (completedByDay[iso] || []).length;
+    const madeCount = (createdByDay[iso] || []).length;
+    const dayOverdue = iso < today && openDue > 0;
+
+    const summary = [
+      series.due && openDue ? `<span class="cal-stat big due ${dayOverdue ? 'overdue' : ''}"><span class="cal-stat-label">Due</span><span class="cal-stat-num">${openDue}</span></span>` : '',
+      series.completed && doneCount ? `<span class="cal-stat big completed"><span class="cal-stat-label">Complete</span><span class="cal-stat-num">${doneCount}</span></span>` : '',
+      series.created && madeCount ? `<span class="cal-stat small created"><span class="cal-stat-label">Created</span><span class="cal-stat-num">${madeCount}</span></span>` : ''
+    ].filter(Boolean).join('');
+
+    const summaryHtml = summary ? `<div class="day-summary">${summary}</div>` : '';
+
+    const body = summaryHtml + groups.map(g => {
       const items = g.list.map(t => {
         const late = g.title === 'Due' && !t.completedAt && iso < today;
         const done = g.title === 'Due' && t.completedAt;

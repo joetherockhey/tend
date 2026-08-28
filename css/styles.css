@@ -2084,19 +2084,28 @@ body.gated { overflow: hidden; }
    Calendar cells: labelled counts
    ============================================================ */
 
+/* Bubble on top, number under it. A calendar cell can be under 80px wide and
+   "Complete" alone nearly fills that, so laying them side by side made some
+   cells wrap and others not - stacking every one keeps the grid even. */
 .cal-stat {
   display: flex;
-  align-items: baseline;
-  gap: 5px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   line-height: 1;
+  max-width: 100%;
 }
 
+/* The word sits in its own tinted bubble with dark text. Coloured words on a
+   white cell were the hardest thing on the calendar to read - the number
+   carries the colour, the label carries the meaning. */
 .cal-stat-label {
   font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   font-weight: 600;
-  opacity: 0.75;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .cal-stat-num {
@@ -2106,12 +2115,21 @@ body.gated { overflow: hidden; }
 
 .cal-stat.big .cal-stat-num { font-size: 1.45rem; }
 .cal-stat.small .cal-stat-num { font-size: 0.95rem; }
-.cal-stat.small { opacity: 0.75; }
+.cal-stat.small .cal-stat-num { opacity: 0.85; }
 
-.cal-stat.due { color: var(--series-over); }
-.cal-stat.due.overdue { color: var(--danger); }
-.cal-stat.completed { color: var(--series-done); }
-.cal-stat.created { color: var(--series-made); }
+/* Numbers keep the series colour; bubbles pair a soft tint with text dark
+   enough to read comfortably against it. */
+.cal-stat.due .cal-stat-num { color: var(--series-over); }
+.cal-stat.due .cal-stat-label { background: #fdf0d8; color: #8a5500; }
+
+.cal-stat.due.overdue .cal-stat-num { color: var(--danger); }
+.cal-stat.due.overdue .cal-stat-label { background: #fbe9ec; color: #a12b41; }
+
+.cal-stat.completed .cal-stat-num { color: var(--series-done); }
+.cal-stat.completed .cal-stat-label { background: var(--green-soft); color: #0b6b4a; }
+
+.cal-stat.created .cal-stat-num { color: var(--series-made); }
+.cal-stat.created .cal-stat-label { background: var(--accent-soft); color: #5b28c9; }
 
 /* ============================================================
    Due today button
@@ -2174,3 +2192,24 @@ body.gated { overflow: hidden; }
   .cal-stat.big .cal-stat-num { font-size: 1.15rem; }
   .cal-stat.small .cal-stat-num { font-size: 0.8rem; }
 }
+
+/* The counts from the calendar square, repeated at the top of the day it opens. */
+.day-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* The modal has room a calendar cell does not, so the bubble sits beside its
+   number here rather than above it. */
+.day-summary .cal-stat {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.day-summary .cal-stat-label { font-size: 0.75rem; padding: 4px 9px; }

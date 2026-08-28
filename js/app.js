@@ -532,7 +532,7 @@ const App = (function () {
   const CAL_SERIES = [
     { key: 'created', label: 'Created', on: false },
     { key: 'due', label: 'Due', on: true },
-    { key: 'completed', label: 'Completed', on: true }
+    { key: 'completed', label: 'Complete', on: true }
   ];
 
   function calSeries() {
@@ -615,7 +615,7 @@ const App = (function () {
       }
       if (doneCount) {
         countsHtml += `<span class="cal-stat big completed">
-            <span class="cal-stat-label">Completed</span><span class="cal-stat-num">${doneCount}</span>
+            <span class="cal-stat-label">Complete</span><span class="cal-stat-num">${doneCount}</span>
           </span>`;
       }
       if (madeCount) {
@@ -637,7 +637,7 @@ const App = (function () {
     const groups = [
       { title: 'Due', list: series.due ? (dueByDay[iso] || []) : [] },
       { title: 'Created', list: series.created ? (createdByDay[iso] || []) : [] },
-      { title: 'Completed', list: series.completed ? (completedByDay[iso] || []) : [] }
+      { title: 'Complete', list: series.completed ? (completedByDay[iso] || []) : [] }
     ].filter(g => g.list.length);
 
     if (!groups.length) return;
@@ -645,7 +645,24 @@ const App = (function () {
     document.getElementById('modal-title').textContent = Util.formatDate(iso);
 
     const today = Util.todayStr();
-    const body = groups.map(g => {
+
+    /* The same labelled counts the square shows, so opening a day confirms what
+       you clicked rather than making you count the rows. Due counts only work
+       still outstanding, exactly as the square does. */
+    const openDue = (dueByDay[iso] || []).filter(t => !t.completedAt && !t.archived).length;
+    const doneCount = (completedByDay[iso] || []).length;
+    const madeCount = (createdByDay[iso] || []).length;
+    const dayOverdue = iso < today && openDue > 0;
+
+    const summary = [
+      series.due && openDue ? `<span class="cal-stat big due ${dayOverdue ? 'overdue' : ''}"><span class="cal-stat-label">Due</span><span class="cal-stat-num">${openDue}</span></span>` : '',
+      series.completed && doneCount ? `<span class="cal-stat big completed"><span class="cal-stat-label">Complete</span><span class="cal-stat-num">${doneCount}</span></span>` : '',
+      series.created && madeCount ? `<span class="cal-stat small created"><span class="cal-stat-label">Created</span><span class="cal-stat-num">${madeCount}</span></span>` : ''
+    ].filter(Boolean).join('');
+
+    const summaryHtml = summary ? `<div class="day-summary">${summary}</div>` : '';
+
+    const body = summaryHtml + groups.map(g => {
       const items = g.list.map(t => {
         const late = g.title === 'Due' && !t.completedAt && iso < today;
         const done = g.title === 'Due' && t.completedAt;
