@@ -24,10 +24,14 @@ create table if not exists public.tickets (
   due_date      date,
   created_on    date        not null default current_date,
   completed_on  date,
+  subtasks      jsonb       not null default '[]'::jsonb,
   sort_index    integer     not null default 0,
   updated_at    timestamptz not null default now(),
   primary key (id, user_id)
 );
+
+-- Added after the first release; safe on a table that already exists.
+alter table public.tickets add column if not exists subtasks jsonb not null default '[]'::jsonb;
 
 create index if not exists tickets_user_idx on public.tickets (user_id, sort_index);
 

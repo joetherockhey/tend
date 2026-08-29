@@ -193,6 +193,7 @@ const Store = (function () {
       due_date: t.dueDate || null,
       created_on: t.createdAt || Util.todayStr(),
       completed_on: t.completedAt || null,
+      subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
       sort_index: index
     };
   }
@@ -210,6 +211,7 @@ const Store = (function () {
       dueDate: r.due_date || null,
       createdAt: r.created_on || Util.todayStr(),
       completedAt: r.completed_on || null,
+      subtasks: Array.isArray(r.subtasks) ? r.subtasks : [],
       _sort: r.sort_index == null ? 0 : r.sort_index
     };
   }
@@ -507,7 +509,8 @@ const Store = (function () {
       archived: !!t.archived,
       dueDate: t.dueDate || null,
       createdAt: t.createdAt || Util.todayStr(),
-      completedAt: t.completedAt || null
+      completedAt: t.completedAt || null,
+      subtasks: Array.isArray(t.subtasks) ? t.subtasks : []
     }));
     if (Array.isArray(data.categories) && data.categories.length) {
       categories = data.categories.map(c => ({

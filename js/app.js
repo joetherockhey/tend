@@ -171,7 +171,8 @@ const App = (function () {
       archived: false,
       dueDate: dueDateInput.value || null,
       createdAt: Util.todayStr(),
-      completedAt: null
+      completedAt: null,
+      subtasks: readSubtaskEditor('new-subtasks')
     });
 
     input.value = '';
@@ -182,6 +183,7 @@ const App = (function () {
     followUpCheckbox.checked = false;
     priorityCheckbox.checked = false;
     dueDateInput.value = '';
+    renderSubtaskEditor('new-subtasks', []);
     onCategoryChange();
     closeNewTaskModal();
 
@@ -190,6 +192,7 @@ const App = (function () {
   }
 
   function openNewTaskModal() {
+    renderSubtaskEditor('new-subtasks', []);
     document.getElementById('new-task-modal-backdrop').classList.add('active');
     document.getElementById('new-task-input').focus();
   }
@@ -241,6 +244,113 @@ const App = (function () {
     if (i !== -1) list.splice(i, 1);
     Store.saveTickets();
     renderAll();
+  }
+
+  /* ---------------------------------------------------------------
+     Subtasks. A ticket carries a small checklist; ticking items off is
+     progress, but only the ticket itself pays a coin.
+     --------------------------------------------------------------- */
+
+  function subtasksOf(t) {
+    return Array.isArray(t.subtasks) ? t.subtasks : [];
+  }
+
+  function subtaskProgress(t) {
+    const list = subtasksOf(t);
+    return { done: list.filter(x => x.done).length, total: list.length };
+  }
+
+  function toggleSubtask(ticketId, subId) {
+    const t = tickets().find(x => x.id === ticketId);
+    if (!t) return;
+    const sub = subtasksOf(t).find(x => x.id === subId);
+    if (!sub) return;
+    sub.done = !sub.done;
+    Store.saveTickets();
+    renderList();
+    renderStats();
+  }
+
+  function toggleSubtaskList(ticketId) {
+    const el = document.getElementById('subs-' + ticketId);
+    if (el) el.hidden = !el.hidden;
+  }
+
+  function renderSubtaskList(t) {
+    const list = subtasksOf(t);
+    if (!list.length) return '';
+    const rows = list.map(sub => `
+      <li class="subtask ${sub.done ? 'done' : ''}">
+        <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="App.toggleSubtask('${t.id}', '${sub.id}')">
+        <span>${Util.escapeHtml(sub.title)}</span>
+      </li>`).join('');
+    return `<ul class="subtask-list" id="subs-${t.id}" hidden>${rows}</ul>`;
+  }
+
+  /* ---- the editor used inside the new and edit forms ---- */
+
+  function renderSubtaskEditor(hostId, list) {
+    const host = document.getElementById(hostId);
+    if (!host) return;
+    host.dataset.items = JSON.stringify(list || []);
+    const items = (list || []).map((sub, i) => `
+      <li class="subtask-edit-row">
+        <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="App.editorToggle('${hostId}', ${i})">
+        <input type="text" value="${Util.escapeHtml(sub.title)}" maxlength="200"
+               oninput="App.editorRename('${hostId}', ${i}, this.value)">
+        <button type="button" class="subtask-remove" title="Remove" onclick="App.editorRemove('${hostId}', ${i})">&times;</button>
+      </li>`).join('');
+    host.innerHTML = `
+      <ul class="subtask-edit-list">${items}</ul>
+      <div class="subtask-add-row">
+        <input type="text" id="${hostId}-add" placeholder="Add a step&hellip;" maxlength="200"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();App.editorAdd('${hostId}');}">
+        <button type="button" class="settings-btn" onclick="App.editorAdd('${hostId}')">Add</button>
+      </div>`;
+  }
+
+  function editorItems(hostId) {
+    const host = document.getElementById(hostId);
+    if (!host) return [];
+    try { return JSON.parse(host.dataset.items || '[]'); } catch (e) { return []; }
+  }
+
+  function editorAdd(hostId) {
+    const input = document.getElementById(hostId + '-add');
+    const title = (input.value || '').trim();
+    if (!title) { input.focus(); return; }
+    const list = editorItems(hostId);
+    list.push({ id: Util.uid(), title: title, done: false });
+    renderSubtaskEditor(hostId, list);
+    const next = document.getElementById(hostId + '-add');
+    if (next) next.focus();
+  }
+
+  function editorRemove(hostId, index) {
+    const list = editorItems(hostId);
+    list.splice(index, 1);
+    renderSubtaskEditor(hostId, list);
+  }
+
+  function editorRename(hostId, index, value) {
+    const host = document.getElementById(hostId);
+    const list = editorItems(hostId);
+    if (!list[index]) return;
+    list[index].title = value;
+    host.dataset.items = JSON.stringify(list);   /* no redraw - it would steal focus */
+  }
+
+  function editorToggle(hostId, index) {
+    const list = editorItems(hostId);
+    if (!list[index]) return;
+    list[index].done = !list[index].done;
+    renderSubtaskEditor(hostId, list);
+  }
+
+  function readSubtaskEditor(hostId) {
+    return editorItems(hostId).filter(x => (x.title || '').trim()).map(x => ({
+      id: x.id || Util.uid(), title: x.title.trim(), done: !!x.done
+    }));
   }
 
   function launchConfetti(x, y) {
@@ -388,6 +498,12 @@ const App = (function () {
     if (t.category) {
       tags.push(`<span class="tag highlighter"><span class="highlight-mark" style="background:${Util.hexToRgba(catColor, 0.4)}">${Util.escapeHtml(t.category)}</span></span>`);
     }
+    const prog = subtaskProgress(t);
+    if (prog.total) {
+      tags.push(`<button type="button" class="tag subtask-tag ${prog.done === prog.total ? 'all-done' : ''}"
+        onclick="event.stopPropagation();App.toggleSubtaskList('${t.id}')"
+        title="Show the steps">&#9744; ${prog.done}/${prog.total}</button>`);
+    }
     if (t.followUp) tags.push('<span class="tag followup">Needs a follow-up</span>');
     if (t.dueDate) {
       const overdue = !done && t.dueDate < Util.todayStr();
@@ -411,6 +527,7 @@ const App = (function () {
           <div class="task-title">${Util.escapeHtml(t.title)}</div>
           ${notesHtml}
           ${tagsHtml}
+          ${renderSubtaskList(t)}
           <div class="task-meta">${metaText}</div>
         </div>
         <div class="task-actions">
@@ -756,6 +873,12 @@ const App = (function () {
     }
     if (t.setting) rows.push(detailRow('Came up', Util.escapeHtml(t.setting)));
     if (t.followUp) rows.push(detailRow('Follow-up', 'Needed'));
+    const dp = subtaskProgress(t);
+    if (dp.total) {
+      rows.push(detailRow('Steps', `${dp.done} of ${dp.total} done<ul class="detail-subtasks">${
+        subtasksOf(t).map(sub => `<li class="${sub.done ? 'done' : ''}">${sub.done ? '&#9745;' : '&#9744;'} ${Util.escapeHtml(sub.title)}</li>`).join('')
+      }</ul>`));
+    }
     if (t.notes) rows.push(detailRow('Notes', Util.escapeHtml(t.notes).replace(/\n/g, '<br>')));
 
     const backBtn = iso ? `<button class="detail-back-btn" onclick="App.showDayModal('${iso}')">&larr; Back to ${Util.formatDate(iso)}</button>` : '';
@@ -796,6 +919,7 @@ const App = (function () {
       document.getElementById('edit-task-category-other').value = '';
     }
     onEditCategoryChange();
+    renderSubtaskEditor('edit-subtasks', subtasksOf(t));
 
     document.getElementById('edit-modal-backdrop').classList.add('active');
   }
@@ -824,6 +948,7 @@ const App = (function () {
     t.followUp = document.getElementById('edit-task-followup').checked;
     t.priority = document.getElementById('edit-task-priority').checked;
     t.dueDate = document.getElementById('edit-task-duedate').value || null;
+    t.subtasks = readSubtaskEditor('edit-subtasks');
 
     Store.saveTickets();
     renderAll();
@@ -917,6 +1042,8 @@ const App = (function () {
         <div id="world-settings"></div>
       </div>
 
+      ${digestSettingsHTML()}
+
       <div class="settings-section">
         <h4>Where your data lives</h4>
         <p>${isCloud
@@ -939,6 +1066,61 @@ const App = (function () {
       </div>`;
     renderWorldSettings();
     document.getElementById('settings-modal-backdrop').classList.add('active');
+  }
+
+  /* ---------------------------------------------------------------
+     Daily summary email. The switch only appears where it can actually
+     do something: cloud accounts, on a site whose owner has set the
+     reminder job up.
+     --------------------------------------------------------------- */
+
+  const DIGEST_HOURS = [6, 7, 8, 9, 12, 17, 20];
+
+  function digestOn() {
+    return !!Store.prefs().dailyEmail;
+  }
+
+  function digestHour() {
+    const h = parseInt(Store.prefs().dailyEmailHour, 10);
+    return DIGEST_HOURS.indexOf(h) === -1 ? 7 : h;
+  }
+
+  function digestSettingsHTML() {
+    if (!Store.config.DAILY_EMAIL || !Store.isCloud()) return '';
+    const on = digestOn();
+    const hour = digestHour();
+    const label = h => (h === 12 ? '12pm' : h > 12 ? (h - 12) + 'pm' : h + 'am');
+    return `
+      <div class="settings-section">
+        <h4>Daily summary email</h4>
+        <p>One email a morning listing what is due today and anything overdue. Nothing is sent on a day with neither.</p>
+        <label class="checkbox-row">
+          <input type="checkbox" id="digest-on" ${on ? 'checked' : ''} onchange="App.setDigest(this.checked)">
+          Email me a daily summary
+        </label>
+        <div class="settings-row" id="digest-time-row" ${on ? '' : 'hidden'}>
+          <label class="field-label" for="digest-hour">Send at</label>
+          <select id="digest-hour" onchange="App.setDigestHour(this.value)">
+            ${DIGEST_HOURS.map(h => `<option value="${h}" ${h === hour ? 'selected' : ''}>${label(h)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="settings-note">Sent to ${Util.escapeHtml(Store.email())}, in your device's time zone.</div>
+      </div>`;
+  }
+
+  function setDigest(on) {
+    Store.prefs().dailyEmail = !!on;
+    if (on && !Store.prefs().dailyEmailHour) Store.prefs().dailyEmailHour = 7;
+    Store.prefs().timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    Store.savePrefs();
+    const row = document.getElementById('digest-time-row');
+    if (row) row.hidden = !on;
+  }
+
+  function setDigestHour(hour) {
+    Store.prefs().dailyEmailHour = parseInt(hour, 10);
+    Store.prefs().timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    Store.savePrefs();
   }
 
   /* The same chooser as the sign-up card, wired to change the live account. */
@@ -1156,12 +1338,14 @@ const App = (function () {
     openEditModal, saveEditedTask, closeEditModal, closeEditModalOnBackdrop,
     onCategoryChange, onEditCategoryChange,
     submitAddCategory, removeCategoryByIndex,
+    toggleSubtask, toggleSubtaskList, editorAdd, editorRemove, editorRename, editorToggle,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, showDueToday,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
     saveDisplayName, exportBackup, forcePull, eraseEverything,
+    setDigest, setDigestHour,
     signOut, switchProfile
   };
 })();

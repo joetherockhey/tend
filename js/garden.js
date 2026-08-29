@@ -941,12 +941,6 @@ const Garden = (function () {
       return;
     }
 
-    if (key === 'x') {
-      event.preventDefault();
-      addCoins(100);
-      return;
-    }
-
     if (key === 'y') {
       event.preventDefault();
       coins = 0;

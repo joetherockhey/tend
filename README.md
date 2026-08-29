@@ -134,6 +134,9 @@ with per-user access rules rather than on a public issue tracker.
 
 ```
 index.html              markup and the page shell
+manifest.webmanifest    makes it installable as a phone app
+sw.js                   service worker: offline use, network-first
+icons/                  app icons (192, 512, maskable, apple-touch)
 css/styles.css          all styling, light theme, responsive
 js/config.js            the only file you edit to configure anything
 js/util.js              dates, escaping, colours, debounce
@@ -144,6 +147,7 @@ js/app.js               tickets, lists, calendar, stats, categories, settings
 js/garden.js            the garden: sprites, movement, shop, pets, sections
 js/boot.js              wires branding in and starts the gate
 supabase/schema.sql     tables, row-level security, triggers
+supabase/daily-digest.sql   optional daily reminder email, all in SQL
 test/mock-supabase.js   a fake backend, for exercising cloud mode locally
 build.py                inlines everything into standalone/tend.html
 standalone/tend.html    the whole app as one file
@@ -183,6 +187,8 @@ features never need a database migration.
 - **The unlock rate** — `TICKETS_PER_SECTION` in `js/garden.js`.
 - **What a plant costs** — `PLANT_COST` in `js/garden.js`, alongside
   `SAPLING_COST` and the pet and item prices.
+- **The app's name and icon on a phone** — `manifest.webmanifest` and `icons/`.
+- **Digest send times offered** — `DIGEST_HOURS` in `js/app.js`.
 - **Worlds** — `js/worlds.js`. Section names, sprites, plant names and art all
   live in the two world objects.
 - **Tile size** — `TILE` at the top of `js/worlds.js`, used by both files.
@@ -208,7 +214,39 @@ that the current world resolves when drawing.
 To add a third world, copy one of the two objects in `worlds.js` and keep the
 keys and array lengths the same. Nothing else needs to change.
 
+### Installing it as a phone app
+
+Tend is a progressive web app, so it installs from the browser with no app store
+involved and no cost. On **iPhone**: open the site in Safari, Share, *Add to Home
+Screen*. On **Android**: Chrome offers *Install app*, or Menu → *Add to Home
+screen*. It then opens full screen with its own icon.
+
+The service worker takes a **network-first** approach for the app's own files:
+online you always get the current code, so a push reaches everyone on their next
+open; the cache is only the fallback for when there is no connection. Requests to
+Supabase are never intercepted, so data is never served stale. Bump `VERSION` in
+`sw.js` if you ever need to force every cache to clear.
+
+Offline, everything still works against the copy in the browser, and the queue
+pushes when the connection returns.
+
+### Daily reminder emails
+
+Optional and off by default. `supabase/daily-digest.sql` adds a job that emails
+each opted-in account a morning list of what is due today and anything overdue,
+sending nothing on a day with neither. It runs inside Postgres - pg_cron wakes it
+hourly, it works out whose local morning it is, and pg_net posts to an email API.
+There is no server and no function to deploy; the file explains the setup, which
+needs an email provider and a domain to send from.
+
+Once it is scheduled, set `DAILY_EMAIL: true` in `js/config.js` and a switch
+appears in each account's settings.
+
 ### How the garden economy works
+
+Tickets can carry a checklist of steps. Ticking steps off shows progress on the
+ticket row, but only completing the ticket itself pays a coin - otherwise a
+ten-step ticket would be worth ten times a one-step one.
 
 Completing a ticket pays one coin, once. The ledger of which tickets have already
 paid sits in `coins-awarded-v1`, so un-ticking a ticket takes its coin back and

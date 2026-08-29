@@ -7,6 +7,12 @@
 <meta name="theme-color" content="#1d2333">
 <title>Tend</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='1'%20x2='1'%20y2='0'%3E%3Cstop%20offset='0'%20stop-color='%2300d68f'/%3E%3Cstop%20offset='1'%20stop-color='%238c52ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M32%2050%20V31'%20stroke='white'%20stroke-width='4.5'%20stroke-linecap='round'/%3E%3Cpath%20d='M32%2032%20C32%2022%2025%2016.5%2016%2016.5%20C16%2026%2023%2032%2032%2032%20Z'%20fill='white'/%3E%3Cpath%20d='M32%2036%20C32%2027%2039%2021.5%2048%2021.5%20C48%2031%2041%2036%2032%2036%20Z'%20fill='white'%20opacity='0.72'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tend">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
 :root {
   --bg: #f5f6fb;
@@ -29,6 +35,10 @@
 }
 
 * { box-sizing: border-box; }
+
+/* A display rule of ours will otherwise beat the browser's own [hidden] rule.
+   Stated once here so every hideable element behaves. */
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -2126,9 +2136,9 @@ body.gated { overflow: hidden; }
   font-weight: 700;
 }
 
-.cal-stat.big .cal-stat-num { font-size: 1.15rem; }
-.cal-stat.small .cal-stat-num { font-size: 0.85rem; }
-.cal-stat.small .cal-stat-num { opacity: 0.85; }
+/* Every count reads at the same size - the colour and the order carry the
+   emphasis, not the type size. */
+.cal-stat .cal-stat-num { font-size: 1.05rem; }
 
 /* Numbers keep the series colour; bubbles pair a soft tint with text dark
    enough to read comfortably against it. */
@@ -2202,8 +2212,7 @@ body.gated { overflow: hidden; }
 @media (max-width: 640px) {
   .cal-stat-label { display: none; }
   .cal-events { align-items: center; gap: 1px; }
-  .cal-stat.big .cal-stat-num { font-size: 1.15rem; }
-  .cal-stat.small .cal-stat-num { font-size: 0.8rem; }
+  .cal-stat .cal-stat-num { font-size: 1rem; }
 }
 
 /* The counts from the calendar square, repeated at the top of the day it opens. */
@@ -2350,6 +2359,128 @@ body.gated { overflow: hidden; }
 .app-layout.cal-wide .content-col { order: 1; flex: 1 1 auto; width: 100%; }
 .app-layout.cal-wide .sidebar { order: 2; flex: 1 1 auto; width: 100%; position: static; top: auto; }
 .app-layout.cal-wide .garden-col { order: 3; flex: 1 1 auto; width: 100%; position: static; top: auto; }
+
+/* ============================================================
+   Subtasks
+   ============================================================ */
+
+.tag.subtask-tag {
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+}
+
+.tag.subtask-tag:hover { border-color: var(--accent); color: var(--accent); }
+.tag.subtask-tag.all-done { color: var(--green); border-color: #b8e6d4; background: var(--green-soft); }
+
+.subtask-list {
+  list-style: none;
+  margin: 6px 0 2px;
+  padding: 0 0 0 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.subtask {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.subtask input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  cursor: pointer;
+  accent-color: var(--green);
+}
+
+.subtask.done span {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* --- editor inside the new / edit forms --- */
+
+.subtask-editor { display: flex; flex-direction: column; gap: 6px; }
+
+.subtask-edit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.subtask-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.subtask-edit-row input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  accent-color: var(--green);
+}
+
+.subtask-edit-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.subtask-remove {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.subtask-remove:hover { color: var(--danger); border-color: var(--danger); }
+
+.subtask-add-row { display: flex; gap: 6px; }
+
+.subtask-add-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.detail-subtasks {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.85rem;
+}
+
+.detail-subtasks li.done { color: var(--muted); text-decoration: line-through; }
 
 </style>
 </head>
@@ -2574,6 +2705,11 @@ body.gated { overflow: hidden; }
         <input type="date" id="edit-task-duedate">
       </div>
 
+      <div class="field-row">
+        <label class="field-label">Steps</label>
+        <div class="subtask-editor" id="edit-subtasks"></div>
+      </div>
+
       <textarea id="edit-task-notes" placeholder="Add more details" rows="2"></textarea>
 
       <div class="modal-actions">
@@ -2620,6 +2756,11 @@ body.gated { overflow: hidden; }
       <div class="field-row">
         <label class="field-label" for="new-task-duedate">When does it need to be done by?</label>
         <input type="date" id="new-task-duedate">
+      </div>
+
+      <div class="field-row">
+        <label class="field-label">Steps</label>
+        <div class="subtask-editor" id="new-subtasks"></div>
       </div>
 
       <textarea id="new-task-notes" placeholder="Add more details" rows="2"></textarea>
@@ -2688,6 +2829,12 @@ window.TEND_CONFIG = {
      a good place for feedback about the app - and a poor place for anyone's
      private to-do list. Leave blank to hide the link. */
   GITHUB_REPO: 'joetherockhey/tend',
+
+  /* Set true once you have run supabase/daily-digest.sql and scheduled it, to
+     reveal the "Daily summary email" switch in each account's settings. Leave
+     false and nobody sees an option that would do nothing. Cloud mode only -
+     a local profile has no email address to send to. */
+  DAILY_EMAIL: false,
 
   /* Where the Supabase client library is loaded from. Change this only if you
      want to self-host the library instead of using the CDN. */
@@ -3819,6 +3966,7 @@ const Store = (function () {
       due_date: t.dueDate || null,
       created_on: t.createdAt || Util.todayStr(),
       completed_on: t.completedAt || null,
+      subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
       sort_index: index
     };
   }
@@ -3836,6 +3984,7 @@ const Store = (function () {
       dueDate: r.due_date || null,
       createdAt: r.created_on || Util.todayStr(),
       completedAt: r.completed_on || null,
+      subtasks: Array.isArray(r.subtasks) ? r.subtasks : [],
       _sort: r.sort_index == null ? 0 : r.sort_index
     };
   }
@@ -4133,7 +4282,8 @@ const Store = (function () {
       archived: !!t.archived,
       dueDate: t.dueDate || null,
       createdAt: t.createdAt || Util.todayStr(),
-      completedAt: t.completedAt || null
+      completedAt: t.completedAt || null,
+      subtasks: Array.isArray(t.subtasks) ? t.subtasks : []
     }));
     if (Array.isArray(data.categories) && data.categories.length) {
       categories = data.categories.map(c => ({
@@ -5112,12 +5262,6 @@ const Garden = (function () {
     if (key === 'e') {
       event.preventDefault();
       togglePickup();
-      return;
-    }
-
-    if (key === 'x') {
-      event.preventDefault();
-      addCoins(100);
       return;
     }
 
@@ -6247,7 +6391,8 @@ const App = (function () {
       archived: false,
       dueDate: dueDateInput.value || null,
       createdAt: Util.todayStr(),
-      completedAt: null
+      completedAt: null,
+      subtasks: readSubtaskEditor('new-subtasks')
     });
 
     input.value = '';
@@ -6258,6 +6403,7 @@ const App = (function () {
     followUpCheckbox.checked = false;
     priorityCheckbox.checked = false;
     dueDateInput.value = '';
+    renderSubtaskEditor('new-subtasks', []);
     onCategoryChange();
     closeNewTaskModal();
 
@@ -6266,6 +6412,7 @@ const App = (function () {
   }
 
   function openNewTaskModal() {
+    renderSubtaskEditor('new-subtasks', []);
     document.getElementById('new-task-modal-backdrop').classList.add('active');
     document.getElementById('new-task-input').focus();
   }
@@ -6317,6 +6464,113 @@ const App = (function () {
     if (i !== -1) list.splice(i, 1);
     Store.saveTickets();
     renderAll();
+  }
+
+  /* ---------------------------------------------------------------
+     Subtasks. A ticket carries a small checklist; ticking items off is
+     progress, but only the ticket itself pays a coin.
+     --------------------------------------------------------------- */
+
+  function subtasksOf(t) {
+    return Array.isArray(t.subtasks) ? t.subtasks : [];
+  }
+
+  function subtaskProgress(t) {
+    const list = subtasksOf(t);
+    return { done: list.filter(x => x.done).length, total: list.length };
+  }
+
+  function toggleSubtask(ticketId, subId) {
+    const t = tickets().find(x => x.id === ticketId);
+    if (!t) return;
+    const sub = subtasksOf(t).find(x => x.id === subId);
+    if (!sub) return;
+    sub.done = !sub.done;
+    Store.saveTickets();
+    renderList();
+    renderStats();
+  }
+
+  function toggleSubtaskList(ticketId) {
+    const el = document.getElementById('subs-' + ticketId);
+    if (el) el.hidden = !el.hidden;
+  }
+
+  function renderSubtaskList(t) {
+    const list = subtasksOf(t);
+    if (!list.length) return '';
+    const rows = list.map(sub => `
+      <li class="subtask ${sub.done ? 'done' : ''}">
+        <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="App.toggleSubtask('${t.id}', '${sub.id}')">
+        <span>${Util.escapeHtml(sub.title)}</span>
+      </li>`).join('');
+    return `<ul class="subtask-list" id="subs-${t.id}" hidden>${rows}</ul>`;
+  }
+
+  /* ---- the editor used inside the new and edit forms ---- */
+
+  function renderSubtaskEditor(hostId, list) {
+    const host = document.getElementById(hostId);
+    if (!host) return;
+    host.dataset.items = JSON.stringify(list || []);
+    const items = (list || []).map((sub, i) => `
+      <li class="subtask-edit-row">
+        <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="App.editorToggle('${hostId}', ${i})">
+        <input type="text" value="${Util.escapeHtml(sub.title)}" maxlength="200"
+               oninput="App.editorRename('${hostId}', ${i}, this.value)">
+        <button type="button" class="subtask-remove" title="Remove" onclick="App.editorRemove('${hostId}', ${i})">&times;</button>
+      </li>`).join('');
+    host.innerHTML = `
+      <ul class="subtask-edit-list">${items}</ul>
+      <div class="subtask-add-row">
+        <input type="text" id="${hostId}-add" placeholder="Add a step&hellip;" maxlength="200"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();App.editorAdd('${hostId}');}">
+        <button type="button" class="settings-btn" onclick="App.editorAdd('${hostId}')">Add</button>
+      </div>`;
+  }
+
+  function editorItems(hostId) {
+    const host = document.getElementById(hostId);
+    if (!host) return [];
+    try { return JSON.parse(host.dataset.items || '[]'); } catch (e) { return []; }
+  }
+
+  function editorAdd(hostId) {
+    const input = document.getElementById(hostId + '-add');
+    const title = (input.value || '').trim();
+    if (!title) { input.focus(); return; }
+    const list = editorItems(hostId);
+    list.push({ id: Util.uid(), title: title, done: false });
+    renderSubtaskEditor(hostId, list);
+    const next = document.getElementById(hostId + '-add');
+    if (next) next.focus();
+  }
+
+  function editorRemove(hostId, index) {
+    const list = editorItems(hostId);
+    list.splice(index, 1);
+    renderSubtaskEditor(hostId, list);
+  }
+
+  function editorRename(hostId, index, value) {
+    const host = document.getElementById(hostId);
+    const list = editorItems(hostId);
+    if (!list[index]) return;
+    list[index].title = value;
+    host.dataset.items = JSON.stringify(list);   /* no redraw - it would steal focus */
+  }
+
+  function editorToggle(hostId, index) {
+    const list = editorItems(hostId);
+    if (!list[index]) return;
+    list[index].done = !list[index].done;
+    renderSubtaskEditor(hostId, list);
+  }
+
+  function readSubtaskEditor(hostId) {
+    return editorItems(hostId).filter(x => (x.title || '').trim()).map(x => ({
+      id: x.id || Util.uid(), title: x.title.trim(), done: !!x.done
+    }));
   }
 
   function launchConfetti(x, y) {
@@ -6464,6 +6718,12 @@ const App = (function () {
     if (t.category) {
       tags.push(`<span class="tag highlighter"><span class="highlight-mark" style="background:${Util.hexToRgba(catColor, 0.4)}">${Util.escapeHtml(t.category)}</span></span>`);
     }
+    const prog = subtaskProgress(t);
+    if (prog.total) {
+      tags.push(`<button type="button" class="tag subtask-tag ${prog.done === prog.total ? 'all-done' : ''}"
+        onclick="event.stopPropagation();App.toggleSubtaskList('${t.id}')"
+        title="Show the steps">&#9744; ${prog.done}/${prog.total}</button>`);
+    }
     if (t.followUp) tags.push('<span class="tag followup">Needs a follow-up</span>');
     if (t.dueDate) {
       const overdue = !done && t.dueDate < Util.todayStr();
@@ -6487,6 +6747,7 @@ const App = (function () {
           <div class="task-title">${Util.escapeHtml(t.title)}</div>
           ${notesHtml}
           ${tagsHtml}
+          ${renderSubtaskList(t)}
           <div class="task-meta">${metaText}</div>
         </div>
         <div class="task-actions">
@@ -6832,6 +7093,12 @@ const App = (function () {
     }
     if (t.setting) rows.push(detailRow('Came up', Util.escapeHtml(t.setting)));
     if (t.followUp) rows.push(detailRow('Follow-up', 'Needed'));
+    const dp = subtaskProgress(t);
+    if (dp.total) {
+      rows.push(detailRow('Steps', `${dp.done} of ${dp.total} done<ul class="detail-subtasks">${
+        subtasksOf(t).map(sub => `<li class="${sub.done ? 'done' : ''}">${sub.done ? '&#9745;' : '&#9744;'} ${Util.escapeHtml(sub.title)}</li>`).join('')
+      }</ul>`));
+    }
     if (t.notes) rows.push(detailRow('Notes', Util.escapeHtml(t.notes).replace(/\n/g, '<br>')));
 
     const backBtn = iso ? `<button class="detail-back-btn" onclick="App.showDayModal('${iso}')">&larr; Back to ${Util.formatDate(iso)}</button>` : '';
@@ -6872,6 +7139,7 @@ const App = (function () {
       document.getElementById('edit-task-category-other').value = '';
     }
     onEditCategoryChange();
+    renderSubtaskEditor('edit-subtasks', subtasksOf(t));
 
     document.getElementById('edit-modal-backdrop').classList.add('active');
   }
@@ -6900,6 +7168,7 @@ const App = (function () {
     t.followUp = document.getElementById('edit-task-followup').checked;
     t.priority = document.getElementById('edit-task-priority').checked;
     t.dueDate = document.getElementById('edit-task-duedate').value || null;
+    t.subtasks = readSubtaskEditor('edit-subtasks');
 
     Store.saveTickets();
     renderAll();
@@ -6993,6 +7262,8 @@ const App = (function () {
         <div id="world-settings"></div>
       </div>
 
+      ${digestSettingsHTML()}
+
       <div class="settings-section">
         <h4>Where your data lives</h4>
         <p>${isCloud
@@ -7015,6 +7286,61 @@ const App = (function () {
       </div>`;
     renderWorldSettings();
     document.getElementById('settings-modal-backdrop').classList.add('active');
+  }
+
+  /* ---------------------------------------------------------------
+     Daily summary email. The switch only appears where it can actually
+     do something: cloud accounts, on a site whose owner has set the
+     reminder job up.
+     --------------------------------------------------------------- */
+
+  const DIGEST_HOURS = [6, 7, 8, 9, 12, 17, 20];
+
+  function digestOn() {
+    return !!Store.prefs().dailyEmail;
+  }
+
+  function digestHour() {
+    const h = parseInt(Store.prefs().dailyEmailHour, 10);
+    return DIGEST_HOURS.indexOf(h) === -1 ? 7 : h;
+  }
+
+  function digestSettingsHTML() {
+    if (!Store.config.DAILY_EMAIL || !Store.isCloud()) return '';
+    const on = digestOn();
+    const hour = digestHour();
+    const label = h => (h === 12 ? '12pm' : h > 12 ? (h - 12) + 'pm' : h + 'am');
+    return `
+      <div class="settings-section">
+        <h4>Daily summary email</h4>
+        <p>One email a morning listing what is due today and anything overdue. Nothing is sent on a day with neither.</p>
+        <label class="checkbox-row">
+          <input type="checkbox" id="digest-on" ${on ? 'checked' : ''} onchange="App.setDigest(this.checked)">
+          Email me a daily summary
+        </label>
+        <div class="settings-row" id="digest-time-row" ${on ? '' : 'hidden'}>
+          <label class="field-label" for="digest-hour">Send at</label>
+          <select id="digest-hour" onchange="App.setDigestHour(this.value)">
+            ${DIGEST_HOURS.map(h => `<option value="${h}" ${h === hour ? 'selected' : ''}>${label(h)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="settings-note">Sent to ${Util.escapeHtml(Store.email())}, in your device's time zone.</div>
+      </div>`;
+  }
+
+  function setDigest(on) {
+    Store.prefs().dailyEmail = !!on;
+    if (on && !Store.prefs().dailyEmailHour) Store.prefs().dailyEmailHour = 7;
+    Store.prefs().timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    Store.savePrefs();
+    const row = document.getElementById('digest-time-row');
+    if (row) row.hidden = !on;
+  }
+
+  function setDigestHour(hour) {
+    Store.prefs().dailyEmailHour = parseInt(hour, 10);
+    Store.prefs().timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    Store.savePrefs();
   }
 
   /* The same chooser as the sign-up card, wired to change the live account. */
@@ -7232,12 +7558,14 @@ const App = (function () {
     openEditModal, saveEditedTask, closeEditModal, closeEditModalOnBackdrop,
     onCategoryChange, onEditCategoryChange,
     submitAddCategory, removeCategoryByIndex,
+    toggleSubtask, toggleSubtaskList, editorAdd, editorRemove, editorRename, editorToggle,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, showDueToday,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
     saveDisplayName, exportBackup, forcePull, eraseEverything,
+    setDigest, setDigestHour,
     signOut, switchProfile
   };
 })();
@@ -7766,6 +8094,18 @@ const Auth = (function () {
   window.addEventListener('error', function (e) {
     console.error('[Tend]', e.message, e.filename + ':' + e.lineno);
   });
+
+  /* Register the service worker so Tend can be installed on a phone and opened
+     with no connection. Only over http(s) - a page opened as a bare file has no
+     origin to scope a worker to, and the single-file build has no sw.js beside
+     it anyway. */
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) {
+        console.warn('[Tend] offline support unavailable:', err && err.message);
+      });
+    });
+  }
 
   Auth.start(function () { App.boot(); });
 })();

@@ -38,5 +38,17 @@
     console.error('[Tend]', e.message, e.filename + ':' + e.lineno);
   });
 
+  /* Register the service worker so Tend can be installed on a phone and opened
+     with no connection. Only over http(s) - a page opened as a bare file has no
+     origin to scope a worker to, and the single-file build has no sw.js beside
+     it anyway. */
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) {
+        console.warn('[Tend] offline support unavailable:', err && err.message);
+      });
+    });
+  }
+
   Auth.start(function () { App.boot(); });
 })();

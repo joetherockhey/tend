@@ -20,6 +20,10 @@
 
 * { box-sizing: border-box; }
 
+/* A display rule of ours will otherwise beat the browser's own [hidden] rule.
+   Stated once here so every hideable element behaves. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -2117,9 +2121,9 @@ body.gated { overflow: hidden; }
   font-weight: 700;
 }
 
-.cal-stat.big .cal-stat-num { font-size: 1.15rem; }
-.cal-stat.small .cal-stat-num { font-size: 0.85rem; }
-.cal-stat.small .cal-stat-num { opacity: 0.85; }
+/* Every count reads at the same size - the colour and the order carry the
+   emphasis, not the type size. */
+.cal-stat .cal-stat-num { font-size: 1.05rem; }
 
 /* Numbers keep the series colour; bubbles pair a soft tint with text dark
    enough to read comfortably against it. */
@@ -2193,8 +2197,7 @@ body.gated { overflow: hidden; }
 @media (max-width: 640px) {
   .cal-stat-label { display: none; }
   .cal-events { align-items: center; gap: 1px; }
-  .cal-stat.big .cal-stat-num { font-size: 1.15rem; }
-  .cal-stat.small .cal-stat-num { font-size: 0.8rem; }
+  .cal-stat .cal-stat-num { font-size: 1rem; }
 }
 
 /* The counts from the calendar square, repeated at the top of the day it opens. */
@@ -2342,3 +2345,125 @@ body.gated { overflow: hidden; }
 .app-layout.cal-wide .content-col { order: 1; flex: 1 1 auto; width: 100%; }
 .app-layout.cal-wide .sidebar { order: 2; flex: 1 1 auto; width: 100%; position: static; top: auto; }
 .app-layout.cal-wide .garden-col { order: 3; flex: 1 1 auto; width: 100%; position: static; top: auto; }
+
+/* ============================================================
+   Subtasks
+   ============================================================ */
+
+.tag.subtask-tag {
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+}
+
+.tag.subtask-tag:hover { border-color: var(--accent); color: var(--accent); }
+.tag.subtask-tag.all-done { color: var(--green); border-color: #b8e6d4; background: var(--green-soft); }
+
+.subtask-list {
+  list-style: none;
+  margin: 6px 0 2px;
+  padding: 0 0 0 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.subtask {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.subtask input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  cursor: pointer;
+  accent-color: var(--green);
+}
+
+.subtask.done span {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* --- editor inside the new / edit forms --- */
+
+.subtask-editor { display: flex; flex-direction: column; gap: 6px; }
+
+.subtask-edit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.subtask-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.subtask-edit-row input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  accent-color: var(--green);
+}
+
+.subtask-edit-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.subtask-remove {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.subtask-remove:hover { color: var(--danger); border-color: var(--danger); }
+
+.subtask-add-row { display: flex; gap: 6px; }
+
+.subtask-add-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.detail-subtasks {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.85rem;
+}
+
+.detail-subtasks li.done { color: var(--muted); text-decoration: line-through; }

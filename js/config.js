@@ -41,6 +41,12 @@ window.TEND_CONFIG = {
      private to-do list. Leave blank to hide the link. */
   GITHUB_REPO: 'joetherockhey/tend',
 
+  /* Set true once you have run supabase/daily-digest.sql and scheduled it, to
+     reveal the "Daily summary email" switch in each account's settings. Leave
+     false and nobody sees an option that would do nothing. Cloud mode only -
+     a local profile has no email address to send to. */
+  DAILY_EMAIL: false,
+
   /* Where the Supabase client library is loaded from. Change this only if you
      want to self-host the library instead of using the CDN. */
   SUPABASE_LIB_URL: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
