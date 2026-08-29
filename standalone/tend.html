@@ -4,11 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="description" content="Tend - a personal ticket tracker where every task you finish grows a garden.">
-<meta name="theme-color" content="#1d2333">
+<meta name="theme-color" content="#10281d">
 <title>Tend</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='1'%20x2='1'%20y2='0'%3E%3Cstop%20offset='0'%20stop-color='%2300d68f'/%3E%3Cstop%20offset='1'%20stop-color='%238c52ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M32%2050%20V31'%20stroke='white'%20stroke-width='4.5'%20stroke-linecap='round'/%3E%3Cpath%20d='M32%2032%20C32%2022%2025%2016.5%2016%2016.5%20C16%2026%2023%2032%2032%2032%20Z'%20fill='white'/%3E%3Cpath%20d='M32%2036%20C32%2027%2039%2021.5%2048%2021.5%20C48%2031%2041%2036%2032%2036%20Z'%20fill='white'%20opacity='0.72'/%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tend">
@@ -29,8 +31,16 @@
   --series-made: #8c52ff;
   --series-done: #00d68f;
   --series-over: #f5a623;
-  --header-bg: #1d2333;
-  --header-bg-2: #2a3350;
+  /* The header ribbon. Every ribbon colour is one of these six tokens, so a
+     theme is a six-line override and nothing else in the page moves. */
+  --header-bg: #10281d;
+  --header-bg-2: #1f4a34;
+  --header-text: #ffffff;
+  --header-dim: rgba(255, 255, 255, 0.65);
+  --header-line: rgba(255, 255, 255, 0.15);
+  --header-chip: rgba(255, 255, 255, 0.1);
+  --header-chip-hover: rgba(255, 255, 255, 0.18);
+  --header-chip-line: rgba(255, 255, 255, 0.2);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -76,7 +86,7 @@ header {
 }
 
 .brand-name {
-  color: #ffffff;
+  color: var(--header-text);
   font-weight: 700;
   font-size: 0.95rem;
   letter-spacing: 0.06em;
@@ -86,11 +96,11 @@ header {
 h1 {
   margin: 0 0 4px;
   font-size: 1.6rem;
-  color: #ffffff;
+  color: var(--header-text);
 }
 
 .subtitle {
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--header-dim);
   margin: 0 0 20px;
   font-size: 0.9rem;
 }
@@ -98,7 +108,7 @@ h1 {
 nav.tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid var(--header-line);
 }
 
 nav.tabs button {
@@ -106,28 +116,28 @@ nav.tabs button {
   border: none;
   padding: 10px 18px;
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--header-dim);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
 
 nav.tabs button:hover {
-  color: #ffffff;
+  color: var(--header-text);
 }
 
 nav.tabs button.active {
-  color: #ffffff;
+  color: var(--header-text);
   border-bottom-color: var(--series-made);
   font-weight: 600;
 }
 
 .garden-toggle-btn {
-  margin-left: auto;
+  margin-left: 12px;
   align-self: center;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.85);
+  background: var(--header-chip);
+  border: 1px solid var(--header-chip-line);
+  color: var(--header-text);
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 0.8rem;
@@ -135,9 +145,12 @@ nav.tabs button.active {
 }
 
 .garden-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  background: var(--header-chip-hover);
+  color: var(--header-text);
 }
+
+/* On the calendar there is no search box, so the button takes the space. */
+.nav-search[hidden] + .garden-toggle-btn { margin-left: auto; }
 
 main {
   max-width: 1440px;
@@ -682,25 +695,70 @@ li.task.done .task-title {
   color: var(--muted);
 }
 
-.search-panel {
-  margin-bottom: 14px;
-  padding-bottom: 16px;
+/* Search sits in the header ribbon beside the tabs, so it costs the ticket
+   list no height at all. It is narrow until you use it. */
+.nav-search {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--header-chip);
+  border: 1px solid var(--header-chip-line);
+  border-radius: 999px;
+  padding: 0 10px;
+  height: 30px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-search:focus-within {
+  background: var(--header-chip-hover);
+  border-color: var(--header-text);
+}
+
+.nav-search-icon {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  line-height: 1;
+  flex: none;
 }
 
 .search-input {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  font-size: 0.95rem;
+  width: 130px;
+  border: none;
+  background: none;
+  color: var(--header-text);
+  font-size: 0.82rem;
   font-family: inherit;
-  background: white;
+  padding: 0;
+  transition: width 0.18s ease;
+  min-width: 0;
 }
 
-.search-input:focus {
-  outline: 2px solid var(--accent-soft);
-  border-color: var(--accent);
+.search-input::placeholder { color: var(--header-dim); }
+.search-input:focus { outline: none; }
+.nav-search:focus-within .search-input,
+.nav-search.has-text .search-input { width: 200px; }
+
+/* Chrome draws its own clear button on type=search; ours matches the ribbon. */
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+.nav-search-clear {
+  border: none;
+  background: none;
+  color: var(--header-dim);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 1px;
+  flex: none;
 }
+
+.nav-search-clear:hover { color: var(--header-text); }
+
+/* Nothing to search on the calendar. */
+.nav-search[hidden] { display: none !important; }
 
 /* Garden */
 .garden-col {
@@ -1805,9 +1863,9 @@ body.gated { overflow: hidden; }
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: var(--header-chip);
+  border: 1px solid var(--header-chip-line);
+  color: var(--header-text);
   padding: 5px 10px 5px 6px;
   border-radius: 999px;
   font: inherit;
@@ -1815,7 +1873,7 @@ body.gated { overflow: hidden; }
   cursor: pointer;
 }
 
-.account-btn:hover { background: rgba(255, 255, 255, 0.18); }
+.account-btn:hover { background: var(--header-chip-hover); }
 
 .account-btn .caret { opacity: 0.7; font-size: 0.65rem; }
 
@@ -1870,13 +1928,13 @@ body.gated { overflow: hidden; }
 
 .sync-badge {
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--header-dim);
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--header-chip);
 }
 
 .sync-dot {
@@ -1888,7 +1946,7 @@ body.gated { overflow: hidden; }
 
 .sync-badge.saving .sync-dot { background: var(--series-over); }
 .sync-badge.offline .sync-dot { background: var(--danger); }
-.sync-badge.local .sync-dot { background: rgba(255, 255, 255, 0.5); }
+.sync-badge.local .sync-dot { background: var(--header-dim); }
 
 /* --- Settings modal --- */
 
@@ -1993,6 +2051,17 @@ body.gated { overflow: hidden; }
   .modal { max-height: 85vh; }
   nav.tabs button { padding: 10px 12px; font-size: 0.9rem; }
   .garden-toggle-btn { font-size: 0.72rem; padding: 5px 9px; }
+  /* On a phone the ribbon has no room for a fourth item on one line, so
+     search drops to its own full-width row under the tabs. */
+  nav.tabs { flex-wrap: wrap; }
+  .nav-search {
+    order: 3;
+    margin: 0 0 8px;
+    width: 100%;
+  }
+  .search-input,
+  .nav-search:focus-within .search-input,
+  .nav-search.has-text .search-input { width: 100%; flex: 1; }
 }
 
 /* ============================================================
@@ -2678,6 +2747,131 @@ body {
   font-size: 0.8rem;
 }
 
+/* The gold coin. Sized to the text it sits beside, wherever it appears. */
+.coin-icon {
+  width: 1.05em;
+  height: 1.05em;
+  display: inline-block;
+  vertical-align: -0.16em;
+  flex: none;
+}
+
+.garden-coins .coin-icon { width: 1.2em; height: 1.2em; }
+.shop-coins .coin-icon { width: 1.15em; height: 1.15em; }
+.shop-tile-action .coin-icon { margin-right: 2px; }
+.coin-help-btn .coin-icon { width: 1.15em; height: 1.15em; vertical-align: -0.2em; }
+.garden-coins .coin-count { margin-left: 2px; }
+
+.shop-tile.owned .shop-tile-action.on  { color: var(--green); }
+.shop-tile.owned .shop-tile-action.off { color: var(--muted); }
+.shop-tile.owned { border-color: var(--border); }
+.shop-tile.owned:hover { border-color: var(--accent); }
+
+/* ---------------------------------------------------------------------------
+   Header themes. Each one sets the same six tokens and nothing else, so the
+   rest of the page is untouched by the choice. `midnight` is the default and
+   needs no block. The theme id lands on <html> as data-theme.
+   --------------------------------------------------------------------------- */
+
+html[data-theme="midnight"] {
+  --header-bg: #1d2333;
+  --header-bg-2: #2a3350;
+}
+
+html[data-theme="slate"] {
+  --header-bg: #21252b;
+  --header-bg-2: #3a414b;
+}
+
+html[data-theme="plum"] {
+  --header-bg: #2a1a45;
+  --header-bg-2: #4f2f80;
+}
+
+html[data-theme="reef"] {
+  --header-bg: #07283a;
+  --header-bg-2: #0f5f75;
+}
+
+html[data-theme="clay"] {
+  --header-bg: #31201a;
+  --header-bg-2: #7a422b;
+}
+
+html[data-theme="ink"] {
+  --header-bg: #0e1014;
+  --header-bg-2: #1e222b;
+}
+
+/* The one light ribbon. Dark text on off-white, so every token flips. */
+html[data-theme="paper"] {
+  --header-bg: #f7f5f0;
+  --header-bg-2: #e8e4dc;
+  --header-text: #1f2430;
+  --header-dim: rgba(31, 36, 48, 0.6);
+  --header-line: rgba(31, 36, 48, 0.14);
+  --header-chip: rgba(31, 36, 48, 0.06);
+  --header-chip-hover: rgba(31, 36, 48, 0.12);
+  --header-chip-line: rgba(31, 36, 48, 0.16);
+}
+
+/* The mark is a coloured tile on a pale ribbon, so it needs edge definition. */
+html[data-theme="paper"] .brand-mark { box-shadow: 0 1px 3px rgba(31, 36, 48, 0.18); }
+
+/* --- the picker in Settings --- */
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.theme-tile {
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  text-align: left;
+  font: inherit;
+}
+
+.theme-tile:hover { border-color: var(--accent); }
+.theme-tile.on { border-color: var(--accent); }
+
+.theme-swatch {
+  height: 42px;
+  display: block;
+  position: relative;
+}
+
+/* A hint of the tab underline and a chip, so the swatch reads as the ribbon. */
+.theme-swatch::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--series-made);
+}
+
+.theme-name {
+  display: block;
+  padding: 6px 8px 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.theme-tile.on .theme-name::after {
+  content: ' \2713';
+  color: var(--accent);
+}
+
 </style>
 </head>
 <body class="gated">
@@ -2712,6 +2906,12 @@ body {
   <nav class="tabs">
     <button id="tab-list" class="active" onclick="App.switchView('list')">Tickets</button>
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
+    <div class="nav-search" id="nav-search">
+      <span class="nav-search-icon" aria-hidden="true">&#128269;</span>
+      <input type="search" class="search-input" id="search-input" placeholder="Search tickets"
+             aria-label="Search tickets by title, notes, category or where it came up">
+      <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
+    </div>
     <button id="garden-toggle-btn" class="garden-toggle-btn" onclick="toggleGardenVisibility()">Hide Garden</button>
   </nav>
 </div>
@@ -2726,7 +2926,7 @@ body {
     <div class="garden-gardener-row">
       <div id="garden-gardener"></div>
       <div class="garden-status" id="garden-status"></div>
-      <div class="garden-coins" id="garden-coins">&#x1FA99; 0</div>
+      <div class="garden-coins" id="garden-coins">0</div>
     </div>
     <div class="garden-plot-wrap">
       <div class="garden-plot" id="garden-plot" tabindex="0"
@@ -2740,7 +2940,7 @@ body {
       <li id="garden-buy-hint">Finish a ticket to earn a coin, then buy a plant in the shop below.</li>
     </ul>
     <div class="garden-help-icons">
-      <button class="help-icon-btn" onclick="showHelpTopic('coins')" title="Coins and plants">&#x1FA99;</button>
+      <button class="help-icon-btn coin-help-btn" onclick="showHelpTopic('coins')" title="Coins and plants"></button>
       <button class="help-icon-btn" onclick="showHelpTopic('water')" title="Watering">&#x1F4A7;</button>
       <button class="help-icon-btn" onclick="showHelpTopic('pickup')" title="Picking things up">&#x270B;</button>
       <button class="help-icon-btn" onclick="showHelpTopic('axe')" title="Axe">&#x1FA93;</button>
@@ -2756,7 +2956,7 @@ body {
 
   <div class="panel">
     <h2>Shop</h2>
-    <div class="shop-coins" id="shop-coins-row">&#x1FA99; <span id="shop-coins-amt">0</span></div>
+    <div class="shop-coins" id="shop-coins-row"><span id="shop-coins-icon"></span> <span id="shop-coins-amt">0</span></div>
     <div class="shop-columns">
       <div class="shop-column">
         <div class="shop-section-title">Plants</div>
@@ -2779,10 +2979,6 @@ body {
 <div class="content-col">
 
   <div id="view-list" class="view active">
-    <div class="panel search-panel">
-      <input type="text" class="search-input" id="search-input" placeholder="Search tickets by title, notes, category, or where it came up...">
-    </div>
-
     <div class="active-priority-grid">
       <section class="list-section">
         <h2>Priority</h2>
@@ -5422,6 +5618,7 @@ const Garden = (function () {
   const DUG_TILES_KEY = 'garden-dug-v1';
   const COINS_AWARDED_KEY = 'coins-awarded-v1';
   const LENS_KEY = 'garden-lens-v1';
+  const LENS_ON_KEY = 'garden-lens-on-v1';
   const LENS_COST = 4;
 
   let movableLayout = {};
@@ -5437,6 +5634,7 @@ const Garden = (function () {
   let heldSapling = null;
   let dugTiles = new Set();
   let hasLens = false;
+  let lensOn = true;
   let lensLastKey = '';
   let lensTimer = null;
   let activeThought = null;
@@ -5636,9 +5834,42 @@ const Garden = (function () {
       bumpCoinDisplay(n);
     }
   }
+  /* Gold, with Tend's own sprout struck into it, rather than the platform's
+     silver coin emoji. One definition, used by the counter, the shop prices
+     and the little float when you earn one. */
+  const COIN_SVG =
+    '<svg class="coin-icon" viewBox="0 0 24 24" role="img" aria-label="coin">' +
+      '<defs>' +
+        '<linearGradient id="tend-coin-face" x1="0" y1="0" x2="0.4" y2="1">' +
+          '<stop offset="0" stop-color="#ffe9a3"/>' +
+          '<stop offset="0.45" stop-color="#f5c542"/>' +
+          '<stop offset="1" stop-color="#d99a17"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+      '<circle cx="12" cy="12" r="11" fill="#b87b0d"/>' +
+      '<circle cx="12" cy="12" r="9.6" fill="url(#tend-coin-face)"/>' +
+      '<circle cx="12" cy="12" r="7.9" fill="none" stroke="#e0ab24" stroke-width="0.8" opacity="0.75"/>' +
+      /* the mark from the logo, struck in relief */
+      '<g fill="none" stroke="#8a5a08" stroke-width="1.5" stroke-linecap="round">' +
+        '<path d="M12 17.4 V11.2"/>' +
+      '</g>' +
+      '<path d="M12 11.6 C12 8.4 9.7 6.6 6.8 6.6 C6.8 9.8 9.1 11.6 12 11.6 Z" fill="#8a5a08"/>' +
+      '<path d="M12 12.9 C12 10 14.3 8.2 17.2 8.2 C17.2 11.1 14.9 12.9 12 12.9 Z" fill="#8a5a08" opacity="0.72"/>' +
+      '<ellipse cx="8.6" cy="7.6" rx="2.4" ry="1.5" fill="#fff6d6" opacity="0.45" transform="rotate(-35 8.6 7.6)"/>' +
+    '</svg>';
+
+  /* Each copy needs its own gradient id or later ones can render blank. */
+  let coinIdSeq = 0;
+  function coinSVG() {
+    const id = 'tend-coin-face-' + (++coinIdSeq);
+    return COIN_SVG.split('tend-coin-face').join(id);
+  }
+
   function renderCoins() {
     const el = document.getElementById('garden-coins');
-    if (el) el.textContent = `\u{1FA99} ${coins}`;
+    if (el) el.innerHTML = `${coinSVG()} <span class="coin-count">${coins}</span>`;
+    const shopIcon = document.getElementById('shop-coins-icon');
+    if (shopIcon) shopIcon.innerHTML = coinSVG();
     const shopEl = document.getElementById('shop-coins-amt');
     if (shopEl) shopEl.textContent = coins;
     renderShop();
@@ -6450,21 +6681,41 @@ const Garden = (function () {
 
   function loadLens() {
     hasLens = Store.kv.getItem(LENS_KEY) === '1';
+    /* On by default once bought, but the switch is remembered. */
+    lensOn = Store.kv.getItem(LENS_ON_KEY) !== '0';
   }
 
   function saveLens() {
     Store.kv.setItem(LENS_KEY, hasLens ? '1' : '0');
+    Store.kv.setItem(LENS_ON_KEY, lensOn ? '1' : '0');
   }
 
   function buyLens() {
     if (hasLens || coins < LENS_COST) return;
     coins -= LENS_COST;
     hasLens = true;
+    lensOn = true;
     saveCoins();
     saveLens();
     renderCoins();
     renderShop();
     showThought('You can name things now');
+  }
+
+  /* Bought once, but not everybody wants a bubble over their head all the
+     time - so it has a switch, and turning it off does not lose the purchase. */
+  function toggleLens() {
+    if (!hasLens) return;
+    lensOn = !lensOn;
+    lensLastKey = '';
+    if (!lensOn) {
+      activeThought = null;
+      if (lensTimer) { clearTimeout(lensTimer); lensTimer = null; }
+      positionHero();
+    }
+    saveLens();
+    renderShop();
+    if (lensOn) showThought('Naming things again');
   }
 
   function decorName(key) {
@@ -6520,7 +6771,7 @@ const Garden = (function () {
      to. The nearest thing wins, and the same thing does not announce itself
      twice in a row. */
   function lensLook(facingRow, facingCol) {
-    if (!hasLens) return;
+    if (!hasLens || !lensOn) return;
     const cells = [];
     if (Number.isFinite(facingRow) && Number.isFinite(facingCol)) cells.push([facingRow, facingCol]);
     [[-1, 0], [0, 1], [1, 0], [0, -1]].forEach(([dr, dc]) =>
@@ -6725,12 +6976,12 @@ const Garden = (function () {
         <button class="shop-tile" ${(coins < def.cost || capped) ? 'disabled' : ''} onclick="buyPet('${type}')">
           <span class="shop-tile-icon">${def.icon}</span>
           <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
-          <span class="shop-tile-action">\u{1FA99}${def.cost}</span>
+          <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
         </button>`).join('') +
         `<button class="shop-tile" ${(coins < UNLOCK_PET_COST || capped) ? 'disabled' : ''} onclick="unlockRandomPet()">
           <span class="shop-tile-icon">\u{2728}</span>
           <span class="shop-tile-label">Mystery pet</span>
-          <span class="shop-tile-action">\u{1FA99}${UNLOCK_PET_COST}</span>
+          <span class="shop-tile-action">${coinSVG()}${UNLOCK_PET_COST}</span>
         </button>`;
       petsWrap.innerHTML = `<div class="shop-info">Pets: ${ownedPets.length}/${MAX_PETS}</div><div class="shop-grid">${tiles}</div>`;
     }
@@ -6744,7 +6995,7 @@ const Garden = (function () {
            <button class="shop-tile" ${coins < PLANT_COST ? 'disabled' : ''} onclick="buyPlant()">
              <span class="shop-tile-icon">\u{1F33B}</span>
              <span class="shop-tile-label">${Util.escapeHtml(cap(terms().plant))} (random variety)</span>
-             <span class="shop-tile-action">\u{1FA99}${PLANT_COST}</span>
+             <span class="shop-tile-action">${coinSVG()}${PLANT_COST}</span>
            </button>
          </div>`;
     }
@@ -6755,23 +7006,30 @@ const Garden = (function () {
         <button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyItem('${kind}')">
           <span class="shop-tile-icon">${def.icon}</span>
           <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
-          <span class="shop-tile-action">\u{1FA99}${def.cost}</span>
+          <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
         </button>`).join('') +
         `<button class="shop-tile" ${coins < SAPLING_COST ? 'disabled' : ''} onclick="buySapling()">
           <span class="shop-tile-icon">\u{1F331}</span>
           <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))} (water 5x to grow)</span>
-          <span class="shop-tile-action">\u{1FA99}${SAPLING_COST}</span>
+          <span class="shop-tile-action">${coinSVG()}${SAPLING_COST}</span>
         </button>` +
-        `<button class="shop-tile ${hasLens ? 'owned' : ''}" ${(hasLens || coins < LENS_COST) ? 'disabled' : ''} onclick="buyLens()"
-           title="Walk up to anything and it tells you what it is">
-          <span class="shop-tile-icon">\u{1F50D}</span>
-          <span class="shop-tile-label">Magnifying glass (names things)</span>
-          <span class="shop-tile-action">${hasLens ? 'Owned' : '\u{1FA99}' + LENS_COST}</span>
-        </button>` +
+        (hasLens
+          ? `<button class="shop-tile owned" onclick="toggleLens()"
+               title="${lensOn ? 'Tap to stop naming things' : 'Tap to name things again'}">
+              <span class="shop-tile-icon">\u{1F50D}</span>
+              <span class="shop-tile-label">Magnifying glass</span>
+              <span class="shop-tile-action ${lensOn ? 'on' : 'off'}">Naming: ${lensOn ? 'on' : 'off'}</span>
+            </button>`
+          : `<button class="shop-tile" ${coins < LENS_COST ? 'disabled' : ''} onclick="buyLens()"
+               title="Walk up to anything and it tells you what it is">
+              <span class="shop-tile-icon">\u{1F50D}</span>
+              <span class="shop-tile-label">Magnifying glass (names things)</span>
+              <span class="shop-tile-action">${coinSVG()}${LENS_COST}</span>
+            </button>`) +
         `<button class="shop-tile" ${coins < RESET_PURCHASES_COST ? 'disabled' : ''} onclick="resetGarden()">
           <span class="shop-tile-icon">\u{267B}</span>
           <span class="shop-tile-label">Reset ${Util.escapeHtml(terms().place)}</span>
-          <span class="shop-tile-action">\u{1FA99}${RESET_PURCHASES_COST}</span>
+          <span class="shop-tile-action">${coinSVG()}${RESET_PURCHASES_COST}</span>
         </button>`;
       itemsWrap.innerHTML = `<div class="shop-grid">${tiles}</div>`;
     }
@@ -6785,7 +7043,7 @@ const Garden = (function () {
         const tile = `<button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyFood()">
             <span class="shop-tile-icon">${def.icon}</span>
             <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
-            <span class="shop-tile-action">\u{1FA99}${def.cost}</span>
+            <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
           </button>`;
         /* Who still needs winning over, so the one food tile is enough. */
         const roster = ownedPets.map(p => {
@@ -6808,7 +7066,7 @@ const Garden = (function () {
         } else if (owned) {
           action = 'Equip'; onclick = `equipOutfit('${id}')`; disabled = false;
         } else {
-          action = `\u{1FA99}${def.cost}`; onclick = `buyOutfit('${id}')`; disabled = coins < def.cost;
+          action = `${coinSVG()}${def.cost}`; onclick = `buyOutfit('${id}')`; disabled = coins < def.cost;
         }
         return `<button class="shop-tile${cls}" ${disabled ? 'disabled' : ''} onclick="${onclick}">
           <span class="shop-tile-icon">${def.icon}</span>
@@ -7086,7 +7344,7 @@ const Garden = (function () {
     const who = heroName();
     const t = terms();
     return {
-      coins: { icon: '\u{1FA99}', title: 'Coins and ' + t.plants, body: 'Every ticket you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each, a random variety - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a ticket and its coin goes back.' },
+      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every ticket you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each, a random variety - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a ticket and its coin goes back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering', body: 'Move right up next to a ' + t.plant + ' to water it (once per minute each). Watering is for the pleasure of it - a sparkle and a splash - it earns no coins. ' + t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's are the exception: they need five waterings to grow.' },
       pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool.' },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
@@ -7171,6 +7429,8 @@ const Garden = (function () {
     if (hint) hint.textContent = moveHintText();
     const useHint = document.getElementById('garden-use-hint');
     if (useHint) useHint.hidden = isTouchDevice();
+    const coinHelp = document.querySelector('.coin-help-btn');
+    if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     render();
@@ -7191,6 +7451,8 @@ const Garden = (function () {
     if (hint) hint.textContent = moveHintText();
     const useHint = document.getElementById('garden-use-hint');
     if (useHint) useHint.hidden = isTouchDevice();
+    const coinHelp = document.querySelector('.coin-help-btn');
+    if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     currentHelpTopic = null;
@@ -7215,6 +7477,7 @@ const Garden = (function () {
   window.buySapling = buySapling;
   window.buyFood = buyFood;
   window.buyLens = buyLens;
+  window.toggleLens = toggleLens;
   window.unlockRandomPet = unlockRandomPet;
   window.resetGarden = resetGarden;
   window.showHelpTopic = showHelpTopic;
@@ -7870,8 +8133,32 @@ const App = (function () {
     document.getElementById('view-calendar').classList.toggle('active', view === 'calendar');
     document.getElementById('tab-list').classList.toggle('active', view === 'list');
     document.getElementById('tab-calendar').classList.toggle('active', view === 'calendar');
+    /* There is nothing to search on the calendar. */
+    const search = document.getElementById('nav-search');
+    if (search) search.hidden = view !== 'list';
     if (view === 'calendar') renderCalendar();
     applyCalendarWidth();
+  }
+
+  /* Keeps the little clear button and the widened field in step with whether
+     anything has actually been typed. */
+  function syncSearchChrome() {
+    const input = document.getElementById('search-input');
+    const wrap = document.getElementById('nav-search');
+    const clear = document.getElementById('search-clear');
+    if (!input || !wrap) return;
+    const has = !!input.value;
+    wrap.classList.toggle('has-text', has);
+    if (clear) clear.hidden = !has;
+  }
+
+  function clearSearch() {
+    const input = document.getElementById('search-input');
+    if (!input) return;
+    input.value = '';
+    syncSearchChrome();
+    renderList();
+    input.focus();
   }
 
   function changeMonth(delta) {
@@ -8416,6 +8703,59 @@ const App = (function () {
     if (sec) sec.hidden = true;
   }
 
+  /* ---------------------------------------------------------------
+     Header themes. Only the ribbon changes - the page below it stays
+     the same, which is the whole point of keeping them to six tokens.
+     --------------------------------------------------------------- */
+
+  const THEMES = [
+    { id: 'forest',   name: 'Forest',   from: '#10281d', to: '#1f4a34' },
+    { id: 'midnight', name: 'Midnight', from: '#1d2333', to: '#2a3350' },
+    { id: 'reef',     name: 'Reef',     from: '#07283a', to: '#0f5f75' },
+    { id: 'plum',     name: 'Plum',     from: '#2a1a45', to: '#4f2f80' },
+    { id: 'slate',    name: 'Slate',    from: '#21252b', to: '#3a414b' },
+    { id: 'clay',     name: 'Clay',     from: '#31201a', to: '#7a422b' },
+    { id: 'ink',      name: 'Ink',      from: '#0e1014', to: '#1e222b' },
+    { id: 'paper',    name: 'Paper',    from: '#f7f5f0', to: '#e8e4dc' }
+  ];
+
+  const DEFAULT_THEME = 'forest';
+
+  function currentTheme() {
+    const id = Store.prefs().theme;
+    return THEMES.some(t => t.id === id) ? id : DEFAULT_THEME;
+  }
+
+  function applyTheme() {
+    const id = currentTheme();
+    /* The default is what :root already says, so it carries no attribute. */
+    if (id === DEFAULT_THEME) document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', id);
+
+    /* Keep the phone's own chrome (status bar, task switcher) in step. */
+    const t = THEMES.find(x => x.id === id) || THEMES[0];
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', t.from);
+  }
+
+  function setTheme(id) {
+    Store.prefs().theme = id;
+    Store.savePrefs();
+    applyTheme();
+    renderThemePicker();
+  }
+
+  function renderThemePicker() {
+    const host = document.getElementById('theme-picker');
+    if (!host) return;
+    const current = currentTheme();
+    host.innerHTML = `<div class="theme-grid">${THEMES.map(t => `
+      <button type="button" class="theme-tile ${t.id === current ? 'on' : ''}" onclick="App.setTheme('${t.id}')">
+        <span class="theme-swatch" style="background:linear-gradient(120deg, ${t.from} 0%, ${t.to} 100%)"></span>
+        <span class="theme-name">${Util.escapeHtml(t.name)}</span>
+      </button>`).join('')}</div>`;
+  }
+
   function openSettings() {
     document.getElementById('account-dropdown').hidden = true;
     setSettingsTitle('Settings & backup');
@@ -8429,6 +8769,12 @@ const App = (function () {
           <button class="settings-btn primary" onclick="App.saveDisplayName()">Save</button>
         </div>
         <div class="settings-note" id="settings-name-note"></div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Header colour</h4>
+        <p>Changes the ribbon at the top of the page. Click one to see it straight away.</p>
+        <div id="theme-picker"></div>
       </div>
 
       <div class="settings-section">
@@ -8460,6 +8806,7 @@ const App = (function () {
         </div>
       </div>`;
     renderWorldSettings();
+    renderThemePicker();
     document.getElementById('settings-modal-backdrop').classList.add('active');
   }
 
@@ -8712,6 +9059,7 @@ const App = (function () {
 
   function boot() {
     loadViewPrefs();
+    applyTheme();
 
     const now = new Date();
     calYear = now.getFullYear();
@@ -8733,6 +9081,7 @@ const App = (function () {
       if (Store.onChange) {
         Store.onChange(function () {
           Garden.loadAll();
+          applyTheme();
           renderAll();
           applyCalendarWidth();
           Garden.reskin();
@@ -8741,7 +9090,13 @@ const App = (function () {
       }
 
       document.getElementById('new-task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
-      document.getElementById('search-input').addEventListener('input', renderList);
+      document.getElementById('search-input').addEventListener('input', function () {
+        syncSearchChrome();
+        renderList();
+      });
+      document.getElementById('search-input').addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { e.stopPropagation(); clearSearch(); }
+      });
       document.getElementById('import-file').addEventListener('change', function () { handleImportFile(this); });
 
       document.addEventListener('click', function (e) {
@@ -8771,6 +9126,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt,
+    clearSearch, setTheme,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

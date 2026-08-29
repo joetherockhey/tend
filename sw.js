@@ -15,7 +15,7 @@
    through, so your data is never served from a stale cache.
    ============================================================================ */
 
-const VERSION = 'tend-v3';
+const VERSION = 'tend-v5';
 const APP_SHELL = [
   './',
   './index.html',
@@ -30,7 +30,8 @@ const APP_SHELL = [
   './js/boot.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './icons/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', event => {

@@ -285,6 +285,7 @@ const Garden = (function () {
   const DUG_TILES_KEY = 'garden-dug-v1';
   const COINS_AWARDED_KEY = 'coins-awarded-v1';
   const LENS_KEY = 'garden-lens-v1';
+  const LENS_ON_KEY = 'garden-lens-on-v1';
   const LENS_COST = 4;
 
   let movableLayout = {};
@@ -300,6 +301,7 @@ const Garden = (function () {
   let heldSapling = null;
   let dugTiles = new Set();
   let hasLens = false;
+  let lensOn = true;
   let lensLastKey = '';
   let lensTimer = null;
   let activeThought = null;
@@ -499,9 +501,42 @@ const Garden = (function () {
       bumpCoinDisplay(n);
     }
   }
+  /* Gold, with Tend's own sprout struck into it, rather than the platform's
+     silver coin emoji. One definition, used by the counter, the shop prices
+     and the little float when you earn one. */
+  const COIN_SVG =
+    '<svg class="coin-icon" viewBox="0 0 24 24" role="img" aria-label="coin">' +
+      '<defs>' +
+        '<linearGradient id="tend-coin-face" x1="0" y1="0" x2="0.4" y2="1">' +
+          '<stop offset="0" stop-color="#ffe9a3"/>' +
+          '<stop offset="0.45" stop-color="#f5c542"/>' +
+          '<stop offset="1" stop-color="#d99a17"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+      '<circle cx="12" cy="12" r="11" fill="#b87b0d"/>' +
+      '<circle cx="12" cy="12" r="9.6" fill="url(#tend-coin-face)"/>' +
+      '<circle cx="12" cy="12" r="7.9" fill="none" stroke="#e0ab24" stroke-width="0.8" opacity="0.75"/>' +
+      /* the mark from the logo, struck in relief */
+      '<g fill="none" stroke="#8a5a08" stroke-width="1.5" stroke-linecap="round">' +
+        '<path d="M12 17.4 V11.2"/>' +
+      '</g>' +
+      '<path d="M12 11.6 C12 8.4 9.7 6.6 6.8 6.6 C6.8 9.8 9.1 11.6 12 11.6 Z" fill="#8a5a08"/>' +
+      '<path d="M12 12.9 C12 10 14.3 8.2 17.2 8.2 C17.2 11.1 14.9 12.9 12 12.9 Z" fill="#8a5a08" opacity="0.72"/>' +
+      '<ellipse cx="8.6" cy="7.6" rx="2.4" ry="1.5" fill="#fff6d6" opacity="0.45" transform="rotate(-35 8.6 7.6)"/>' +
+    '</svg>';
+
+  /* Each copy needs its own gradient id or later ones can render blank. */
+  let coinIdSeq = 0;
+  function coinSVG() {
+    const id = 'tend-coin-face-' + (++coinIdSeq);
+    return COIN_SVG.split('tend-coin-face').join(id);
+  }
+
   function renderCoins() {
     const el = document.getElementById('garden-coins');
-    if (el) el.textContent = `\u{1FA99} ${coins}`;
+    if (el) el.innerHTML = `${coinSVG()} <span class="coin-count">${coins}</span>`;
+    const shopIcon = document.getElementById('shop-coins-icon');
+    if (shopIcon) shopIcon.innerHTML = coinSVG();
     const shopEl = document.getElementById('shop-coins-amt');
     if (shopEl) shopEl.textContent = coins;
     renderShop();
@@ -1327,21 +1362,41 @@ const Garden = (function () {
 
   function loadLens() {
     hasLens = Store.kv.getItem(LENS_KEY) === '1';
+    /* On by default once bought, but the switch is remembered. */
+    lensOn = Store.kv.getItem(LENS_ON_KEY) !== '0';
   }
 
   function saveLens() {
     Store.kv.setItem(LENS_KEY, hasLens ? '1' : '0');
+    Store.kv.setItem(LENS_ON_KEY, lensOn ? '1' : '0');
   }
 
   function buyLens() {
     if (hasLens || coins < LENS_COST) return;
     coins -= LENS_COST;
     hasLens = true;
+    lensOn = true;
     saveCoins();
     saveLens();
     renderCoins();
     renderShop();
     showThought('You can name things now');
+  }
+
+  /* Bought once, but not everybody wants a bubble over their head all the
+     time - so it has a switch, and turning it off does not lose the purchase. */
+  function toggleLens() {
+    if (!hasLens) return;
+    lensOn = !lensOn;
+    lensLastKey = '';
+    if (!lensOn) {
+      activeThought = null;
+      if (lensTimer) { clearTimeout(lensTimer); lensTimer = null; }
+      positionHero();
+    }
+    saveLens();
+    renderShop();
+    if (lensOn) showThought('Naming things again');
   }
 
   function decorName(key) {
@@ -1397,7 +1452,7 @@ const Garden = (function () {
      to. The nearest thing wins, and the same thing does not announce itself
      twice in a row. */
   function lensLook(facingRow, facingCol) {
-    if (!hasLens) return;
+    if (!hasLens || !lensOn) return;
     const cells = [];
     if (Number.isFinite(facingRow) && Number.isFinite(facingCol)) cells.push([facingRow, facingCol]);
     [[-1, 0], [0, 1], [1, 0], [0, -1]].forEach(([dr, dc]) =>
@@ -1602,12 +1657,12 @@ const Garden = (function () {
         <button class="shop-tile" ${(coins < def.cost || capped) ? 'disabled' : ''} onclick="buyPet('${type}')">
           <span class="shop-tile-icon">${def.icon}</span>
           <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
-          <span class="shop-tile-action">\u{1FA99}${def.cost}</span>
+          <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
         </button>`).join('') +
         `<button class="shop-tile" ${(coins < UNLOCK_PET_COST || capped) ? 'disabled' : ''} onclick="unlockRandomPet()">
           <span class="shop-tile-icon">\u{2728}</span>
           <span class="shop-tile-label">Mystery pet</span>
-          <span class="shop-tile-action">\u{1FA99}${UNLOCK_PET_COST}</span>
+          <span class="shop-tile-action">${coinSVG()}${UNLOCK_PET_COST}</span>
         </button>`;
       petsWrap.innerHTML = `<div class="shop-info">Pets: ${ownedPets.length}/${MAX_PETS}</div><div class="shop-grid">${tiles}</div>`;
     }
@@ -1621,7 +1676,7 @@ const Garden = (function () {
            <button class="shop-tile" ${coins < PLANT_COST ? 'disabled' : ''} onclick="buyPlant()">
              <span class="shop-tile-icon">\u{1F33B}</span>
              <span class="shop-tile-label">${Util.escapeHtml(cap(terms().plant))} (random variety)</span>
-             <span class="shop-tile-action">\u{1FA99}${PLANT_COST}</span>
+             <span class="shop-tile-action">${coinSVG()}${PLANT_COST}</span>
            </button>
          </div>`;
     }
@@ -1632,23 +1687,30 @@ const Garden = (function () {
         <button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyItem('${kind}')">
           <span class="shop-tile-icon">${def.icon}</span>
           <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
-          <span class="shop-tile-action">\u{1FA99}${def.cost}</span>
+          <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
         </button>`).join('') +
         `<button class="shop-tile" ${coins < SAPLING_COST ? 'disabled' : ''} onclick="buySapling()">
           <span class="shop-tile-icon">\u{1F331}</span>
           <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))} (water 5x to grow)</span>
-          <span class="shop-tile-action">\u{1FA99}${SAPLING_COST}</span>
+          <span class="shop-tile-action">${coinSVG()}${SAPLING_COST}</span>
         </button>` +
-        `<button class="shop-tile ${hasLens ? 'owned' : ''}" ${(hasLens || coins < LENS_COST) ? 'disabled' : ''} onclick="buyLens()"
-           title="Walk up to anything and it tells you what it is">
-          <span class="shop-tile-icon">\u{1F50D}</span>
-          <span class="shop-tile-label">Magnifying glass (names things)</span>
-          <span class="shop-tile-action">${hasLens ? 'Owned' : '\u{1FA99}' + LENS_COST}</span>
-        </button>` +
+        (hasLens
+          ? `<button class="shop-tile owned" onclick="toggleLens()"
+               title="${lensOn ? 'Tap to stop naming things' : 'Tap to name things again'}">
+              <span class="shop-tile-icon">\u{1F50D}</span>
+              <span class="shop-tile-label">Magnifying glass</span>
+              <span class="shop-tile-action ${lensOn ? 'on' : 'off'}">Naming: ${lensOn ? 'on' : 'off'}</span>
+            </button>`
+          : `<button class="shop-tile" ${coins < LENS_COST ? 'disabled' : ''} onclick="buyLens()"
+               title="Walk up to anything and it tells you what it is">
+              <span class="shop-tile-icon">\u{1F50D}</span>
+              <span class="shop-tile-label">Magnifying glass (names things)</span>
+              <span class="shop-tile-action">${coinSVG()}${LENS_COST}</span>
+            </button>`) +
         `<button class="shop-tile" ${coins < RESET_PURCHASES_COST ? 'disabled' : ''} onclick="resetGarden()">
           <span class="shop-tile-icon">\u{267B}</span>
           <span class="shop-tile-label">Reset ${Util.escapeHtml(terms().place)}</span>
-          <span class="shop-tile-action">\u{1FA99}${RESET_PURCHASES_COST}</span>
+          <span class="shop-tile-action">${coinSVG()}${RESET_PURCHASES_COST}</span>
         </button>`;
       itemsWrap.innerHTML = `<div class="shop-grid">${tiles}</div>`;
     }
@@ -1662,7 +1724,7 @@ const Garden = (function () {
         const tile = `<button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyFood()">
             <span class="shop-tile-icon">${def.icon}</span>
             <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
-            <span class="shop-tile-action">\u{1FA99}${def.cost}</span>
+            <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
           </button>`;
         /* Who still needs winning over, so the one food tile is enough. */
         const roster = ownedPets.map(p => {
@@ -1685,7 +1747,7 @@ const Garden = (function () {
         } else if (owned) {
           action = 'Equip'; onclick = `equipOutfit('${id}')`; disabled = false;
         } else {
-          action = `\u{1FA99}${def.cost}`; onclick = `buyOutfit('${id}')`; disabled = coins < def.cost;
+          action = `${coinSVG()}${def.cost}`; onclick = `buyOutfit('${id}')`; disabled = coins < def.cost;
         }
         return `<button class="shop-tile${cls}" ${disabled ? 'disabled' : ''} onclick="${onclick}">
           <span class="shop-tile-icon">${def.icon}</span>
@@ -1964,7 +2026,7 @@ const Garden = (function () {
     const who = heroName();
     const t = terms();
     return {
-      coins: { icon: '\u{1FA99}', title: 'Coins and ' + t.plants, body: 'Every ticket you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each, a random variety - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a ticket and its coin goes back.' },
+      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every ticket you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each, a random variety - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a ticket and its coin goes back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering', body: 'Move right up next to a ' + t.plant + ' to water it (once per minute each). Watering is for the pleasure of it - a sparkle and a splash - it earns no coins. ' + t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's are the exception: they need five waterings to grow.' },
       pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool.' },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
@@ -2049,6 +2111,8 @@ const Garden = (function () {
     if (hint) hint.textContent = moveHintText();
     const useHint = document.getElementById('garden-use-hint');
     if (useHint) useHint.hidden = isTouchDevice();
+    const coinHelp = document.querySelector('.coin-help-btn');
+    if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     render();
@@ -2069,6 +2133,8 @@ const Garden = (function () {
     if (hint) hint.textContent = moveHintText();
     const useHint = document.getElementById('garden-use-hint');
     if (useHint) useHint.hidden = isTouchDevice();
+    const coinHelp = document.querySelector('.coin-help-btn');
+    if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     currentHelpTopic = null;
@@ -2093,6 +2159,7 @@ const Garden = (function () {
   window.buySapling = buySapling;
   window.buyFood = buyFood;
   window.buyLens = buyLens;
+  window.toggleLens = toggleLens;
   window.unlockRandomPet = unlockRandomPet;
   window.resetGarden = resetGarden;
   window.showHelpTopic = showHelpTopic;

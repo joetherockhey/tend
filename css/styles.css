@@ -13,8 +13,16 @@
   --series-made: #8c52ff;
   --series-done: #00d68f;
   --series-over: #f5a623;
-  --header-bg: #1d2333;
-  --header-bg-2: #2a3350;
+  /* The header ribbon. Every ribbon colour is one of these six tokens, so a
+     theme is a six-line override and nothing else in the page moves. */
+  --header-bg: #10281d;
+  --header-bg-2: #1f4a34;
+  --header-text: #ffffff;
+  --header-dim: rgba(255, 255, 255, 0.65);
+  --header-line: rgba(255, 255, 255, 0.15);
+  --header-chip: rgba(255, 255, 255, 0.1);
+  --header-chip-hover: rgba(255, 255, 255, 0.18);
+  --header-chip-line: rgba(255, 255, 255, 0.2);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -60,7 +68,7 @@ header {
 }
 
 .brand-name {
-  color: #ffffff;
+  color: var(--header-text);
   font-weight: 700;
   font-size: 0.95rem;
   letter-spacing: 0.06em;
@@ -70,11 +78,11 @@ header {
 h1 {
   margin: 0 0 4px;
   font-size: 1.6rem;
-  color: #ffffff;
+  color: var(--header-text);
 }
 
 .subtitle {
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--header-dim);
   margin: 0 0 20px;
   font-size: 0.9rem;
 }
@@ -82,7 +90,7 @@ h1 {
 nav.tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid var(--header-line);
 }
 
 nav.tabs button {
@@ -90,28 +98,28 @@ nav.tabs button {
   border: none;
   padding: 10px 18px;
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--header-dim);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
 
 nav.tabs button:hover {
-  color: #ffffff;
+  color: var(--header-text);
 }
 
 nav.tabs button.active {
-  color: #ffffff;
+  color: var(--header-text);
   border-bottom-color: var(--series-made);
   font-weight: 600;
 }
 
 .garden-toggle-btn {
-  margin-left: auto;
+  margin-left: 12px;
   align-self: center;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.85);
+  background: var(--header-chip);
+  border: 1px solid var(--header-chip-line);
+  color: var(--header-text);
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 0.8rem;
@@ -119,9 +127,12 @@ nav.tabs button.active {
 }
 
 .garden-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  background: var(--header-chip-hover);
+  color: var(--header-text);
 }
+
+/* On the calendar there is no search box, so the button takes the space. */
+.nav-search[hidden] + .garden-toggle-btn { margin-left: auto; }
 
 main {
   max-width: 1440px;
@@ -666,25 +677,70 @@ li.task.done .task-title {
   color: var(--muted);
 }
 
-.search-panel {
-  margin-bottom: 14px;
-  padding-bottom: 16px;
+/* Search sits in the header ribbon beside the tabs, so it costs the ticket
+   list no height at all. It is narrow until you use it. */
+.nav-search {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--header-chip);
+  border: 1px solid var(--header-chip-line);
+  border-radius: 999px;
+  padding: 0 10px;
+  height: 30px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-search:focus-within {
+  background: var(--header-chip-hover);
+  border-color: var(--header-text);
+}
+
+.nav-search-icon {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  line-height: 1;
+  flex: none;
 }
 
 .search-input {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  font-size: 0.95rem;
+  width: 130px;
+  border: none;
+  background: none;
+  color: var(--header-text);
+  font-size: 0.82rem;
   font-family: inherit;
-  background: white;
+  padding: 0;
+  transition: width 0.18s ease;
+  min-width: 0;
 }
 
-.search-input:focus {
-  outline: 2px solid var(--accent-soft);
-  border-color: var(--accent);
+.search-input::placeholder { color: var(--header-dim); }
+.search-input:focus { outline: none; }
+.nav-search:focus-within .search-input,
+.nav-search.has-text .search-input { width: 200px; }
+
+/* Chrome draws its own clear button on type=search; ours matches the ribbon. */
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+.nav-search-clear {
+  border: none;
+  background: none;
+  color: var(--header-dim);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 1px;
+  flex: none;
 }
+
+.nav-search-clear:hover { color: var(--header-text); }
+
+/* Nothing to search on the calendar. */
+.nav-search[hidden] { display: none !important; }
 
 /* Garden */
 .garden-col {
@@ -1791,9 +1847,9 @@ body.gated { overflow: hidden; }
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: var(--header-chip);
+  border: 1px solid var(--header-chip-line);
+  color: var(--header-text);
   padding: 5px 10px 5px 6px;
   border-radius: 999px;
   font: inherit;
@@ -1801,7 +1857,7 @@ body.gated { overflow: hidden; }
   cursor: pointer;
 }
 
-.account-btn:hover { background: rgba(255, 255, 255, 0.18); }
+.account-btn:hover { background: var(--header-chip-hover); }
 
 .account-btn .caret { opacity: 0.7; font-size: 0.65rem; }
 
@@ -1856,13 +1912,13 @@ body.gated { overflow: hidden; }
 
 .sync-badge {
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--header-dim);
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--header-chip);
 }
 
 .sync-dot {
@@ -1874,7 +1930,7 @@ body.gated { overflow: hidden; }
 
 .sync-badge.saving .sync-dot { background: var(--series-over); }
 .sync-badge.offline .sync-dot { background: var(--danger); }
-.sync-badge.local .sync-dot { background: rgba(255, 255, 255, 0.5); }
+.sync-badge.local .sync-dot { background: var(--header-dim); }
 
 /* --- Settings modal --- */
 
@@ -1979,6 +2035,17 @@ body.gated { overflow: hidden; }
   .modal { max-height: 85vh; }
   nav.tabs button { padding: 10px 12px; font-size: 0.9rem; }
   .garden-toggle-btn { font-size: 0.72rem; padding: 5px 9px; }
+  /* On a phone the ribbon has no room for a fourth item on one line, so
+     search drops to its own full-width row under the tabs. */
+  nav.tabs { flex-wrap: wrap; }
+  .nav-search {
+    order: 3;
+    margin: 0 0 8px;
+    width: 100%;
+  }
+  .search-input,
+  .nav-search:focus-within .search-input,
+  .nav-search.has-text .search-input { width: 100%; flex: 1; }
 }
 
 /* ============================================================
@@ -2670,4 +2737,132 @@ body {
 #install-link {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.8rem;
+}
+
+
+/* The gold coin. Sized to the text it sits beside, wherever it appears. */
+.coin-icon {
+  width: 1.05em;
+  height: 1.05em;
+  display: inline-block;
+  vertical-align: -0.16em;
+  flex: none;
+}
+
+.garden-coins .coin-icon { width: 1.2em; height: 1.2em; }
+.shop-coins .coin-icon { width: 1.15em; height: 1.15em; }
+.shop-tile-action .coin-icon { margin-right: 2px; }
+.coin-help-btn .coin-icon { width: 1.15em; height: 1.15em; vertical-align: -0.2em; }
+.garden-coins .coin-count { margin-left: 2px; }
+
+
+.shop-tile.owned .shop-tile-action.on  { color: var(--green); }
+.shop-tile.owned .shop-tile-action.off { color: var(--muted); }
+.shop-tile.owned { border-color: var(--border); }
+.shop-tile.owned:hover { border-color: var(--accent); }
+
+
+/* ---------------------------------------------------------------------------
+   Header themes. Each one sets the same six tokens and nothing else, so the
+   rest of the page is untouched by the choice. `midnight` is the default and
+   needs no block. The theme id lands on <html> as data-theme.
+   --------------------------------------------------------------------------- */
+
+html[data-theme="midnight"] {
+  --header-bg: #1d2333;
+  --header-bg-2: #2a3350;
+}
+
+html[data-theme="slate"] {
+  --header-bg: #21252b;
+  --header-bg-2: #3a414b;
+}
+
+html[data-theme="plum"] {
+  --header-bg: #2a1a45;
+  --header-bg-2: #4f2f80;
+}
+
+html[data-theme="reef"] {
+  --header-bg: #07283a;
+  --header-bg-2: #0f5f75;
+}
+
+html[data-theme="clay"] {
+  --header-bg: #31201a;
+  --header-bg-2: #7a422b;
+}
+
+html[data-theme="ink"] {
+  --header-bg: #0e1014;
+  --header-bg-2: #1e222b;
+}
+
+/* The one light ribbon. Dark text on off-white, so every token flips. */
+html[data-theme="paper"] {
+  --header-bg: #f7f5f0;
+  --header-bg-2: #e8e4dc;
+  --header-text: #1f2430;
+  --header-dim: rgba(31, 36, 48, 0.6);
+  --header-line: rgba(31, 36, 48, 0.14);
+  --header-chip: rgba(31, 36, 48, 0.06);
+  --header-chip-hover: rgba(31, 36, 48, 0.12);
+  --header-chip-line: rgba(31, 36, 48, 0.16);
+}
+
+/* The mark is a coloured tile on a pale ribbon, so it needs edge definition. */
+html[data-theme="paper"] .brand-mark { box-shadow: 0 1px 3px rgba(31, 36, 48, 0.18); }
+
+/* --- the picker in Settings --- */
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.theme-tile {
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  text-align: left;
+  font: inherit;
+}
+
+.theme-tile:hover { border-color: var(--accent); }
+.theme-tile.on { border-color: var(--accent); }
+
+.theme-swatch {
+  height: 42px;
+  display: block;
+  position: relative;
+}
+
+/* A hint of the tab underline and a chip, so the swatch reads as the ribbon. */
+.theme-swatch::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--series-made);
+}
+
+.theme-name {
+  display: block;
+  padding: 6px 8px 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.theme-tile.on .theme-name::after {
+  content: ' \2713';
+  color: var(--accent);
 }

@@ -631,8 +631,32 @@ const App = (function () {
     document.getElementById('view-calendar').classList.toggle('active', view === 'calendar');
     document.getElementById('tab-list').classList.toggle('active', view === 'list');
     document.getElementById('tab-calendar').classList.toggle('active', view === 'calendar');
+    /* There is nothing to search on the calendar. */
+    const search = document.getElementById('nav-search');
+    if (search) search.hidden = view !== 'list';
     if (view === 'calendar') renderCalendar();
     applyCalendarWidth();
+  }
+
+  /* Keeps the little clear button and the widened field in step with whether
+     anything has actually been typed. */
+  function syncSearchChrome() {
+    const input = document.getElementById('search-input');
+    const wrap = document.getElementById('nav-search');
+    const clear = document.getElementById('search-clear');
+    if (!input || !wrap) return;
+    const has = !!input.value;
+    wrap.classList.toggle('has-text', has);
+    if (clear) clear.hidden = !has;
+  }
+
+  function clearSearch() {
+    const input = document.getElementById('search-input');
+    if (!input) return;
+    input.value = '';
+    syncSearchChrome();
+    renderList();
+    input.focus();
   }
 
   function changeMonth(delta) {
@@ -1177,6 +1201,59 @@ const App = (function () {
     if (sec) sec.hidden = true;
   }
 
+  /* ---------------------------------------------------------------
+     Header themes. Only the ribbon changes - the page below it stays
+     the same, which is the whole point of keeping them to six tokens.
+     --------------------------------------------------------------- */
+
+  const THEMES = [
+    { id: 'forest',   name: 'Forest',   from: '#10281d', to: '#1f4a34' },
+    { id: 'midnight', name: 'Midnight', from: '#1d2333', to: '#2a3350' },
+    { id: 'reef',     name: 'Reef',     from: '#07283a', to: '#0f5f75' },
+    { id: 'plum',     name: 'Plum',     from: '#2a1a45', to: '#4f2f80' },
+    { id: 'slate',    name: 'Slate',    from: '#21252b', to: '#3a414b' },
+    { id: 'clay',     name: 'Clay',     from: '#31201a', to: '#7a422b' },
+    { id: 'ink',      name: 'Ink',      from: '#0e1014', to: '#1e222b' },
+    { id: 'paper',    name: 'Paper',    from: '#f7f5f0', to: '#e8e4dc' }
+  ];
+
+  const DEFAULT_THEME = 'forest';
+
+  function currentTheme() {
+    const id = Store.prefs().theme;
+    return THEMES.some(t => t.id === id) ? id : DEFAULT_THEME;
+  }
+
+  function applyTheme() {
+    const id = currentTheme();
+    /* The default is what :root already says, so it carries no attribute. */
+    if (id === DEFAULT_THEME) document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', id);
+
+    /* Keep the phone's own chrome (status bar, task switcher) in step. */
+    const t = THEMES.find(x => x.id === id) || THEMES[0];
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', t.from);
+  }
+
+  function setTheme(id) {
+    Store.prefs().theme = id;
+    Store.savePrefs();
+    applyTheme();
+    renderThemePicker();
+  }
+
+  function renderThemePicker() {
+    const host = document.getElementById('theme-picker');
+    if (!host) return;
+    const current = currentTheme();
+    host.innerHTML = `<div class="theme-grid">${THEMES.map(t => `
+      <button type="button" class="theme-tile ${t.id === current ? 'on' : ''}" onclick="App.setTheme('${t.id}')">
+        <span class="theme-swatch" style="background:linear-gradient(120deg, ${t.from} 0%, ${t.to} 100%)"></span>
+        <span class="theme-name">${Util.escapeHtml(t.name)}</span>
+      </button>`).join('')}</div>`;
+  }
+
   function openSettings() {
     document.getElementById('account-dropdown').hidden = true;
     setSettingsTitle('Settings & backup');
@@ -1190,6 +1267,12 @@ const App = (function () {
           <button class="settings-btn primary" onclick="App.saveDisplayName()">Save</button>
         </div>
         <div class="settings-note" id="settings-name-note"></div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Header colour</h4>
+        <p>Changes the ribbon at the top of the page. Click one to see it straight away.</p>
+        <div id="theme-picker"></div>
       </div>
 
       <div class="settings-section">
@@ -1221,6 +1304,7 @@ const App = (function () {
         </div>
       </div>`;
     renderWorldSettings();
+    renderThemePicker();
     document.getElementById('settings-modal-backdrop').classList.add('active');
   }
 
@@ -1473,6 +1557,7 @@ const App = (function () {
 
   function boot() {
     loadViewPrefs();
+    applyTheme();
 
     const now = new Date();
     calYear = now.getFullYear();
@@ -1494,6 +1579,7 @@ const App = (function () {
       if (Store.onChange) {
         Store.onChange(function () {
           Garden.loadAll();
+          applyTheme();
           renderAll();
           applyCalendarWidth();
           Garden.reskin();
@@ -1502,7 +1588,13 @@ const App = (function () {
       }
 
       document.getElementById('new-task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
-      document.getElementById('search-input').addEventListener('input', renderList);
+      document.getElementById('search-input').addEventListener('input', function () {
+        syncSearchChrome();
+        renderList();
+      });
+      document.getElementById('search-input').addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { e.stopPropagation(); clearSearch(); }
+      });
       document.getElementById('import-file').addEventListener('change', function () { handleImportFile(this); });
 
       document.addEventListener('click', function (e) {
@@ -1532,6 +1624,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt,
+    clearSearch, setTheme,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

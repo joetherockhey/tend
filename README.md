@@ -190,6 +190,11 @@ laptop would drag the phone's character around.
 
 ## Customising
 
+- **Header colour** — Settings → *Header colour*, eight ribbon palettes including one
+  light one. A theme sets six CSS tokens (`--header-bg`, `--header-bg-2`,
+  `--header-text`, `--header-dim`, `--header-line`, and the chip pair) and touches
+  nothing below the ribbon, so adding a ninth is a six-line block in `styles.css` plus
+  a row in `THEMES` in `app.js`.
 - **Name and tagline** — `APP_NAME` and `TAGLINE` in `js/config.js`.
 - **Colours** — the CSS custom properties at the top of `css/styles.css`.
   `--header-bg` and `--header-bg-2` are the header gradient; `--accent` is the
