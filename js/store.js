@@ -352,13 +352,16 @@ const Store = (function () {
     lsSet(LS_LAST_ACCOUNT, account.id);
 
     readCache();                       /* instant paint from cache */
-    seedDefaultsIfEmpty();
 
     if (!CLOUD) {
+      seedDefaultsIfEmpty();
       setStatus('local');
       return { fromCache: false };
     }
 
+    /* In cloud mode we do NOT seed defaults before pulling. Seeding first
+       meant every fresh device invented five brand-new category ids and
+       pushed them as extra rows, so the same names piled up on the server. */
     const hadPendingWrites = anyDirty();
     try {
       if (hadPendingWrites) {
@@ -366,10 +369,13 @@ const Store = (function () {
         await flush();
       }
       await pull();
+      dedupeCategories();               /* heals accounts that already piled up */
+      seedDefaultsIfEmpty();            /* only if the server genuinely has none */
       setStatus('idle');
       return { fromCache: false };
     } catch (err) {
       console.warn('[Tend] could not reach the server, using the offline copy:', err && err.message);
+      seedDefaultsIfEmpty();
       setStatus('offline');
       return { fromCache: true };
     }
@@ -393,6 +399,27 @@ const Store = (function () {
     { name: 'Errands', color: '#e87ba4' },
     { name: 'Fun', color: '#8c52ff' }
   ];
+
+  /* Collapse categories that share a name (case-insensitive), keeping the
+     first one. Marking them dirty makes the next flush delete the extras
+     server-side, so an account only ever needs to be cleaned up once. */
+  function dedupeCategories() {
+    if (!Array.isArray(categories) || categories.length < 2) return;
+    const seen = new Map();
+    const kept = [];
+    categories.forEach(c => {
+      const key = String(c.name || '').trim().toLowerCase();
+      if (!key) return;
+      if (seen.has(key)) return;
+      seen.set(key, c);
+      kept.push(c);
+    });
+    if (kept.length === categories.length) return;
+    console.info('[Tend] merged ' + (categories.length - kept.length) + ' duplicate categories');
+    categories = kept;
+    if (CLOUD) markDirty('categories');
+    else writeCache();
+  }
 
   function seedDefaultsIfEmpty() {
     if (!Array.isArray(categories) || !categories.length) {

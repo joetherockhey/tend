@@ -34,6 +34,9 @@ body {
 header {
   background: linear-gradient(120deg, var(--header-bg) 0%, var(--header-bg-2) 100%);
   padding: 0;
+  /* Installed on a phone the app draws under the status bar, so the header
+     carries the notch inset itself. Zero on every other device. */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .header-inner {
@@ -2500,3 +2503,24 @@ body.gated { overflow: hidden; }
 }
 
 .detail-subtasks li.done { color: var(--muted); text-decoration: line-through; }
+
+
+/* ---------------------------------------------------------------------------
+   iOS Safari zooms the whole page in whenever a focused field is smaller than
+   16px, and it does not zoom back out afterwards. Any font size below 16px on
+   a phone therefore leaves the app looking permanently magnified, so on small
+   screens every field is 16px regardless of what the desktop rule asked for.
+   --------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Keep the page clear of the home indicator when the app runs full-screen
+   from the home screen. Zero everywhere else. */
+body {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
