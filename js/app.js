@@ -74,6 +74,15 @@ const App = (function () {
 
   /* ========================= category key panel ========================= */
 
+  /* A category always looks the same wherever it appears: a small bubble, in
+     the category's own colour, the same shape as the steps counter beside it. */
+  function categoryPill(name, color) {
+    const c = color || DEFAULT_CATEGORY_COLOR;
+    return `<span class="tag category-tag" style="background:${Util.hexToRgba(c, 0.13)};`
+      + `border-color:${Util.hexToRgba(c, 0.45)};color:${Util.inkShade(c, 0.35)}">`
+      + `<span class="category-dot" style="background:${c}"></span>${Util.escapeHtml(name)}</span>`;
+  }
+
   function renderCategoryKey() {
     const hint = document.getElementById('category-hint');
     if (hint) {
@@ -85,11 +94,11 @@ const App = (function () {
 
     const items = categories().map((c, i) =>
       `<div class="key-item person-key-item">
-        <span class="highlight-mark" style="background:${Util.hexToRgba(c.color, 0.4)}">${Util.escapeHtml(c.name)}</span>
+        ${categoryPill(c.name, c.color)}
         <button class="person-remove-btn" title="Remove ${Util.escapeHtml(c.name)}" onclick="App.removeCategoryByIndex(${i})">&times;</button>
       </div>`
     );
-    items.push(`<div class="key-item"><span class="highlight-mark" style="background:${Util.hexToRgba(DEFAULT_CATEGORY_COLOR, 0.4)}">Other</span></div>`);
+    items.push(`<div class="key-item">${categoryPill('Other', DEFAULT_CATEGORY_COLOR)}</div>`);
     const addForm = `
       <div class="person-add-row">
         <input type="color" id="category-add-color" value="${nextCategoryColor()}" title="Pick a colour">
@@ -502,7 +511,7 @@ const App = (function () {
 
     const tags = [];
     if (t.category) {
-      tags.push(`<span class="tag highlighter"><span class="highlight-mark" style="background:${Util.hexToRgba(catColor, 0.4)}">${Util.escapeHtml(t.category)}</span></span>`);
+      tags.push(categoryPill(t.category, catColor));
     }
     const prog = subtaskProgress(t);
     if (prog.total) {
@@ -931,7 +940,7 @@ const App = (function () {
       rows.push(detailRow('Due', Util.formatDate(t.dueDate) + (overdue ? ' <span style="color:var(--danger)">(overdue)</span>' : '')));
     }
     if (t.category) {
-      rows.push(detailRow('Category', `<span class="highlight-mark" style="background:${Util.hexToRgba(categoryColor(t.category), 0.4)}">${Util.escapeHtml(t.category)}</span>`));
+      rows.push(detailRow('Category', categoryPill(t.category, categoryColor(t.category))));
     }
     if (t.setting) rows.push(detailRow('Came up', Util.escapeHtml(t.setting)));
     if (t.followUp) rows.push(detailRow('Follow-up', 'Needed'));

@@ -39,6 +39,18 @@ const Util = (function () {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
+  /* A darker version of a colour, for text that has to stay readable on a
+     pale tint of the same colour. Mixes towards the page's ink rather than
+     towards black, so it never looks muddy. */
+  function inkShade(hex, amount) {
+    const h = String(hex || '#888888').replace('#', '');
+    const mix = (c, target) => Math.round(c + (target - c) * amount);
+    const r = mix(parseInt(h.substring(0, 2), 16), 0x1f);
+    const g = mix(parseInt(h.substring(2, 4), 16), 0x24);
+    const b = mix(parseInt(h.substring(4, 6), 16), 0x30);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
   /* Deterministic id that survives a round trip through the database. */
   function uid() {
     return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
@@ -76,6 +88,6 @@ const Util = (function () {
 
   return {
     escapeHtml, dateToStr, todayStr, formatDate,
-    hexToRgba, uid, initials, colorFor, debounce
+    hexToRgba, inkShade, uid, initials, colorFor, debounce
   };
 })();

@@ -550,20 +550,28 @@ li.task.done .task-title {
   color: var(--danger);
 }
 
-.tag.highlighter {
-  display: inline;
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  font-size: 0.85rem;
+/* The category bubble. Same shape and weight as the steps counter next to it,
+   so a ticket's tags read as one row of chips rather than a highlighter mark
+   and a chip. The three colours come from the category itself, inline. */
+.tag.category-tag {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 2px 9px 2px 7px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  gap: 5px;
+  white-space: nowrap;
 }
 
-.tag.highlighter .highlight-mark {
-  padding: 1px 5px 1px 0;
-  border-radius: 2px 6px 2px 6px;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
+.category-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
 }
+
+/* In the sidebar list the bubble sits on its own line with the remove button. */
+.key-item .tag.category-tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
 .key-list {
   display: flex;
