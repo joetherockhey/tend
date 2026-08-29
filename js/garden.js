@@ -714,6 +714,10 @@ const Garden = (function () {
   function applyGardenVisibility() {
     const col = document.querySelector('.garden-col');
     if (col) col.style.display = gardenVisible ? '' : 'none';
+    /* The layout grid keeps a 420px track for the garden, so tell it when there
+       is no garden to put there. */
+    const layout = document.querySelector('.app-layout');
+    if (layout) layout.classList.toggle('no-garden', !gardenVisible);
     const btn = document.getElementById('garden-toggle-btn');
     if (btn) btn.textContent = gardenVisible ? 'Hide Garden' : 'Show Garden';
   }

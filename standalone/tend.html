@@ -142,20 +142,47 @@ main {
   padding: 24px 32px 60px;
 }
 
+/* Three columns on a wide screen; two when there is not room for three, with
+   the sidebar tucked under the tickets rather than wrapping below the garden.
+   This is a grid rather than wrapped flex because the garden column is far
+   taller than the others - wrapping left the sidebar stranded at the bottom of
+   the page with a dead strip of nothing beside the garden. */
 .app-layout {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr) 240px;
+  grid-template-areas: "garden content sidebar";
   gap: 24px;
-  align-items: flex-start;
+  align-items: start;
 }
 
+.app-layout > .garden-col { grid-area: garden; }
+.app-layout > .content-col { grid-area: content; }
+.app-layout > .sidebar { grid-area: sidebar; }
+
+/* Not enough width for three: the sidebar drops under the tickets. */
+@media (max-width: 1331px) {
+  .app-layout {
+    grid-template-columns: 420px minmax(0, 1fr);
+    grid-template-areas:
+      "garden content"
+      "garden sidebar";
+  }
+}
+
+/* Garden hidden: give its track back instead of leaving a 420px hole. */
+.app-layout.no-garden {
+  grid-template-columns: minmax(0, 1fr) 240px;
+  grid-template-areas: "content sidebar";
+}
+
+/* With no garden there is room for two columns well below 1331px, so the
+   no-garden layout above holds until the phone breakpoint takes over. */
+
 .content-col {
-  flex: 100 1 560px;
   min-width: 0;
 }
 
 .sidebar {
-  flex: 1 1 240px;
   min-width: 0;
   position: sticky;
   top: 24px;
@@ -669,7 +696,7 @@ li.task.done .task-title {
 
 /* Garden */
 .garden-col {
-  flex: 0 0 420px;
+  min-width: 0;
   max-width: 100%;
   position: sticky;
   top: 24px;
@@ -1940,10 +1967,13 @@ body.gated { overflow: hidden; }
 /* Phones and small tablets: tickets first, garden last, and a floating
    "new ticket" button so adding one never means scrolling. */
 @media (max-width: 900px) {
-  .app-layout { flex-direction: column; flex-wrap: nowrap; }
-  .content-col { order: 1; flex: 1 1 auto; width: 100%; }
-  .sidebar { order: 2; flex: 1 1 auto; width: 100%; position: static; top: auto; }
-  .garden-col { order: 3; flex: 1 1 auto; width: 100%; position: static; top: auto; }
+  .app-layout,
+  .app-layout.no-garden {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "content" "sidebar" "garden";
+  }
+  .sidebar { position: static; top: auto; }
+  .garden-col { position: static; top: auto; }
 
   /* The plot is a fixed pixel grid, so let the whole thing scroll sideways
      inside its panel rather than stretching the page. */
@@ -2355,10 +2385,13 @@ body.gated { overflow: hidden; }
 /* The list view needs room: at a third of the page a cell is 84px wide and every
    ticket title truncates to two words. While it is showing, the calendar takes
    the full width and the garden and sidebar stack underneath it. */
-.app-layout.cal-wide { flex-direction: column; flex-wrap: nowrap; }
-.app-layout.cal-wide .content-col { order: 1; flex: 1 1 auto; width: 100%; }
-.app-layout.cal-wide .sidebar { order: 2; flex: 1 1 auto; width: 100%; position: static; top: auto; }
-.app-layout.cal-wide .garden-col { order: 3; flex: 1 1 auto; width: 100%; position: static; top: auto; }
+.app-layout.cal-wide,
+.app-layout.cal-wide.no-garden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "content" "sidebar" "garden";
+}
+.app-layout.cal-wide .sidebar,
+.app-layout.cal-wide .garden-col { position: static; top: auto; }
 
 /* ============================================================
    Subtasks
@@ -5038,6 +5071,10 @@ const Garden = (function () {
   function applyGardenVisibility() {
     const col = document.querySelector('.garden-col');
     if (col) col.style.display = gardenVisible ? '' : 'none';
+    /* The layout grid keeps a 420px track for the garden, so tell it when there
+       is no garden to put there. */
+    const layout = document.querySelector('.app-layout');
+    if (layout) layout.classList.toggle('no-garden', !gardenVisible);
     const btn = document.getElementById('garden-toggle-btn');
     if (btn) btn.textContent = gardenVisible ? 'Hide Garden' : 'Show Garden';
   }
