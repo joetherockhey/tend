@@ -226,12 +226,9 @@ const Worlds = (function () {
       rabbit: { label: 'Rabbit', icon: '\u{1F430}', cost: 5, temperament: 'skittish', svg: rabbitSVG },
       bird: { label: 'Bird', icon: '\u{1F426}', cost: 5, temperament: 'skittish', svg: birdSVG }
     };
-    const PET_TREATS = {
-      dog: { label: 'Dog treat', icon: '\u{1F9B4}', cost: 1, gain: 15 },
-      cat: { label: 'Cat treat', icon: '\u{1F41F}', cost: 1, gain: 15 },
-      rabbit: { label: 'Rabbit treat', icon: '\u{1F955}', cost: 1, gain: 20 },
-      bird: { label: 'Bird seed', icon: '\u{1F33E}', cost: 1, gain: 20 }
-    };
+    /* One food for every animal - buy it, carry it over, give it to whichever
+       companion you reach first. */
+    const PET_FOOD = { label: 'Animal feed', icon: '\u{1F96A}', cost: 1, gain: 18 };
     const SHOP_ITEMS = {
       hoe: { label: 'Hoe', icon: '\u{26CF}\u{FE0F}', cost: 3, svg: hoeSVG },
       hose: { label: 'Hose', icon: '\u{1F6BF}', cost: 4, svg: hoseSVG },
@@ -686,12 +683,7 @@ const Worlds = (function () {
     bird: { label: 'Jellyfish', icon: '\u{1FABC}', cost: 5, temperament: 'skittish', svg: jellyfishSVG }
   };
 
-  const OCEAN_TREATS = {
-    dog: { label: 'Krill', icon: '\u{1F990}', cost: 1, gain: 15 },
-    cat: { label: 'Brine shrimp', icon: '\u{1F364}', cost: 1, gain: 15 },
-    rabbit: { label: 'Sea grass', icon: '\u{1F33F}', cost: 1, gain: 20 },
-    bird: { label: 'Plankton', icon: '\u{2728}', cost: 1, gain: 20 }
-  };
+  const OCEAN_FOOD = { label: 'Fish food', icon: '\u{1F990}', cost: 1, gain: 18 };
 
   const OCEAN_ITEMS = {
     hoe: { label: 'Sand rake', icon: '\u{1F3D6}\u{FE0F}', cost: 3, svg: sandRakeSVG },
@@ -740,7 +732,17 @@ const Worlds = (function () {
     plants: PLANT_VARIETIES,
     plantSVG: buildPlantSVG,
     pets: PET_TYPES,
-    treats: PET_TREATS,
+    food: PET_FOOD,
+    /* Names for the scenery, so the magnifying glass has something to say. */
+    decorNames: {
+      tree: 'Oak tree', fruitTree: 'Fruit tree', bush: 'Bush', hedge: 'Hedge',
+      washingLine: 'Washing line', table: 'Garden table', grill: 'Barbecue',
+      lilyPad: 'Lily pad', mower: 'Lawnmower', wheelbarrow: 'Wheelbarrow',
+      bed: 'Flower bed', blanket: 'Picnic blanket', dock: 'Jetty',
+      porch: 'Porch', sand: 'Sandpit',
+      sapling: 'Sapling', log: 'Log', cabin: 'Cabin', gate: 'Gate',
+      soil: 'Dug soil'
+    },
     items: SHOP_ITEMS,
     outfits: OUTFITS,
     art: {
@@ -781,7 +783,16 @@ const Worlds = (function () {
     plants: OCEAN_PLANTS,
     plantSVG: oceanPlantSVG,
     pets: OCEAN_PETS,
-    treats: OCEAN_TREATS,
+    food: OCEAN_FOOD,
+    decorNames: {
+      tree: 'Kelp tower', fruitTree: 'Fruiting kelp', bush: 'Coral clump', hedge: 'Coral wall',
+      washingLine: 'Net line', table: 'Stone table', grill: 'Thermal vent',
+      lilyPad: 'Sea lettuce', mower: 'Sand sweeper', wheelbarrow: 'Shell cart',
+      bed: 'Seabed', blanket: 'Sand mat', dock: 'Reef ledge',
+      porch: 'Shell deck', sand: 'Sand flat',
+      sapling: 'Kelp shoot', log: 'Driftwood', cabin: 'Grotto', gate: 'Reef gate',
+      soil: 'Turned sand'
+    },
     items: OCEAN_ITEMS,
     outfits: OCEAN_OUTFITS,
     art: {

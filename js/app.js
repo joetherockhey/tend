@@ -484,12 +484,18 @@ const App = (function () {
     document.getElementById('toggle-archived-btn').textContent = showArchived ? 'Hide archived' : `Show archived (${archived.length})`;
   }
 
+  /* A click anywhere on the row that is not one of its own controls opens the
+     ticket's details. That is where the dates now live - the collapsed row
+     carries only what you need to scan the list. */
+  function taskRowClick(id, ev) {
+    if (ev && ev.target && ev.target.closest('button, input, a, label, .task-subtasks')) return;
+    showTaskDetail(id);
+  }
+
   function renderTaskItem(t) {
     const done = !!t.completedAt;
-    let metaText = done
-      ? `Created ${Util.formatDate(t.createdAt)} &middot; Completed ${Util.formatDate(t.completedAt)}`
-      : `Created ${Util.formatDate(t.createdAt)}`;
-    if (t.setting) metaText += ` &middot; Came up: ${Util.escapeHtml(t.setting)}`;
+    /* Created and completed dates live in the detail view, not here. */
+    const metaText = t.setting ? `Came up: ${Util.escapeHtml(t.setting)}` : '';
 
     const notesHtml = t.notes ? `<div class="task-notes">${Util.escapeHtml(t.notes)}</div>` : '';
     const catColor = categoryColor(t.category);
@@ -521,14 +527,15 @@ const App = (function () {
     const draggable = (!done || t.archived) ? 'true' : 'false';
 
     return `
-      <li class="task ${done ? 'done' : ''} ${t.archived ? 'archived' : ''}"${borderStyle} data-id="${t.id}" draggable="${draggable}">
+      <li class="task ${done ? 'done' : ''} ${t.archived ? 'archived' : ''}"${borderStyle} data-id="${t.id}" draggable="${draggable}"
+          title="Open the ticket" onclick="App.taskRowClick('${t.id}', event)">
         <input type="checkbox" ${done ? 'checked' : ''} onchange="App.toggleTask('${t.id}', this)">
         <div class="task-body">
           <div class="task-title">${Util.escapeHtml(t.title)}</div>
           ${notesHtml}
           ${tagsHtml}
           ${renderSubtaskList(t)}
-          <div class="task-meta">${metaText}</div>
+          ${metaText ? `<div class="task-meta">${metaText}</div>` : ''}
         </div>
         <div class="task-actions">
           ${starBtn}
@@ -670,6 +677,18 @@ const App = (function () {
     applyCalendarWidth();
   }
 
+  /* Weekends on by default; a working week of five columns is wider per day,
+     which matters most on a phone. */
+  function showWeekends() {
+    return Store.prefs().calWeekends !== false;
+  }
+
+  function toggleWeekends() {
+    Store.prefs().calWeekends = !showWeekends();
+    Store.savePrefs();
+    renderCalendar();
+  }
+
   /* The list view claims the whole row while it is on screen. */
   function applyCalendarWidth() {
     const layout = document.querySelector('.app-layout');
@@ -685,6 +704,17 @@ const App = (function () {
     host.innerHTML = [['numbers', 'Numbers'], ['agenda', 'List']].map(([key, label]) =>
       `<button type="button" class="${view === key ? 'on' : ''}" onclick="App.setCalView('${key}')">${label}</button>`
     ).join('');
+  }
+
+  function renderWeekendToggle() {
+    const host = document.getElementById('cal-weekend-toggle');
+    if (!host) return;
+    const on = showWeekends();
+    host.innerHTML = `<button type="button" class="weekend-toggle ${on ? 'on' : ''}"
+        onclick="App.toggleWeekends()"
+        title="${on ? 'Hide Saturday and Sunday' : 'Show Saturday and Sunday'}">
+        ${on ? 'Hide weekends' : 'Show weekends'}
+      </button>`;
   }
 
   function calSeries() {
@@ -729,8 +759,10 @@ const App = (function () {
     });
     renderCalendarLegend();
     renderCalViewToggle();
+    renderWeekendToggle();
     const series = calSeries();
     const agenda = calView() === 'agenda';
+    const weekends = showWeekends();
 
     const firstOfMonth = new Date(calYear, calMonth, 1);
     /* Weeks run Monday to Sunday, so shift getDay()'s Sunday-first numbering. */
@@ -738,12 +770,18 @@ const App = (function () {
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
     const today = Util.todayStr();
 
-    const dows = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const allDows = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const dows = weekends ? allDows : allDows.slice(0, 5);
     let html = dows.map(d => `<div class="dow">${d}</div>`).join('');
 
-    for (let i = 0; i < startWeekday; i++) html += '<div class="cal-cell empty"></div>';
+    /* A month that opens on a Saturday or Sunday starts its first visible week
+       on the Monday, so with the weekend columns gone it needs no padding. */
+    const leading = weekends ? startWeekday : (startWeekday >= 5 ? 0 : startWeekday);
+    for (let i = 0; i < leading; i++) html += '<div class="cal-cell empty"></div>';
 
     for (let day = 1; day <= daysInMonth; day++) {
+      const weekday = (new Date(calYear, calMonth, day).getDay() + 6) % 7;
+      if (!weekends && weekday > 4) continue;
       const iso = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const isToday = iso === today;
       const madeCount = series.created ? (createdByDay[iso] || []).length : 0;
@@ -801,7 +839,7 @@ const App = (function () {
                </div>`;
     }
     const grid = document.getElementById('cal-grid');
-    grid.className = 'cal-grid' + (agenda ? ' agenda' : '');
+    grid.className = 'cal-grid' + (agenda ? ' agenda' : '') + (weekends ? '' : ' no-weekends');
     grid.innerHTML = html;
   }
 
@@ -979,6 +1017,7 @@ const App = (function () {
         <div class="acct-name">${Util.escapeHtml(name)}</div>
         <div class="acct-sub">${isCloud ? Util.escapeHtml(Store.email()) : 'Local profile on this device'}</div>
       </div>
+      <button class="acct-item" onclick="App.openInstall()">Get Tend on your phone</button>
       <button class="acct-item" onclick="App.openSettings()">Settings &amp; backup</button>
       <button class="acct-item" onclick="App.exportBackup()">Export a backup</button>
       ${repoLinkHTML()}
@@ -1022,8 +1061,125 @@ const App = (function () {
 
   /* ========================= settings + backup ========================= */
 
+  /* ---------------------------------------------------------------
+     Getting Tend onto a phone.
+
+     There is no link that installs a web app by itself - Apple has no
+     API for it at all, and Chrome will only offer its own prompt. So
+     this shows the address as a QR code to scan, the link to send, and
+     the two taps each phone needs after that. On Chrome, where the
+     browser does allow it, there is a real one-tap install button.
+     --------------------------------------------------------------- */
+
+  function installUrl() {
+    /* The address of the app itself, without whatever query or hash the
+       current tab happens to carry. */
+    const path = location.pathname.replace(/index\.html$/i, '');
+    return location.origin + path;
+  }
+
+  function setSettingsTitle(text) {
+    const h = document.getElementById('settings-title');
+    if (h) h.textContent = text;
+  }
+
+  function openInstall() {
+    document.getElementById('account-dropdown').hidden = true;
+    setSettingsTitle('Get Tend on your phone');
+    const url = installUrl();
+    const local = location.protocol === 'file:' || /^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname);
+
+    let qr = '';
+    try {
+      qr = Qr.svg(url, { width: 190, dark: '#1d2333' });
+    } catch (e) {
+      qr = '<div class="install-qr-fallback">Could not draw the code</div>';
+    }
+
+    const installed = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+
+    document.getElementById('settings-body').innerHTML = `
+      ${installed ? '<div class="settings-note install-done">You are already using the installed app.</div>' : ''}
+
+      <div class="settings-section install-section">
+        <h4>Scan this with a phone</h4>
+        <p>Point the camera at the code. It opens Tend in the phone's browser, ready to be added to the home screen.</p>
+        <div class="install-qr">${qr}</div>
+        ${local ? '<div class="settings-note">This is a local address, so the code only works on this computer. Open the published site to get a code your phone can use.</div>' : ''}
+      </div>
+
+      <div class="settings-section">
+        <h4>Or send the link</h4>
+        <div class="settings-row">
+          <input type="text" id="install-link" value="${Util.escapeHtml(url)}" readonly onclick="this.select()">
+          <button class="settings-btn primary" onclick="App.copyInstallLink()">Copy</button>
+        </div>
+        <div class="settings-note" id="install-copy-note"></div>
+      </div>
+
+      <div class="settings-section" id="install-prompt-section" hidden>
+        <h4>Install it here</h4>
+        <p>This browser can add Tend properly, with its own icon and no address bar.</p>
+        <div class="settings-row">
+          <button class="settings-btn primary" onclick="App.runInstallPrompt()">Install Tend</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Adding it to the home screen</h4>
+        <p>Once the site is open on the phone:</p>
+        <ul class="install-steps">
+          <li><strong>iPhone or iPad</strong> — in Safari, tap Share (the square with the arrow), scroll down, tap <strong>Add to Home Screen</strong>, then Add.</li>
+          <li><strong>Android</strong> — in Chrome, tap the three dots, then <strong>Install app</strong> (or Add to Home screen).</li>
+        </ul>
+        <p class="settings-note">Apple does not let a link or a code do this last step on its own &mdash; every web app on an iPhone is added the same way.</p>
+      </div>`;
+
+    if (deferredInstall) {
+      const sec = document.getElementById('install-prompt-section');
+      if (sec) sec.hidden = false;
+    }
+    document.getElementById('settings-modal-backdrop').classList.add('active');
+  }
+
+  function copyInstallLink() {
+    const input = document.getElementById('install-link');
+    const note = document.getElementById('install-copy-note');
+    const done = () => { if (note) note.textContent = 'Link copied.'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(input.value).then(done, () => {
+        input.select();
+        if (note) note.textContent = 'Press Ctrl+C (or Cmd+C) to copy.';
+      });
+    } else {
+      input.select();
+      if (note) note.textContent = 'Press Ctrl+C (or Cmd+C) to copy.';
+    }
+  }
+
+  /* Chrome hands us its install prompt ahead of time; we hold on to it so the
+     button above can fire it at the moment somebody asks. */
+  let deferredInstall = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredInstall = e;
+    const sec = document.getElementById('install-prompt-section');
+    if (sec) sec.hidden = false;
+  });
+  window.addEventListener('appinstalled', function () { deferredInstall = null; });
+
+  async function runInstallPrompt() {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    try { await deferredInstall.userChoice; } catch (e) { /* ignore */ }
+    deferredInstall = null;
+    const sec = document.getElementById('install-prompt-section');
+    if (sec) sec.hidden = true;
+  }
+
   function openSettings() {
     document.getElementById('account-dropdown').hidden = true;
+    setSettingsTitle('Settings & backup');
     const isCloud = Store.isCloud();
     document.getElementById('settings-body').innerHTML = `
       <div class="settings-section">
@@ -1294,6 +1450,27 @@ const App = (function () {
     Garden.render();
   }
 
+  /* A brief note when something arrives from another device, so the screen
+     changing under you is explained rather than startling. The header badge is
+     hidden on a phone, which is exactly where this matters most. */
+  let syncedFlashTimer = null;
+  function flashSynced() {
+    let el = document.getElementById('sync-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'sync-toast';
+      el.className = 'sync-toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = 'Updated from your other device';
+    el.classList.add('show');
+    if (syncedFlashTimer) clearTimeout(syncedFlashTimer);
+    syncedFlashTimer = setTimeout(function () {
+      el.classList.remove('show');
+      syncedFlashTimer = null;
+    }, 2200);
+  }
+
   function boot() {
     loadViewPrefs();
 
@@ -1311,6 +1488,18 @@ const App = (function () {
       booted = true;
       Store.onStatus(renderSyncBadge);
       primeDownloadBridge();
+
+      /* Something changed on another device: take the new state and redraw,
+         garden included. */
+      if (Store.onChange) {
+        Store.onChange(function () {
+          Garden.loadAll();
+          renderAll();
+          applyCalendarWidth();
+          Garden.reskin();
+          flashSynced();
+        });
+      }
 
       document.getElementById('new-task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
       document.getElementById('search-input').addEventListener('input', renderList);
@@ -1335,12 +1524,14 @@ const App = (function () {
     tickets, categories, categoryColor, DEFAULT_CATEGORY_COLOR,
     addTask, toggleTask, togglePriority, toggleArchive, deleteTask,
     openNewTaskModal, closeNewTaskModal, closeNewTaskModalOnBackdrop,
+    taskRowClick,
     openEditModal, saveEditedTask, closeEditModal, closeEditModalOnBackdrop,
     onCategoryChange, onEditCategoryChange,
     submitAddCategory, removeCategoryByIndex,
     toggleSubtask, toggleSubtaskList, editorAdd, editorRemove, editorRename, editorToggle,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
-    setCalView, showDueToday,
+    setCalView, toggleWeekends, showDueToday,
+    openInstall, copyInstallLink, runInstallPrompt,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

@@ -64,12 +64,14 @@
       <div class="garden-coins" id="garden-coins">&#x1FA99; 0</div>
     </div>
     <div class="garden-plot-wrap">
-      <div class="garden-plot" id="garden-plot" tabindex="0" onkeydown="handleGardenKeydown(event)" onclick="focusGarden()"></div>
-      <div class="garden-side-labels" id="garden-side-labels"></div>
+      <div class="garden-plot" id="garden-plot" tabindex="0"
+           onkeydown="handleGardenKeydown(event)" onclick="focusGarden()"
+           ontouchstart="handleGardenTouchStart(event)"
+           ontouchend="handleGardenTouchEnd(event)"></div>
     </div>
     <ul class="garden-hint">
       <li id="garden-move-hint">Click the garden, then move with WASD or the arrow keys.</li>
-      <li>Press E to pick up, plant, or use whatever you are next to.</li>
+      <li id="garden-use-hint">Press E to pick up, plant, or use whatever you are next to.</li>
       <li id="garden-buy-hint">Finish a ticket to earn a coin, then buy a plant in the shop below.</li>
     </ul>
     <div class="garden-help-icons">
@@ -96,7 +98,7 @@
         <div id="shop-plants"></div>
         <div class="shop-section-title">Pets</div>
         <div id="shop-pets"></div>
-        <div class="shop-section-title">Treats</div>
+        <div class="shop-section-title">Food</div>
         <div id="shop-treats"></div>
       </div>
       <div class="shop-column">
@@ -157,7 +159,10 @@
       </div>
       <div class="cal-legend-row">
         <div class="legend" id="cal-legend"></div>
-        <div class="cal-view-toggle" id="cal-view-toggle"></div>
+        <div class="cal-toggle-group">
+          <div class="cal-weekend-toggle" id="cal-weekend-toggle"></div>
+          <div class="cal-view-toggle" id="cal-view-toggle"></div>
+        </div>
       </div>
       <div class="cal-grid" id="cal-grid"></div>
     </div>
@@ -307,7 +312,7 @@
 <div class="modal-backdrop" id="settings-modal-backdrop" onclick="App.closeSettingsOnBackdrop(event)">
   <div class="modal">
     <button class="modal-close" onclick="App.closeSettings()">&times;</button>
-    <h3>Settings &amp; backup</h3>
+    <h3 id="settings-title">Settings &amp; backup</h3>
     <div id="settings-body"></div>
   </div>
 </div>
@@ -318,6 +323,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/util.js"></script>
+<script src="js/qr.js"></script>
 <script src="js/worlds.js"></script>
 <script src="js/store.js"></script>
 <script src="js/garden.js"></script>

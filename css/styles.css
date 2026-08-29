@@ -136,7 +136,7 @@ main {
    the page with a dead strip of nothing beside the garden. */
 .app-layout {
   display: grid;
-  grid-template-columns: 420px minmax(0, 1fr) 240px;
+  grid-template-columns: 364px minmax(0, 1fr) 240px;
   grid-template-areas: "garden content sidebar";
   gap: 24px;
   align-items: start;
@@ -147,22 +147,22 @@ main {
 .app-layout > .sidebar { grid-area: sidebar; }
 
 /* Not enough width for three: the sidebar drops under the tickets. */
-@media (max-width: 1331px) {
+@media (max-width: 1275px) {
   .app-layout {
-    grid-template-columns: 420px minmax(0, 1fr);
+    grid-template-columns: 364px minmax(0, 1fr);
     grid-template-areas:
       "garden content"
       "garden sidebar";
   }
 }
 
-/* Garden hidden: give its track back instead of leaving a 420px hole. */
+/* Garden hidden: give its track back instead of leaving a 364px hole. */
 .app-layout.no-garden {
   grid-template-columns: minmax(0, 1fr) 240px;
   grid-template-areas: "content sidebar";
 }
 
-/* With no garden there is room for two columns well below 1331px, so the
+/* With no garden there is room for two columns well below 1275px, so the
    no-garden layout above holds until the phone breakpoint takes over. */
 
 .content-col {
@@ -339,7 +339,7 @@ main {
 /* Below 1332px the sidebar wraps onto its own full-width row. A sticky element
    there would slide up and hover over the columns above it as you scroll, so
    sticky is only on while the sidebar genuinely sits beside the content. */
-@media (max-width: 1331px) {
+@media (max-width: 1275px) {
   .sidebar, .garden-col { position: static; }
 }
 
@@ -498,6 +498,11 @@ li.task.done .task-title {
   color: var(--muted);
   margin-top: 2px;
 }
+
+/* The whole row opens the ticket, so it should look like it will. */
+.task { cursor: pointer; }
+.task input,
+.task button { cursor: pointer; }
 
 .task-notes {
   font-size: 0.85rem;
@@ -751,6 +756,8 @@ li.task.done .task-title {
 .garden-plot-wrap {
   display: flex;
   align-items: flex-start;
+  /* Nothing sits beside the plot any more, so it takes the middle. */
+  justify-content: center;
   gap: 8px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -788,51 +795,7 @@ li.task.done .task-title {
 .garden-plot::before { left: -10px; }
 .garden-plot::after { right: -10px; }
 
-.garden-side-labels {
-  position: relative;
-  flex: 1;
-  min-width: 54px;
-  max-width: 60px;
-}
 
-.garden-side-label {
-  position: absolute;
-  left: 0;
-  right: 0;
-  transform: translateY(-50%);
-  line-height: 1.25;
-}
-
-.garden-side-label-name {
-  font-size: 0.56rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.garden-side-label-summary {
-  list-style: none;
-  margin: 2px 0 0;
-  padding: 0;
-}
-
-.garden-side-label-summary li {
-  font-size: 0.52rem;
-  color: var(--muted);
-  padding-left: 8px;
-  position: relative;
-}
-
-.garden-side-label-summary li::before {
-  content: '\2022';
-  position: absolute;
-  left: 0;
-}
-
-.garden-side-label.dimmed .garden-side-label-name,
-.garden-side-label.dimmed .garden-side-label-summary li {
-  color: var(--muted);
-  opacity: 0.6;
-}
 
 .garden-section-band {
   position: absolute;
@@ -1315,6 +1278,36 @@ li.task.dragging {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
+}
+
+/* Working week: the same cells, five columns wide instead of seven. */
+.cal-grid.no-weekends {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.cal-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.weekend-toggle {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.weekend-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+.weekend-toggle.on {
+  color: var(--text);
 }
 
 .cal-grid .dow {
@@ -1965,7 +1958,6 @@ body.gated { overflow: hidden; }
   /* The plot is a fixed pixel grid, so let the whole thing scroll sideways
      inside its panel rather than stretching the page. */
   .garden-plot-wrap { overflow-x: auto; }
-  .garden-side-labels { flex: 0 0 54px; }
 
   .new-task-btn-row { position: fixed; right: 16px; bottom: 16px; z-index: 40; margin: 0; }
   .new-task-btn {
@@ -2523,4 +2515,159 @@ body.gated { overflow: hidden; }
    from the home screen. Zero everywhere else. */
 body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+
+/* Who is still coming round to you - shown under the one food tile. */
+.pet-roster {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.pet-roster li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+
+/* The magnifying glass speaks through this: a small bubble that appears over
+   the hero's head for a moment and then fades. */
+.garden-thought {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  background: #ffffff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(20, 24, 40, 0.18);
+  pointer-events: none;
+  z-index: 40;
+  animation: thought-pop 0.18s ease-out;
+}
+
+.garden-thought::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 5px;
+  height: 5px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid var(--border);
+}
+
+@keyframes thought-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.shop-tile.owned {
+  border-color: var(--green);
+  opacity: 1;
+}
+
+.shop-tile.owned .shop-tile-action {
+  color: var(--green);
+}
+
+
+/* On a touch screen the plot is driven by taps and swipes, so the browser
+   must not treat those as scrolling or double-tap zoom. */
+.garden-plot {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+/* Told, briefly, when your other device changed something. */
+.sync-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translate(-50%, 12px);
+  background: var(--header-bg);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(20, 24, 40, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 200;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+
+.sync-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (max-width: 900px) {
+  .sync-toast { bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+}
+
+
+/* The install panel: a code to scan and the steps each phone needs. */
+.install-qr {
+  display: flex;
+  justify-content: center;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.install-qr svg {
+  display: block;
+  width: 190px;
+  height: 190px;
+  max-width: 100%;
+}
+
+.install-qr-fallback {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 40px 0;
+}
+
+.install-steps {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.install-steps li + li { margin-top: 6px; }
+
+.install-done {
+  background: var(--green-soft);
+  color: var(--green);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-weight: 600;
+}
+
+#install-link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
 }

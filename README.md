@@ -61,6 +61,18 @@ row-level security, and adds a policy on each one saying *you may only touch row
 where `user_id` is your own id*. That policy is what makes it safe to publish the
 site: the key in the page grants nothing by itself.
 
+### 2b. Turn on live sync (optional but worth it)
+
+Open **SQL Editor → New query** again and run
+[`supabase/realtime.sql`](supabase/realtime.sql).
+
+That lets Postgres broadcast changes on those three tables, so a ticket added on
+your laptop appears on your phone a second later without either device being
+touched. Without it Tend still keeps devices in step — it checks for changes
+whenever a device wakes, comes back online, or every 25 seconds while you are
+looking at it — this just makes it instant. Row-level security still applies, so
+each account only ever receives its own rows.
+
 ### 3. Point the app at it
 
 In your Supabase project, go to **Project Settings → API** and copy:
@@ -146,7 +158,9 @@ js/auth.js              the sign-in gate and the local profile picker
 js/app.js               tickets, lists, calendar, stats, categories, settings
 js/garden.js            the garden: sprites, movement, shop, pets, sections
 js/boot.js              wires branding in and starts the gate
+js/qr.js                a small QR encoder, for the install code
 supabase/schema.sql     tables, row-level security, triggers
+supabase/realtime.sql   optional: instant sync between devices
 supabase/daily-digest.sql   optional daily reminder email, all in SQL
 test/mock-supabase.js   a fake backend, for exercising cloud mode locally
 build.py                inlines everything into standalone/tend.html
@@ -162,6 +176,15 @@ changes go over the wire. If the network is down the queue survives in the brows
 and drains when it comes back — the badge in the header says which of those is
 happening. The garden is stored as one JSON blob per account, so new garden
 features never need a database migration.
+
+Changes travel the other way too. Each device subscribes to its own rows over a
+websocket, so a change made anywhere shows up everywhere within a second or so,
+with a short note at the bottom of the screen saying where it came from. If the
+websocket cannot be established, the same refresh runs when a device wakes up,
+regains focus, comes back online, or every 25 seconds while the tab is on screen.
+One thing deliberately does not sync: where your farmer or mermaid is standing.
+That belongs to the device you are standing on — otherwise walking about on the
+laptop would drag the phone's character around.
 
 ---
 
@@ -220,6 +243,16 @@ Tend is a progressive web app, so it installs from the browser with no app store
 involved and no cost. On **iPhone**: open the site in Safari, Share, *Add to Home
 Screen*. On **Android**: Chrome offers *Install app*, or Menu → *Add to Home
 screen*. It then opens full screen with its own icon.
+
+**Get Tend on your phone**, in the account menu, is the shortcut for all of that:
+it shows the site address as a QR code to point a camera at, the link to send to
+somebody, and the two taps each phone needs afterwards. On Chrome it also offers
+a real one-tap install button, because Chrome hands the page its install prompt;
+Safari has no equivalent, so on an iPhone the Share → Add to Home Screen step is
+unavoidable, whether you arrived by link, by code or by typing the address.
+
+The code is drawn by `js/qr.js`, written out here rather than fetched from a
+service, so it works offline and inside the single-file build.
 
 The service worker takes a **network-first** approach for the app's own files:
 online you always get the current code, so a push reaches everyone on their next

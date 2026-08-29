@@ -119,6 +119,34 @@ export function createClient() {
       }
     },
 
-    from: table
+    from: table,
+
+    /* A stand-in for Supabase Realtime. Every tab of this origin shares the
+       fake database in localStorage, and the browser fires a storage event in
+       the OTHER tabs whenever one of them writes - which is close enough to a
+       change arriving over a websocket to exercise the same code path. */
+    channel(name) {
+      const handlers = [];
+      let onStorage = null;
+      const chan = {
+        name,
+        on(type, opts, cb) { handlers.push(cb); return chan; },
+        subscribe(cb) {
+          onStorage = function (e) {
+            if (e.key === DB_KEY) handlers.forEach(h => h({ eventType: 'UPDATE' }));
+          };
+          window.addEventListener('storage', onStorage);
+          if (cb) cb('SUBSCRIBED');
+          return chan;
+        },
+        _teardown() {
+          if (onStorage) window.removeEventListener('storage', onStorage);
+          onStorage = null;
+        }
+      };
+      return chan;
+    },
+
+    removeChannel(chan) { if (chan && chan._teardown) chan._teardown(); }
   };
 }

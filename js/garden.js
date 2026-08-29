@@ -284,6 +284,8 @@ const Garden = (function () {
   const SAPLINGS_KEY = 'garden-saplings-v1';
   const DUG_TILES_KEY = 'garden-dug-v1';
   const COINS_AWARDED_KEY = 'coins-awarded-v1';
+  const LENS_KEY = 'garden-lens-v1';
+  const LENS_COST = 4;
 
   let movableLayout = {};
   let purchasedItems = [];
@@ -297,6 +299,10 @@ const Garden = (function () {
   let heldLog = null;
   let heldSapling = null;
   let dugTiles = new Set();
+  let hasLens = false;
+  let lensLastKey = '';
+  let lensTimer = null;
+  let activeThought = null;
 
   /* One coin per completed ticket, paid once. The ledger of ticket ids that
      have already paid out lives alongside the coin count, so ticking a ticket
@@ -699,6 +705,101 @@ const Garden = (function () {
     if (plot) plot.focus();
   }
 
+  /* ------------------------------------------------------------------ */
+  /* Touch controls                                                     */
+  /* A phone has no arrow keys, so: tap a square and the hero walks to  */
+  /* it; swipe to nudge one step; tap the hero to do what E does.       */
+  /* ------------------------------------------------------------------ */
+
+  const SWIPE_MIN = 24;          /* px before a drag counts as a swipe */
+  const TAP_SLOP = 12;           /* px of wobble still counted as a tap */
+  const WALK_STEP_MS = 110;      /* pace of an auto-walk */
+  const WALK_MAX_STEPS = 40;     /* never wander forever */
+
+  let touchStart = null;
+  let walkTimer = null;
+
+  function isTouchDevice() {
+    return typeof window !== 'undefined' &&
+      (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0);
+  }
+
+  function stopWalking() {
+    if (walkTimer) { clearInterval(walkTimer); walkTimer = null; }
+  }
+
+  /* Walk towards a square one step at a time, closing the bigger gap first.
+     If a step is blocked it tries the other axis; if both are blocked it
+     stops, having already watered or bumped whatever was in the way. */
+  function walkTo(row, col) {
+    stopWalking();
+    let steps = 0;
+    walkTimer = setInterval(() => {
+      steps++;
+      const dRow = row - heroPos.row;
+      const dCol = col - heroPos.col;
+      if ((dRow === 0 && dCol === 0) || steps > WALK_MAX_STEPS) { stopWalking(); return; }
+
+      const rowFirst = Math.abs(dRow) >= Math.abs(dCol);
+      const primary = rowFirst ? [Math.sign(dRow), 0] : [0, Math.sign(dCol)];
+      const secondary = rowFirst ? [0, Math.sign(dCol)] : [Math.sign(dRow), 0];
+
+      let moved = false;
+      if (primary[0] || primary[1]) moved = stepHero(primary[0], primary[1]);
+      if (!moved && (secondary[0] || secondary[1])) moved = stepHero(secondary[0], secondary[1]);
+      if (!moved) stopWalking();
+    }, WALK_STEP_MS);
+  }
+
+  function cellFromPoint(clientX, clientY) {
+    const plot = document.getElementById('garden-plot');
+    if (!plot) return null;
+    const box = plot.getBoundingClientRect();
+    const col = Math.floor((clientX - box.left) / CELL_SIZE);
+    const row = Math.floor((clientY - box.top) / CELL_SIZE);
+    if (col < 0 || col >= GARDEN_COLS || row < 0 || row > gardenMaxUnlockedRow) return null;
+    return { row, col };
+  }
+
+  function handleGardenTouchStart(event) {
+    stopWalking();
+    const t = event.changedTouches && event.changedTouches[0];
+    if (!t) return;
+    touchStart = { x: t.clientX, y: t.clientY, at: Date.now() };
+  }
+
+  function handleGardenTouchEnd(event) {
+    const t = event.changedTouches && event.changedTouches[0];
+    if (!t || !touchStart) { touchStart = null; return; }
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    const start = touchStart;
+    touchStart = null;
+
+    /* A definite drag is a swipe: one step whichever way it leaned. */
+    if (Math.abs(dx) > SWIPE_MIN || Math.abs(dy) > SWIPE_MIN) {
+      event.preventDefault();
+      if (Math.abs(dx) > Math.abs(dy)) stepHero(0, dx > 0 ? 1 : -1);
+      else stepHero(dy > 0 ? 1 : -1, 0);
+      return;
+    }
+
+    if (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP) return;
+
+    const cell = cellFromPoint(start.x, start.y);
+    if (!cell) return;
+    event.preventDefault();
+
+    /* Tapping yourself is the E key: pick up, plant, use. */
+    if (cell.row === heroPos.row && cell.col === heroPos.col) {
+      togglePickup();
+      return;
+    }
+    walkTo(cell.row, cell.col);
+  }
+
+
+
   const GARDEN_VISIBLE_KEY = 'garden-visible-v1';
   let gardenVisible = true;
 
@@ -749,7 +850,11 @@ const Garden = (function () {
       heroEl.style.transform = `translate(${x}px, ${y}px) scaleX(${heroFacing})`;
       const heldHtml = heldItemPreviewHtml();
       const heldWrap = heldHtml ? `<div class="garden-held-indicator">${heldHtml}</div>` : '';
-      heroEl.innerHTML = `${heldWrap}<div class="sprite-shadow"></div>${heroSVG(heroDirection, getEquippedOutfit())}`;
+      /* The bubble lives inside the hero so it travels with them, which means
+         it has to be redrawn whenever the hero is. */
+      const thought = activeThought
+        ? `<div class="garden-thought">${Util.escapeHtml(activeThought)}</div>` : '';
+      heroEl.innerHTML = `${thought}${heldWrap}<div class="sprite-shadow"></div>${heroSVG(heroDirection, getEquippedOutfit())}`;
     }
   }
 
@@ -919,21 +1024,19 @@ const Garden = (function () {
 
   function checkTreatDelivery() {
     if (!heldTreat) return;
-    const pet = ownedPets.find(p => p.id === heldTreat.petId);
-    if (!pet) {
-      heldTreat = null;
-      renderGarden();
-      return;
-    }
-    const dist = Math.abs(pet.row - heroPos.row) + Math.abs(pet.col - heroPos.col);
-    if (dist <= 1) {
-      const treatDef = W().treats[pet.type];
-      pet.friendship = Math.min(100, pet.friendship + (treatDef ? treatDef.gain : 15));
-      savePets();
-      spawnHeartsAt(pet.row, pet.col);
-      heldTreat = null;
-      renderGarden();
-    }
+    /* Whichever companion you reach first gets it. If two are equally close,
+       the one with the least friendship is the one that needs it most. */
+    const near = ownedPets
+      .filter(p => Math.abs(p.row - heroPos.row) + Math.abs(p.col - heroPos.col) <= 1)
+      .sort((a, b) => a.friendship - b.friendship);
+    const pet = near[0];
+    if (!pet) return;
+    const def = W().food;
+    pet.friendship = Math.min(100, pet.friendship + ((def && def.gain) || 18));
+    savePets();
+    spawnHeartsAt(pet.row, pet.col);
+    heldTreat = null;
+    renderGarden();
   }
 
   function handleGardenKeydown(event) {
@@ -969,6 +1072,14 @@ const Garden = (function () {
     else return;
 
     event.preventDefault();
+    stepHero(dr, dc);
+  }
+
+  /* One step in a direction, with everything that a step can mean: watering
+     what you walk into, bumping off scenery, greeting a pet. Shared by the
+     keyboard and by the touch controls. Returns true if the hero actually
+     changed square. */
+  function stepHero(dr, dc) {
     if (dc !== 0) {
       heroFacing = dc;
       heroDirection = dc === -1 ? 'left' : 'right';
@@ -984,7 +1095,7 @@ const Garden = (function () {
     if (targetRow < 0 || targetRow > gardenMaxUnlockedRow || targetCol < 0 || targetCol >= GARDEN_COLS) {
       saveHeroPos();
       positionHero();
-      return;
+      return false;
     }
 
     const plantId = findPlantAt(targetRow, targetCol);
@@ -992,7 +1103,8 @@ const Garden = (function () {
       waterCheck(targetRow, targetCol, plantId);
       saveHeroPos();
       positionHero();
-      return;
+      lensLook(targetRow, targetCol);
+      return false;
     }
 
     const saplingHere = saplings.find(s => s.planted && s.row === targetRow && s.col === targetCol);
@@ -1000,19 +1112,22 @@ const Garden = (function () {
       waterSaplingCheck(targetRow, targetCol, saplingHere);
       saveHeroPos();
       positionHero();
-      return;
+      lensLook(targetRow, targetCol);
+      return false;
     }
 
     if (findDecorationAt(targetRow, targetCol)) {
       saveHeroPos();
       positionHero();
-      return;
+      lensLook(targetRow, targetCol);
+      return false;
     }
 
     if (cabinSites.some(s => s.complete && s.row === targetRow && s.col === targetCol)) {
       saveHeroPos();
       positionHero();
-      return;
+      lensLook(targetRow, targetCol);
+      return false;
     }
 
     heroPos = { row: targetRow, col: targetCol };
@@ -1022,6 +1137,8 @@ const Garden = (function () {
     reactPetsToHero();
     checkTreatDelivery();
     checkAnimalSounds();
+    lensLook();
+    return true;
   }
 
   const animalSoundCooldown = new Map();
@@ -1194,48 +1311,121 @@ const Garden = (function () {
 
     const treat = findAdjacentTreat();
     if (treat) {
-      heldTreat = { id: treat.id, petId: treat.petId };
+      heldTreat = { id: treat.id };
       pendingTreats = pendingTreats.filter(t => t.id !== treat.id);
       playPickupSound();
       renderGarden();
     }
   }
 
-  function renderSectionSideLabels(bandsToRender, unlockedCount) {
-    const wrap = document.getElementById('garden-side-labels');
-    if (!wrap) return;
-    wrap.style.height = (bandsToRender * SECTION_ROWS * CELL_SIZE) + 'px';
+  /* ------------------------------------------------------------------ */
+  /* Magnifying glass                                                     */
+  /* Bought once and kept. With it, standing next to anything names that  */
+  /* thing in a thought bubble over your head for a moment - which is why */
+  /* there is no longer a list of plant names down the side of the plot.  */
+  /* ------------------------------------------------------------------ */
 
-    let html = '';
-    for (let i = 0; i < bandsToRender; i++) {
-      const info = sectionInfo(i);
-      const top = i * SECTION_ROWS * CELL_SIZE + (SECTION_ROWS * CELL_SIZE) / 2;
-      const dimClass = i >= unlockedCount ? ' dimmed' : '';
+  function loadLens() {
+    hasLens = Store.kv.getItem(LENS_KEY) === '1';
+  }
 
-      const counts = {};
-      let total = 0;
-      Object.values(gardenLayout).forEach(pos => {
-        if (Math.floor(pos.row / SECTION_ROWS) !== i) return;
-        const variety = W().plants[pos.variety] || W().plants[0];
-        counts[variety.name] = (counts[variety.name] || 0) + 1;
-        total++;
-      });
-      const parts = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-      let summaryHtml;
-      if (total === 0) {
-        summaryHtml = '<ul class="garden-side-label-summary"><li>No plants yet</li></ul>';
-      } else {
-        const shown = parts.slice(0, 3).map(([name, n]) => `<li>${n} ${Util.escapeHtml(name)}</li>`).join('');
-        const extra = parts.length > 3 ? `<li>+${parts.length - 3} more</li>` : '';
-        summaryHtml = `<ul class="garden-side-label-summary">${shown}${extra}</ul>`;
-      }
+  function saveLens() {
+    Store.kv.setItem(LENS_KEY, hasLens ? '1' : '0');
+  }
 
-      html += `<div class="garden-side-label${dimClass}" style="top:${top}px;">
-        <div class="garden-side-label-name">${info.icon} ${Util.escapeHtml(info.name)}</div>
-        ${summaryHtml}
-      </div>`;
+  function buyLens() {
+    if (hasLens || coins < LENS_COST) return;
+    coins -= LENS_COST;
+    hasLens = true;
+    saveCoins();
+    saveLens();
+    renderCoins();
+    renderShop();
+    showThought('You can name things now');
+  }
+
+  function decorName(key) {
+    const names = W().decorNames || {};
+    return names[key] || null;
+  }
+
+  /* What is standing on this square, in plain words - or null if nothing is. */
+  function describeAt(row, col) {
+    const plantId = findPlantAt(row, col);
+    if (plantId) {
+      const pos = gardenLayout[plantId];
+      const variety = W().plants[pos.variety] || W().plants[0];
+      return variety.name;
     }
-    wrap.innerHTML = html;
+
+    const pet = ownedPets.find(p => p.row === row && p.col === col);
+    if (pet) {
+      const def = W().pets[pet.type];
+      return def ? def.label : null;
+    }
+
+    const sapling = saplings.find(x => x.planted && x.row === row && x.col === col);
+    if (sapling) return decorName(isSaplingGrown(sapling) ? 'tree' : 'sapling');
+
+    const log = groundLogs.find(l => l.row === row && l.col === col);
+    if (log) return decorName('log');
+
+    const cabin = cabinSites.find(c => c.row === row && c.col === col);
+    if (cabin) return decorName('cabin');
+
+    const food = pendingTreats.find(t => t.row === row && t.col === col);
+    if (food) return W().food.label;
+
+    const item = purchasedItems.find(it => it.row === row && it.col === col);
+    if (item) {
+      const def = W().items[item.kind];
+      if (def) return def.label;
+    }
+
+    const decor = placedDecorations.find(d =>
+      row >= d.row && row < d.row + d.height &&
+      col >= d.col && col < d.col + d.width);
+    if (decor) {
+      if (decor.kind && W().items[decor.kind]) return W().items[decor.kind].label;
+      return decorName(decor.art || decor.kind);
+    }
+
+    return null;
+  }
+
+  /* The square in front plus the four around it - whatever you have walked up
+     to. The nearest thing wins, and the same thing does not announce itself
+     twice in a row. */
+  function lensLook(facingRow, facingCol) {
+    if (!hasLens) return;
+    const cells = [];
+    if (Number.isFinite(facingRow) && Number.isFinite(facingCol)) cells.push([facingRow, facingCol]);
+    [[-1, 0], [0, 1], [1, 0], [0, -1]].forEach(([dr, dc]) =>
+      cells.push([heroPos.row + dr, heroPos.col + dc]));
+
+    for (const [r, c] of cells) {
+      const name = describeAt(r, c);
+      if (name) {
+        const key = r + ':' + c + ':' + name;
+        if (key === lensLastKey) return;
+        lensLastKey = key;
+        showThought(name);
+        return;
+      }
+    }
+    lensLastKey = '';
+  }
+
+  function showThought(text) {
+    if (!text) return;
+    activeThought = text;
+    positionHero();
+    if (lensTimer) clearTimeout(lensTimer);
+    lensTimer = setTimeout(() => {
+      activeThought = null;
+      lensTimer = null;
+      positionHero();
+    }, 1500);
   }
 
   function findFreeCellNearHero() {
@@ -1387,16 +1577,16 @@ const Garden = (function () {
     renderGarden();
   }
 
-  function buyTreat(petId) {
-    const pet = ownedPets.find(p => p.id === petId);
-    const treatDef = pet && W().treats[pet.type];
-    if (!pet || !treatDef || coins < treatDef.cost) return;
-    coins -= treatDef.cost;
+  /* One bowl of food, good for any companion. It lands beside you; pick it up
+     and walk it over to whichever animal you want to win over. */
+  function buyFood() {
+    const def = W().food;
+    if (!ownedPets.length || !def || coins < def.cost) return;
+    coins -= def.cost;
     saveCoins();
     const cell = findFreeCellNearHero();
     pendingTreats.push({
-      id: 'treat-' + hashStr(petId + pendingTreats.length + Math.random()),
-      petId,
+      id: 'food-' + hashStr(pendingTreats.length + '' + Math.random()),
       row: cell.row,
       col: cell.col
     });
@@ -1449,6 +1639,12 @@ const Garden = (function () {
           <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))} (water 5x to grow)</span>
           <span class="shop-tile-action">\u{1FA99}${SAPLING_COST}</span>
         </button>` +
+        `<button class="shop-tile ${hasLens ? 'owned' : ''}" ${(hasLens || coins < LENS_COST) ? 'disabled' : ''} onclick="buyLens()"
+           title="Walk up to anything and it tells you what it is">
+          <span class="shop-tile-icon">\u{1F50D}</span>
+          <span class="shop-tile-label">Magnifying glass (names things)</span>
+          <span class="shop-tile-action">${hasLens ? 'Owned' : '\u{1FA99}' + LENS_COST}</span>
+        </button>` +
         `<button class="shop-tile" ${coins < RESET_PURCHASES_COST ? 'disabled' : ''} onclick="resetGarden()">
           <span class="shop-tile-icon">\u{267B}</span>
           <span class="shop-tile-label">Reset ${Util.escapeHtml(terms().place)}</span>
@@ -1460,19 +1656,21 @@ const Garden = (function () {
     const treatsWrap = document.getElementById('shop-treats');
     if (treatsWrap) {
       if (!ownedPets.length) {
-        treatsWrap.innerHTML = '<div class="shop-empty">Buy a pet to unlock treats.</div>';
+        treatsWrap.innerHTML = `<div class="shop-empty">Buy a companion to unlock ${Util.escapeHtml(W().food.label.toLowerCase())}.</div>`;
       } else {
-        const tiles = ownedPets.map(p => {
-          const petDef = W().pets[p.type];
-          const treatDef = W().treats[p.type];
-          const waiting = pendingTreats.some(t => t.petId === p.id) || (heldTreat && heldTreat.petId === p.id);
-          return `<button class="shop-tile" ${(coins < treatDef.cost || waiting) ? 'disabled' : ''} onclick="buyTreat('${p.id}')">
-            <span class="shop-tile-icon">${petDef.icon}</span>
-            <span class="shop-tile-label">${Util.escapeHtml(petDef.label)} ${p.friendship}%</span>
-            <span class="shop-tile-action">${treatDef.icon} \u{1FA99}${treatDef.cost}</span>
+        const def = W().food;
+        const tile = `<button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyFood()">
+            <span class="shop-tile-icon">${def.icon}</span>
+            <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
+            <span class="shop-tile-action">\u{1FA99}${def.cost}</span>
           </button>`;
+        /* Who still needs winning over, so the one food tile is enough. */
+        const roster = ownedPets.map(p => {
+          const petDef = W().pets[p.type];
+          return `<li><span>${petDef.icon} ${Util.escapeHtml(petDef.label)}</span><span>${p.friendship}%</span></li>`;
         }).join('');
-        treatsWrap.innerHTML = `<div class="shop-grid">${tiles}</div>`;
+        treatsWrap.innerHTML = `<div class="shop-grid">${tile}</div>
+          <ul class="pet-roster">${roster}</ul>`;
       }
     }
 
@@ -1747,7 +1945,6 @@ const Garden = (function () {
     heroPos.col = Math.min(heroPos.col, GARDEN_COLS - 1);
     positionHero();
 
-    renderSectionSideLabels(bandsToRender, unlockedCount);
     renderCoins();
 
     document.getElementById('garden-gardener').innerHTML = heroSVG('down', getEquippedOutfit());
@@ -1775,7 +1972,7 @@ const Garden = (function () {
       shovel: { icon: '\u{1FACF}', title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
       sapling: { icon: '\u{1F331}', title: t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's', body: 'Buy one and it appears at the top. Carry it to an empty spot and press E to plant it. Move into it to water it - five waterings, once a minute, and it grows into ' + t.sprouted + '. Press F to grow every planted one at once.' },
       cabin: { icon: '\u{1FAB5}', title: 'Building a ' + t.build, body: 'Carry ' + t.log + ' onto a tile that already has some to start a ' + t.build + ' site. Keep bringing more and watch it rise in stages - foundation, walls, roof, then doors and windows once it finishes at 10.' },
-      pets: { icon: '\u{1F43E}', title: 'Companions', body: 'Buy one, or unlock a random one (10 max). Buy treats to feed them - you carry the food over yourself. Friendly ones stick close, skittish ones flee until you win them over.' },
+      pets: { icon: '\u{1F43E}', title: 'Companions', body: 'Buy one, or unlock a random one (10 max). One food suits every animal: buy a bowl, pick it up and walk it over to whichever one you want. Friendly ones stick close, skittish ones flee until you win them over.' },
       unlock: { icon: '\u{1F512}', title: 'Unlocking sections', body: 'Every 10 completed tickets unlocks the next part of ' + t.place + '. The next locked section is always visible ahead, dimmed, behind a gate.' }
     };
   }
@@ -1816,6 +2013,8 @@ const Garden = (function () {
     placedDecorations = [];
     wateredCooldown.clear();
     currentHelpTopic = null;
+    activeThought = null;
+    lensLastKey = '';
 
     loadGardenLayout();
     loadHeroPos();
@@ -1823,6 +2022,7 @@ const Garden = (function () {
     loadPurchasedItems();
     loadPets();
     loadCoins();
+    loadLens();
     loadOutfits();
     loadChoppedTrees();
     loadGroundLogs();
@@ -1834,11 +2034,21 @@ const Garden = (function () {
     stateLoaded = true;
   }
 
+  /* The keyboard hint is no use on a phone, so each device is told how it
+     actually moves. */
+  function moveHintText() {
+    return isTouchDevice()
+      ? 'Tap a square to walk there, swipe to step one square, tap yourself to pick up or use.'
+      : terms().moveHint;
+  }
+
   function start() {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
     const hint = document.getElementById('garden-move-hint');
-    if (hint) hint.textContent = terms().moveHint;
+    if (hint) hint.textContent = moveHintText();
+    const useHint = document.getElementById('garden-use-hint');
+    if (useHint) useHint.hidden = isTouchDevice();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     render();
@@ -1856,7 +2066,9 @@ const Garden = (function () {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
     const hint = document.getElementById('garden-move-hint');
-    if (hint) hint.textContent = terms().moveHint;
+    if (hint) hint.textContent = moveHintText();
+    const useHint = document.getElementById('garden-use-hint');
+    if (useHint) useHint.hidden = isTouchDevice();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     currentHelpTopic = null;
@@ -1871,6 +2083,7 @@ const Garden = (function () {
   function stop() {
     if (petTickTimer) clearInterval(petTickTimer);
     petTickTimer = null;
+    stopWalking();
   }
 
   /* Inline handlers in generated markup call these by name. */
@@ -1878,11 +2091,14 @@ const Garden = (function () {
   window.buyPet = buyPet;
   window.buyPlant = buyPlant;
   window.buySapling = buySapling;
-  window.buyTreat = buyTreat;
+  window.buyFood = buyFood;
+  window.buyLens = buyLens;
   window.unlockRandomPet = unlockRandomPet;
   window.resetGarden = resetGarden;
   window.showHelpTopic = showHelpTopic;
   window.handleGardenKeydown = handleGardenKeydown;
+  window.handleGardenTouchStart = handleGardenTouchStart;
+  window.handleGardenTouchEnd = handleGardenTouchEnd;
   window.focusGarden = focusGarden;
   window.toggleGardenVisibility = toggleGardenVisibility;
 

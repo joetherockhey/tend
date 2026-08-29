@@ -152,7 +152,7 @@ main {
    the page with a dead strip of nothing beside the garden. */
 .app-layout {
   display: grid;
-  grid-template-columns: 420px minmax(0, 1fr) 240px;
+  grid-template-columns: 364px minmax(0, 1fr) 240px;
   grid-template-areas: "garden content sidebar";
   gap: 24px;
   align-items: start;
@@ -163,22 +163,22 @@ main {
 .app-layout > .sidebar { grid-area: sidebar; }
 
 /* Not enough width for three: the sidebar drops under the tickets. */
-@media (max-width: 1331px) {
+@media (max-width: 1275px) {
   .app-layout {
-    grid-template-columns: 420px minmax(0, 1fr);
+    grid-template-columns: 364px minmax(0, 1fr);
     grid-template-areas:
       "garden content"
       "garden sidebar";
   }
 }
 
-/* Garden hidden: give its track back instead of leaving a 420px hole. */
+/* Garden hidden: give its track back instead of leaving a 364px hole. */
 .app-layout.no-garden {
   grid-template-columns: minmax(0, 1fr) 240px;
   grid-template-areas: "content sidebar";
 }
 
-/* With no garden there is room for two columns well below 1331px, so the
+/* With no garden there is room for two columns well below 1275px, so the
    no-garden layout above holds until the phone breakpoint takes over. */
 
 .content-col {
@@ -355,7 +355,7 @@ main {
 /* Below 1332px the sidebar wraps onto its own full-width row. A sticky element
    there would slide up and hover over the columns above it as you scroll, so
    sticky is only on while the sidebar genuinely sits beside the content. */
-@media (max-width: 1331px) {
+@media (max-width: 1275px) {
   .sidebar, .garden-col { position: static; }
 }
 
@@ -514,6 +514,11 @@ li.task.done .task-title {
   color: var(--muted);
   margin-top: 2px;
 }
+
+/* The whole row opens the ticket, so it should look like it will. */
+.task { cursor: pointer; }
+.task input,
+.task button { cursor: pointer; }
 
 .task-notes {
   font-size: 0.85rem;
@@ -767,6 +772,8 @@ li.task.done .task-title {
 .garden-plot-wrap {
   display: flex;
   align-items: flex-start;
+  /* Nothing sits beside the plot any more, so it takes the middle. */
+  justify-content: center;
   gap: 8px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -803,52 +810,6 @@ li.task.done .task-title {
 
 .garden-plot::before { left: -10px; }
 .garden-plot::after { right: -10px; }
-
-.garden-side-labels {
-  position: relative;
-  flex: 1;
-  min-width: 54px;
-  max-width: 60px;
-}
-
-.garden-side-label {
-  position: absolute;
-  left: 0;
-  right: 0;
-  transform: translateY(-50%);
-  line-height: 1.25;
-}
-
-.garden-side-label-name {
-  font-size: 0.56rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.garden-side-label-summary {
-  list-style: none;
-  margin: 2px 0 0;
-  padding: 0;
-}
-
-.garden-side-label-summary li {
-  font-size: 0.52rem;
-  color: var(--muted);
-  padding-left: 8px;
-  position: relative;
-}
-
-.garden-side-label-summary li::before {
-  content: '\2022';
-  position: absolute;
-  left: 0;
-}
-
-.garden-side-label.dimmed .garden-side-label-name,
-.garden-side-label.dimmed .garden-side-label-summary li {
-  color: var(--muted);
-  opacity: 0.6;
-}
 
 .garden-section-band {
   position: absolute;
@@ -1331,6 +1292,36 @@ li.task.dragging {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
+}
+
+/* Working week: the same cells, five columns wide instead of seven. */
+.cal-grid.no-weekends {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.cal-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.weekend-toggle {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.weekend-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+.weekend-toggle.on {
+  color: var(--text);
 }
 
 .cal-grid .dow {
@@ -1981,7 +1972,6 @@ body.gated { overflow: hidden; }
   /* The plot is a fixed pixel grid, so let the whole thing scroll sideways
      inside its panel rather than stretching the page. */
   .garden-plot-wrap { overflow-x: auto; }
-  .garden-side-labels { flex: 0 0 54px; }
 
   .new-task-btn-row { position: fixed; right: 16px; bottom: 16px; z-index: 40; margin: 0; }
   .new-task-btn {
@@ -2538,6 +2528,156 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Who is still coming round to you - shown under the one food tile. */
+.pet-roster {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.pet-roster li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* The magnifying glass speaks through this: a small bubble that appears over
+   the hero's head for a moment and then fades. */
+.garden-thought {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  background: #ffffff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(20, 24, 40, 0.18);
+  pointer-events: none;
+  z-index: 40;
+  animation: thought-pop 0.18s ease-out;
+}
+
+.garden-thought::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 5px;
+  height: 5px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid var(--border);
+}
+
+@keyframes thought-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.shop-tile.owned {
+  border-color: var(--green);
+  opacity: 1;
+}
+
+.shop-tile.owned .shop-tile-action {
+  color: var(--green);
+}
+
+/* On a touch screen the plot is driven by taps and swipes, so the browser
+   must not treat those as scrolling or double-tap zoom. */
+.garden-plot {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Told, briefly, when your other device changed something. */
+.sync-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translate(-50%, 12px);
+  background: var(--header-bg);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(20, 24, 40, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 200;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+
+.sync-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (max-width: 900px) {
+  .sync-toast { bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* The install panel: a code to scan and the steps each phone needs. */
+.install-qr {
+  display: flex;
+  justify-content: center;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.install-qr svg {
+  display: block;
+  width: 190px;
+  height: 190px;
+  max-width: 100%;
+}
+
+.install-qr-fallback {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 40px 0;
+}
+
+.install-steps {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.install-steps li + li { margin-top: 6px; }
+
+.install-done {
+  background: var(--green-soft);
+  color: var(--green);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-weight: 600;
+}
+
+#install-link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}
+
 </style>
 </head>
 <body class="gated">
@@ -2589,12 +2729,14 @@ body {
       <div class="garden-coins" id="garden-coins">&#x1FA99; 0</div>
     </div>
     <div class="garden-plot-wrap">
-      <div class="garden-plot" id="garden-plot" tabindex="0" onkeydown="handleGardenKeydown(event)" onclick="focusGarden()"></div>
-      <div class="garden-side-labels" id="garden-side-labels"></div>
+      <div class="garden-plot" id="garden-plot" tabindex="0"
+           onkeydown="handleGardenKeydown(event)" onclick="focusGarden()"
+           ontouchstart="handleGardenTouchStart(event)"
+           ontouchend="handleGardenTouchEnd(event)"></div>
     </div>
     <ul class="garden-hint">
       <li id="garden-move-hint">Click the garden, then move with WASD or the arrow keys.</li>
-      <li>Press E to pick up, plant, or use whatever you are next to.</li>
+      <li id="garden-use-hint">Press E to pick up, plant, or use whatever you are next to.</li>
       <li id="garden-buy-hint">Finish a ticket to earn a coin, then buy a plant in the shop below.</li>
     </ul>
     <div class="garden-help-icons">
@@ -2621,7 +2763,7 @@ body {
         <div id="shop-plants"></div>
         <div class="shop-section-title">Pets</div>
         <div id="shop-pets"></div>
-        <div class="shop-section-title">Treats</div>
+        <div class="shop-section-title">Food</div>
         <div id="shop-treats"></div>
       </div>
       <div class="shop-column">
@@ -2682,7 +2824,10 @@ body {
       </div>
       <div class="cal-legend-row">
         <div class="legend" id="cal-legend"></div>
-        <div class="cal-view-toggle" id="cal-view-toggle"></div>
+        <div class="cal-toggle-group">
+          <div class="cal-weekend-toggle" id="cal-weekend-toggle"></div>
+          <div class="cal-view-toggle" id="cal-view-toggle"></div>
+        </div>
       </div>
       <div class="cal-grid" id="cal-grid"></div>
     </div>
@@ -2832,7 +2977,7 @@ body {
 <div class="modal-backdrop" id="settings-modal-backdrop" onclick="App.closeSettingsOnBackdrop(event)">
   <div class="modal">
     <button class="modal-close" onclick="App.closeSettings()">&times;</button>
-    <h3>Settings &amp; backup</h3>
+    <h3 id="settings-title">Settings &amp; backup</h3>
     <div id="settings-body"></div>
   </div>
 </div>
@@ -2978,6 +3123,435 @@ const Util = (function () {
     escapeHtml, dateToStr, todayStr, formatDate,
     hexToRgba, uid, initials, colorFor, debounce
   };
+})();
+
+/* ===== js/qr.js ===== */
+/* ============================================================================
+   Tend - qr.js
+   ----------------------------------------------------------------------------
+   A small QR encoder, written out in full so the install code works with no
+   network, no CDN and no third-party service - it has to keep working inside
+   the single-file build and on a phone with no signal.
+
+   Scope is deliberately narrow: byte mode, error correction level M, versions
+   1 to 10. That covers any URL up to 216 characters, which is far more than a
+   site address needs.
+
+   Qr.matrix(text) -> { size, modules }   modules[row][col] is true for dark
+   Qr.svg(text, opts) -> an <svg> string
+   ============================================================================ */
+
+const Qr = (function () {
+  'use strict';
+
+  /* ---- capacity tables, error correction level M ---- */
+  /* [ total codewords, ec codewords per block, [ [blocks, data codewords], ... ] ] */
+  const VERSIONS = {
+    1:  [26,  10, [[1, 16]]],
+    2:  [44,  16, [[1, 28]]],
+    3:  [70,  26, [[1, 44]]],
+    4:  [100, 18, [[2, 32]]],
+    5:  [134, 24, [[2, 43]]],
+    6:  [172, 16, [[4, 27]]],
+    7:  [196, 18, [[4, 31]]],
+    8:  [242, 22, [[2, 38], [2, 39]]],
+    9:  [292, 22, [[3, 36], [2, 37]]],
+    10: [346, 26, [[4, 43], [1, 44]]]
+  };
+
+  const ALIGNMENT = {
+    1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30],
+    6: [6, 34], 7: [6, 22, 38], 8: [6, 24, 42], 9: [6, 26, 46], 10: [6, 28, 50]
+  };
+
+  /* ---- GF(256) arithmetic, the field QR's Reed-Solomon runs in ---- */
+  const EXP = new Uint8Array(512);
+  const LOG = new Uint8Array(256);
+  (function initGF() {
+    let x = 1;
+    for (let i = 0; i < 255; i++) {
+      EXP[i] = x;
+      LOG[x] = i;
+      x <<= 1;
+      if (x & 0x100) x ^= 0x11d;      /* the QR primitive polynomial */
+    }
+    for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+  })();
+
+  function gfMul(a, b) {
+    if (a === 0 || b === 0) return 0;
+    return EXP[LOG[a] + LOG[b]];
+  }
+
+  /* The generator polynomial for n error correction codewords. */
+  function rsGenerator(n) {
+    let poly = [1];
+    for (let i = 0; i < n; i++) {
+      const next = new Array(poly.length + 1).fill(0);
+      for (let j = 0; j < poly.length; j++) {
+        next[j] ^= poly[j];                      /* x * poly            */
+        next[j + 1] ^= gfMul(poly[j], EXP[i]);   /* alpha^i * poly      */
+      }
+      poly = next;
+    }
+    return poly;
+  }
+
+  function rsEncode(data, ecCount) {
+    const gen = rsGenerator(ecCount);
+    const rem = new Array(ecCount).fill(0);
+    for (let i = 0; i < data.length; i++) {
+      const factor = data[i] ^ rem[0];
+      rem.shift();
+      rem.push(0);
+      if (factor !== 0) {
+        for (let j = 0; j < ecCount; j++) rem[j] ^= gfMul(gen[j + 1], factor);
+      }
+    }
+    return rem;
+  }
+
+  /* ---- BCH codes for the format and version information ---- */
+
+  function bch(value, poly, bits) {
+    let v = value << bits;
+    const polyBits = poly.toString(2).length - 1;
+    while (v.toString(2).length - 1 >= polyBits) {
+      v ^= poly << (v.toString(2).length - 1 - polyBits);
+    }
+    return (value << bits) | v;
+  }
+
+  function formatBits(mask) {
+    /* Level M is 00; five bits of level + mask, BCH(15,5), then the mask
+       pattern the standard applies so an all-zero format is not all zeros. */
+    const data = (0x00 << 3) | mask;
+    return (bch(data, 0x537, 10)) ^ 0x5412;
+  }
+
+  function versionBits(version) {
+    return bch(version, 0x1f25, 12);
+  }
+
+  /* Where each of the fifteen format bits goes, bit 0 first, for both copies.
+     The awkward jumps around row and column 8 avoid the timing patterns. */
+  function formatBitCells(size) {
+    const first = [];
+    for (let i = 0; i <= 5; i++) first.push([i, 8]);
+    first.push([7, 8]);
+    first.push([8, 8]);
+    first.push([8, 7]);
+    for (let i = 9; i < 15; i++) first.push([8, 14 - i]);
+
+    const second = [];
+    for (let i = 0; i < 8; i++) second.push([8, size - 1 - i]);
+    for (let i = 8; i < 15; i++) second.push([size - 15 + i, 8]);
+
+    return first.concat(second);
+  }
+
+  /* The same squares, plus the always-dark module, as a set to reserve. */
+  function formatCells(size) {
+    return formatBitCells(size).concat([[size - 8, 8]]);
+  }
+
+  /* ---- text to bytes (UTF-8) ---- */
+  function utf8(text) {
+    const out = [];
+    for (const ch of String(text)) {
+      const cp = ch.codePointAt(0);
+      if (cp < 0x80) out.push(cp);
+      else if (cp < 0x800) out.push(0xc0 | (cp >> 6), 0x80 | (cp & 63));
+      else if (cp < 0x10000) out.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+      else out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+    }
+    return out;
+  }
+
+  function pickVersion(byteLen) {
+    for (let v = 1; v <= 10; v++) {
+      const [total, ecPerBlock, groups] = VERSIONS[v];
+      const dataCodewords = groups.reduce((n, [blocks, count]) => n + blocks * count, 0);
+      const countBits = v < 10 ? 8 : 16;
+      const needed = Math.ceil((4 + countBits + byteLen * 8) / 8);
+      if (needed <= dataCodewords) return v;
+    }
+    return null;
+  }
+
+  /* ---- the bit stream ---- */
+  function buildCodewords(bytes, version) {
+    const [, ecPerBlock, groups] = VERSIONS[version];
+    const dataCodewords = groups.reduce((n, [blocks, count]) => n + blocks * count, 0);
+    const countBits = version < 10 ? 8 : 16;
+
+    const bits = [];
+    const push = (value, len) => {
+      for (let i = len - 1; i >= 0; i--) bits.push((value >> i) & 1);
+    };
+
+    push(0b0100, 4);                 /* byte mode */
+    push(bytes.length, countBits);
+    bytes.forEach(b => push(b, 8));
+
+    /* Terminator, then round up to a whole codeword. */
+    const capacity = dataCodewords * 8;
+    for (let i = 0; i < 4 && bits.length < capacity; i++) bits.push(0);
+    while (bits.length % 8 !== 0) bits.push(0);
+
+    const words = [];
+    for (let i = 0; i < bits.length; i += 8) {
+      let b = 0;
+      for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+      words.push(b);
+    }
+    const PAD = [0xec, 0x11];
+    for (let i = 0; words.length < dataCodewords; i++) words.push(PAD[i % 2]);
+
+    /* Split into blocks, add error correction, then interleave both. */
+    const dataBlocks = [];
+    const ecBlocks = [];
+    let at = 0;
+    groups.forEach(([blocks, count]) => {
+      for (let i = 0; i < blocks; i++) {
+        const block = words.slice(at, at + count);
+        at += count;
+        dataBlocks.push(block);
+        ecBlocks.push(rsEncode(block, ecPerBlock));
+      }
+    });
+
+    const out = [];
+    const maxData = Math.max(...dataBlocks.map(b => b.length));
+    for (let i = 0; i < maxData; i++) {
+      dataBlocks.forEach(b => { if (i < b.length) out.push(b[i]); });
+    }
+    for (let i = 0; i < ecPerBlock; i++) {
+      ecBlocks.forEach(b => out.push(b[i]));
+    }
+    return out;
+  }
+
+  /* ---- the module grid ---- */
+
+  function buildMatrix(version, codewords) {
+    const size = version * 4 + 17;
+    const modules = [];
+    const reserved = [];
+    for (let r = 0; r < size; r++) {
+      modules.push(new Array(size).fill(false));
+      reserved.push(new Array(size).fill(false));
+    }
+
+    const set = (r, c, dark, isReserved) => {
+      if (r < 0 || c < 0 || r >= size || c >= size) return;
+      modules[r][c] = dark;
+      reserved[r][c] = isReserved !== false;
+    };
+
+    /* Finder patterns and their separators. */
+    const finder = (top, left) => {
+      for (let r = -1; r <= 7; r++) {
+        for (let c = -1; c <= 7; c++) {
+          const rr = top + r, cc = left + c;
+          if (rr < 0 || cc < 0 || rr >= size || cc >= size) continue;
+          const inRing = (r >= 0 && r <= 6 && (c === 0 || c === 6)) ||
+                         (c >= 0 && c <= 6 && (r === 0 || r === 6));
+          const inCore = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+          set(rr, cc, inRing || inCore);
+        }
+      }
+    };
+    finder(0, 0);
+    finder(0, size - 7);
+    finder(size - 7, 0);
+
+    /* Timing patterns. */
+    for (let i = 8; i < size - 8; i++) {
+      set(6, i, i % 2 === 0);
+      set(i, 6, i % 2 === 0);
+    }
+
+    /* Alignment patterns, skipping the three finder corners. */
+    const centers = ALIGNMENT[version];
+    centers.forEach(r => centers.forEach(c => {
+      const nearFinder = (r <= 8 && c <= 8) ||
+                         (r <= 8 && c >= size - 9) ||
+                         (r >= size - 9 && c <= 8);
+      if (nearFinder) return;
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          const ring = Math.max(Math.abs(dr), Math.abs(dc));
+          set(r + dr, c + dc, ring !== 1);
+        }
+      }
+    }));
+
+    /* The one module that is always dark. */
+    set(size - 8, 8, true);
+
+    /* Reserve the two format-information areas. The bits themselves are
+       written after masking, so for now these squares are just claimed. */
+    formatCells(size).forEach(([r, c]) => {
+      if (!reserved[r][c]) set(r, c, false);
+    });
+
+    /* Version information, from version 7 up. */
+    if (version >= 7) {
+      const vb = versionBits(version);
+      for (let i = 0; i < 18; i++) {
+        const bit = ((vb >> i) & 1) === 1;
+        const r = Math.floor(i / 3);
+        const c = i % 3;
+        set(r, size - 11 + c, bit);
+        set(size - 11 + c, r, bit);
+      }
+    }
+
+    /* Data, laid out in a zigzag from the bottom right. */
+    let bitIndex = 0;
+    const nextBit = () => {
+      const byte = codewords[bitIndex >> 3];
+      const bit = byte === undefined ? 0 : (byte >> (7 - (bitIndex & 7))) & 1;
+      bitIndex++;
+      return bit === 1;
+    };
+
+    let upward = true;
+    for (let right = size - 1; right > 0; right -= 2) {
+      if (right === 6) right = 5;            /* the vertical timing column */
+      for (let step = 0; step < size; step++) {
+        const r = upward ? size - 1 - step : step;
+        for (const c of [right, right - 1]) {
+          if (reserved[r][c]) continue;   /* reserved = a function module */
+          modules[r][c] = nextBit();
+        }
+      }
+      upward = !upward;
+    }
+
+    return { size, modules, reserved };
+  }
+
+  const MASKS = [
+    (r, c) => (r + c) % 2 === 0,
+    (r) => r % 2 === 0,
+    (r, c) => c % 3 === 0,
+    (r, c) => (r + c) % 3 === 0,
+    (r, c) => (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0,
+    (r, c) => ((r * c) % 2) + ((r * c) % 3) === 0,
+    (r, c) => (((r * c) % 2) + ((r * c) % 3)) % 2 === 0,
+    (r, c) => (((r + c) % 2) + ((r * c) % 3)) % 2 === 0
+  ];
+
+  function applyMask(base, maskIndex) {
+    const size = base.size;
+    const modules = base.modules.map(row => row.slice());
+    const fn = MASKS[maskIndex];
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (base.reserved[r][c]) continue;
+        if (fn(r, c)) modules[r][c] = !modules[r][c];
+      }
+    }
+    /* Format information, written after masking. Both copies, in the order
+       the standard lays them out. */
+    const fb = formatBits(maskIndex);
+    formatBitCells(size).forEach(([r, c], i) => {
+      modules[r][c] = ((fb >> (i % 15)) & 1) === 1;
+    });
+    modules[size - 8][8] = true;
+    return { size, modules };
+  }
+
+  /* The standard's four penalty rules; the lowest-scoring mask is used, which
+     is what keeps a code readable in poor light and at an angle. */
+  function penalty(grid) {
+    const size = grid.size, m = grid.modules;
+    let score = 0;
+
+    const runScore = line => {
+      let total = 0, run = 1;
+      for (let i = 1; i < line.length; i++) {
+        if (line[i] === line[i - 1]) run++;
+        else { if (run >= 5) total += 3 + (run - 5); run = 1; }
+      }
+      if (run >= 5) total += 3 + (run - 5);
+      return total;
+    };
+    for (let r = 0; r < size; r++) score += runScore(m[r]);
+    for (let c = 0; c < size; c++) score += runScore(m.map(row => row[c]));
+
+    for (let r = 0; r < size - 1; r++) {
+      for (let c = 0; c < size - 1; c++) {
+        const v = m[r][c];
+        if (v === m[r][c + 1] && v === m[r + 1][c] && v === m[r + 1][c + 1]) score += 3;
+      }
+    }
+
+    const PATTERN = [true, false, true, true, true, false, true, false, false, false, false];
+    const hasAt = (line, i) => PATTERN.every((v, k) => line[i + k] === v);
+    const reversed = PATTERN.slice().reverse();
+    const hasRevAt = (line, i) => reversed.every((v, k) => line[i + k] === v);
+    const scanLine = line => {
+      let total = 0;
+      for (let i = 0; i + 11 <= line.length; i++) {
+        if (hasAt(line, i) || hasRevAt(line, i)) total += 40;
+      }
+      return total;
+    };
+    for (let r = 0; r < size; r++) score += scanLine(m[r]);
+    for (let c = 0; c < size; c++) score += scanLine(m.map(row => row[c]));
+
+    let dark = 0;
+    for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) if (m[r][c]) dark++;
+    const pct = (dark * 100) / (size * size);
+    score += Math.floor(Math.abs(pct - 50) / 5) * 10;
+
+    return score;
+  }
+
+  function matrix(text) {
+    const bytes = utf8(text);
+    const version = pickVersion(bytes.length);
+    if (!version) throw new Error('Too much text for a QR code this size');
+    const codewords = buildCodewords(bytes, version);
+    const base = buildMatrix(version, codewords);
+
+    let best = null, bestScore = Infinity;
+    for (let mask = 0; mask < 8; mask++) {
+      const grid = applyMask(base, mask);
+      const score = penalty(grid);
+      if (score < bestScore) { bestScore = score; best = grid; }
+    }
+    return best;
+  }
+
+  /* A plain SVG, sized in modules, with the quiet zone the standard asks for. */
+  function svg(text, opts) {
+    const o = opts || {};
+    const quiet = o.quiet === undefined ? 4 : o.quiet;
+    const grid = matrix(text);
+    const total = grid.size + quiet * 2;
+    const parts = [];
+    for (let r = 0; r < grid.size; r++) {
+      let c = 0;
+      while (c < grid.size) {
+        if (!grid.modules[r][c]) { c++; continue; }
+        let run = 1;
+        while (c + run < grid.size && grid.modules[r][c + run]) run++;
+        parts.push(`M${c + quiet} ${r + quiet}h${run}v1h-${run}z`);
+        c += run;
+      }
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" `
+      + `width="${o.width || 200}" height="${o.width || 200}" shape-rendering="crispEdges" role="img" `
+      + `aria-label="QR code">`
+      + `<rect width="${total}" height="${total}" fill="${o.light || '#ffffff'}"/>`
+      + `<path d="${parts.join('')}" fill="${o.dark || '#111827'}"/></svg>`;
+  }
+
+  return { matrix, svg };
 })();
 
 /* ===== js/worlds.js ===== */
@@ -3209,12 +3783,9 @@ const Worlds = (function () {
       rabbit: { label: 'Rabbit', icon: '\u{1F430}', cost: 5, temperament: 'skittish', svg: rabbitSVG },
       bird: { label: 'Bird', icon: '\u{1F426}', cost: 5, temperament: 'skittish', svg: birdSVG }
     };
-    const PET_TREATS = {
-      dog: { label: 'Dog treat', icon: '\u{1F9B4}', cost: 1, gain: 15 },
-      cat: { label: 'Cat treat', icon: '\u{1F41F}', cost: 1, gain: 15 },
-      rabbit: { label: 'Rabbit treat', icon: '\u{1F955}', cost: 1, gain: 20 },
-      bird: { label: 'Bird seed', icon: '\u{1F33E}', cost: 1, gain: 20 }
-    };
+    /* One food for every animal - buy it, carry it over, give it to whichever
+       companion you reach first. */
+    const PET_FOOD = { label: 'Animal feed', icon: '\u{1F96A}', cost: 1, gain: 18 };
     const SHOP_ITEMS = {
       hoe: { label: 'Hoe', icon: '\u{26CF}\u{FE0F}', cost: 3, svg: hoeSVG },
       hose: { label: 'Hose', icon: '\u{1F6BF}', cost: 4, svg: hoseSVG },
@@ -3669,12 +4240,7 @@ const Worlds = (function () {
     bird: { label: 'Jellyfish', icon: '\u{1FABC}', cost: 5, temperament: 'skittish', svg: jellyfishSVG }
   };
 
-  const OCEAN_TREATS = {
-    dog: { label: 'Krill', icon: '\u{1F990}', cost: 1, gain: 15 },
-    cat: { label: 'Brine shrimp', icon: '\u{1F364}', cost: 1, gain: 15 },
-    rabbit: { label: 'Sea grass', icon: '\u{1F33F}', cost: 1, gain: 20 },
-    bird: { label: 'Plankton', icon: '\u{2728}', cost: 1, gain: 20 }
-  };
+  const OCEAN_FOOD = { label: 'Fish food', icon: '\u{1F990}', cost: 1, gain: 18 };
 
   const OCEAN_ITEMS = {
     hoe: { label: 'Sand rake', icon: '\u{1F3D6}\u{FE0F}', cost: 3, svg: sandRakeSVG },
@@ -3723,7 +4289,17 @@ const Worlds = (function () {
     plants: PLANT_VARIETIES,
     plantSVG: buildPlantSVG,
     pets: PET_TYPES,
-    treats: PET_TREATS,
+    food: PET_FOOD,
+    /* Names for the scenery, so the magnifying glass has something to say. */
+    decorNames: {
+      tree: 'Oak tree', fruitTree: 'Fruit tree', bush: 'Bush', hedge: 'Hedge',
+      washingLine: 'Washing line', table: 'Garden table', grill: 'Barbecue',
+      lilyPad: 'Lily pad', mower: 'Lawnmower', wheelbarrow: 'Wheelbarrow',
+      bed: 'Flower bed', blanket: 'Picnic blanket', dock: 'Jetty',
+      porch: 'Porch', sand: 'Sandpit',
+      sapling: 'Sapling', log: 'Log', cabin: 'Cabin', gate: 'Gate',
+      soil: 'Dug soil'
+    },
     items: SHOP_ITEMS,
     outfits: OUTFITS,
     art: {
@@ -3764,7 +4340,16 @@ const Worlds = (function () {
     plants: OCEAN_PLANTS,
     plantSVG: oceanPlantSVG,
     pets: OCEAN_PETS,
-    treats: OCEAN_TREATS,
+    food: OCEAN_FOOD,
+    decorNames: {
+      tree: 'Kelp tower', fruitTree: 'Fruiting kelp', bush: 'Coral clump', hedge: 'Coral wall',
+      washingLine: 'Net line', table: 'Stone table', grill: 'Thermal vent',
+      lilyPad: 'Sea lettuce', mower: 'Sand sweeper', wheelbarrow: 'Shell cart',
+      bed: 'Seabed', blanket: 'Sand mat', dock: 'Reef ledge',
+      porch: 'Shell deck', sand: 'Sand flat',
+      sapling: 'Kelp shoot', log: 'Driftwood', cabin: 'Grotto', gate: 'Reef gate',
+      soil: 'Turned sand'
+    },
     items: OCEAN_ITEMS,
     outfits: OCEAN_OUTFITS,
     art: {
@@ -3875,6 +4460,31 @@ const Store = (function () {
   let dirty = { tickets: false, categories: false, state: false };
   let retryTimer = null;
 
+  /* ---- live sync ---- */
+  let channel = null;            // supabase realtime subscription
+  let changeListeners = [];      // told when the server sent us newer data
+  let liveTimer = null;          // debounce for incoming realtime events
+  let pollTimer = null;          // fallback poll while the tab is on screen
+  let refreshing = false;
+  let liveHooked = false;
+  const POLL_MS = 25000;
+
+  /* Where the hero is standing belongs to the device you are standing on. If
+     it synced, moving on the laptop would drag the phone's farmer around. */
+  const DEVICE_LOCAL_KEYS = ['garden-hero-v5', 'garden-visible-v1'];
+
+  function isDeviceLocal(key) {
+    return DEVICE_LOCAL_KEYS.indexOf(key) !== -1;
+  }
+
+  /* The part of the garden bag that belongs to the account rather than to
+     this particular browser. */
+  function syncableBag() {
+    const out = {};
+    Object.keys(gardenBag).forEach(k => { if (!isDeviceLocal(k)) out[k] = gardenBag[k]; });
+    return out;
+  }
+
   /* ========================= status plumbing ========================= */
 
   function setStatus(s) {
@@ -3955,12 +4565,12 @@ const Store = (function () {
     setItem: function (key, value) {
       gardenBag[key] = String(value);
       lsRawSet(kvKey(key), String(value));
-      markDirty('state');
+      if (!isDeviceLocal(key)) markDirty('state');
     },
     removeItem: function (key) {
       delete gardenBag[key];
       try { localStorage.removeItem(kvKey(key)); } catch (e) { /* ignore */ }
-      markDirty('state');
+      if (!isDeviceLocal(key)) markDirty('state');
     }
   };
 
@@ -4108,7 +4718,7 @@ const Store = (function () {
       user_id: account.id,
       display_name: account.name || '',
       prefs: prefs,
-      garden: gardenBag,
+      garden: syncableBag(),
       updated_at: new Date().toISOString()
     };
     const json = JSON.stringify({ display_name: row.display_name, prefs: row.prefs, garden: row.garden });
@@ -4141,7 +4751,10 @@ const Store = (function () {
 
     const st = sRes.data;
     prefs = (st && st.prefs) || {};
-    gardenBag = (st && st.garden) || {};
+    /* Keep this device's own keys - the server never had them. */
+    const keepLocal = {};
+    DEVICE_LOCAL_KEYS.forEach(k => { if (gardenBag[k] !== undefined) keepLocal[k] = gardenBag[k]; });
+    gardenBag = Object.assign({}, (st && st.garden) || {}, keepLocal);
     if (st && st.display_name) account.name = st.display_name;
 
     /* Rebuild the snapshot so the next flush only sends real changes. */
@@ -4150,7 +4763,7 @@ const Store = (function () {
     categories.forEach((c, i) => {
       snapshot.categories[c.id] = JSON.stringify({ id: c.id, user_id: account.id, name: c.name, color: c.color, sort_index: i });
     });
-    snapshot.state = JSON.stringify({ display_name: account.name || '', prefs: prefs, garden: gardenBag });
+    snapshot.state = JSON.stringify({ display_name: account.name || '', prefs: prefs, garden: syncableBag() });
 
     dirty = { tickets: false, categories: false, state: false };
 
@@ -4170,6 +4783,102 @@ const Store = (function () {
       stale.forEach(k => localStorage.removeItem(k));
       Object.keys(gardenBag).forEach(k => localStorage.setItem(prefix + k, gardenBag[k]));
     } catch (e) { /* ignore */ }
+  }
+
+  /* ========================= live sync =========================
+     Two devices, one account: whatever one of them changes should turn up on
+     the other without anybody reloading. Supabase pushes the change over a
+     websocket; if that never connects (realtime not enabled, a firewall, a
+     sleeping phone) a quiet poll and a check on waking cover the same ground
+     a little more slowly. */
+
+  function onChange(fn) {
+    changeListeners.push(fn);
+    return function () { changeListeners = changeListeners.filter(f => f !== fn); };
+  }
+
+  function announceChange() {
+    changeListeners.forEach(fn => { try { fn(); } catch (e) { console.warn('[Tend] change listener failed:', e); } });
+  }
+
+  /* Send anything of ours that is waiting, take everything of theirs, then
+     tell the app to redraw. Safe to call as often as you like. */
+  async function refresh() {
+    if (!CLOUD || !client || !account || refreshing) return false;
+    refreshing = true;
+    try {
+      if (anyDirty()) await flush();
+      const before = JSON.stringify({ t: tickets, c: categories, p: prefs, g: syncableBag() });
+      await pull();
+      const after = JSON.stringify({ t: tickets, c: categories, p: prefs, g: syncableBag() });
+      setStatus('idle');
+      if (before !== after) { announceChange(); return true; }
+      return false;
+    } catch (err) {
+      console.warn('[Tend] refresh failed:', err && err.message);
+      setStatus('offline');
+      return false;
+    } finally {
+      refreshing = false;
+    }
+  }
+
+  const scheduleRefresh = function () {
+    if (liveTimer) clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => { liveTimer = null; refresh(); }, 400);
+  };
+
+  function startRealtime() {
+    if (!CLOUD || !client || !account) return;
+    stopRealtime();
+    try {
+      const filter = 'user_id=eq.' + account.id;
+      channel = client.channel('tend-' + account.id);
+      ['tickets', 'categories', 'app_state'].forEach(table => {
+        channel.on('postgres_changes',
+          { event: '*', schema: 'public', table: table, filter: filter },
+          function () {
+            /* Our own writes come straight back to us too. Rather than trying
+               to time that out - which goes wrong the moment two devices are
+               both busy - every event just triggers a refresh, and refresh only
+               tells the app about it when the data genuinely differs. */
+            scheduleRefresh();
+          });
+      });
+      channel.subscribe(function (state) {
+        if (state === 'SUBSCRIBED') console.info('[Tend] live sync on');
+      });
+    } catch (err) {
+      console.warn('[Tend] live sync unavailable, falling back to polling:', err && err.message);
+      channel = null;
+    }
+  }
+
+  function stopRealtime() {
+    if (channel && client) {
+      try { client.removeChannel(channel); } catch (e) { /* ignore */ }
+    }
+    channel = null;
+  }
+
+  /* The belt and braces: check on waking, on coming back online, on returning
+     to the tab, and every so often while the tab is actually being looked at.
+     This alone is enough to keep a phone and a laptop in step. */
+  function hookLiveFallbacks() {
+    if (liveHooked || typeof document === 'undefined') return;
+    liveHooked = true;
+
+    const wake = function () {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('focus', wake);
+    window.addEventListener('online', function () { refresh(); });
+    window.addEventListener('pageshow', wake);
+
+    pollTimer = setInterval(function () {
+      if (document.visibilityState === 'visible') refresh();
+    }, POLL_MS);
   }
 
   /* ========================= opening an account ========================= */
@@ -4201,17 +4910,24 @@ const Store = (function () {
       dedupeCategories();               /* heals accounts that already piled up */
       seedDefaultsIfEmpty();            /* only if the server genuinely has none */
       setStatus('idle');
+      startRealtime();
+      hookLiveFallbacks();
       return { fromCache: false };
     } catch (err) {
       console.warn('[Tend] could not reach the server, using the offline copy:', err && err.message);
       seedDefaultsIfEmpty();
       setStatus('offline');
+      /* Still hook the wake-ups: the moment the connection is back we catch up. */
+      startRealtime();
+      hookLiveFallbacks();
       return { fromCache: true };
     }
   }
 
   function close() {
     scheduleFlush.flush();
+    stopRealtime();
+    if (liveTimer) { clearTimeout(liveTimer); liveTimer = null; }
     account = null;
     tickets = [];
     categories = [];
@@ -4469,6 +5185,8 @@ const Store = (function () {
     status: function () { return status; },
     onStatus,
     pull,
+    refresh,
+    onChange,
 
     /* local profiles */
     localProfiles, createLocalProfile, deleteLocalProfile, localProfileTicketCount, lastAccountId,
@@ -4703,6 +5421,8 @@ const Garden = (function () {
   const SAPLINGS_KEY = 'garden-saplings-v1';
   const DUG_TILES_KEY = 'garden-dug-v1';
   const COINS_AWARDED_KEY = 'coins-awarded-v1';
+  const LENS_KEY = 'garden-lens-v1';
+  const LENS_COST = 4;
 
   let movableLayout = {};
   let purchasedItems = [];
@@ -4716,6 +5436,10 @@ const Garden = (function () {
   let heldLog = null;
   let heldSapling = null;
   let dugTiles = new Set();
+  let hasLens = false;
+  let lensLastKey = '';
+  let lensTimer = null;
+  let activeThought = null;
 
   /* One coin per completed ticket, paid once. The ledger of ticket ids that
      have already paid out lives alongside the coin count, so ticking a ticket
@@ -5106,6 +5830,99 @@ const Garden = (function () {
     if (plot) plot.focus();
   }
 
+  /* ------------------------------------------------------------------ */
+  /* Touch controls                                                     */
+  /* A phone has no arrow keys, so: tap a square and the hero walks to  */
+  /* it; swipe to nudge one step; tap the hero to do what E does.       */
+  /* ------------------------------------------------------------------ */
+
+  const SWIPE_MIN = 24;          /* px before a drag counts as a swipe */
+  const TAP_SLOP = 12;           /* px of wobble still counted as a tap */
+  const WALK_STEP_MS = 110;      /* pace of an auto-walk */
+  const WALK_MAX_STEPS = 40;     /* never wander forever */
+
+  let touchStart = null;
+  let walkTimer = null;
+
+  function isTouchDevice() {
+    return typeof window !== 'undefined' &&
+      (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0);
+  }
+
+  function stopWalking() {
+    if (walkTimer) { clearInterval(walkTimer); walkTimer = null; }
+  }
+
+  /* Walk towards a square one step at a time, closing the bigger gap first.
+     If a step is blocked it tries the other axis; if both are blocked it
+     stops, having already watered or bumped whatever was in the way. */
+  function walkTo(row, col) {
+    stopWalking();
+    let steps = 0;
+    walkTimer = setInterval(() => {
+      steps++;
+      const dRow = row - heroPos.row;
+      const dCol = col - heroPos.col;
+      if ((dRow === 0 && dCol === 0) || steps > WALK_MAX_STEPS) { stopWalking(); return; }
+
+      const rowFirst = Math.abs(dRow) >= Math.abs(dCol);
+      const primary = rowFirst ? [Math.sign(dRow), 0] : [0, Math.sign(dCol)];
+      const secondary = rowFirst ? [0, Math.sign(dCol)] : [Math.sign(dRow), 0];
+
+      let moved = false;
+      if (primary[0] || primary[1]) moved = stepHero(primary[0], primary[1]);
+      if (!moved && (secondary[0] || secondary[1])) moved = stepHero(secondary[0], secondary[1]);
+      if (!moved) stopWalking();
+    }, WALK_STEP_MS);
+  }
+
+  function cellFromPoint(clientX, clientY) {
+    const plot = document.getElementById('garden-plot');
+    if (!plot) return null;
+    const box = plot.getBoundingClientRect();
+    const col = Math.floor((clientX - box.left) / CELL_SIZE);
+    const row = Math.floor((clientY - box.top) / CELL_SIZE);
+    if (col < 0 || col >= GARDEN_COLS || row < 0 || row > gardenMaxUnlockedRow) return null;
+    return { row, col };
+  }
+
+  function handleGardenTouchStart(event) {
+    stopWalking();
+    const t = event.changedTouches && event.changedTouches[0];
+    if (!t) return;
+    touchStart = { x: t.clientX, y: t.clientY, at: Date.now() };
+  }
+
+  function handleGardenTouchEnd(event) {
+    const t = event.changedTouches && event.changedTouches[0];
+    if (!t || !touchStart) { touchStart = null; return; }
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    const start = touchStart;
+    touchStart = null;
+
+    /* A definite drag is a swipe: one step whichever way it leaned. */
+    if (Math.abs(dx) > SWIPE_MIN || Math.abs(dy) > SWIPE_MIN) {
+      event.preventDefault();
+      if (Math.abs(dx) > Math.abs(dy)) stepHero(0, dx > 0 ? 1 : -1);
+      else stepHero(dy > 0 ? 1 : -1, 0);
+      return;
+    }
+
+    if (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP) return;
+
+    const cell = cellFromPoint(start.x, start.y);
+    if (!cell) return;
+    event.preventDefault();
+
+    /* Tapping yourself is the E key: pick up, plant, use. */
+    if (cell.row === heroPos.row && cell.col === heroPos.col) {
+      togglePickup();
+      return;
+    }
+    walkTo(cell.row, cell.col);
+  }
+
   const GARDEN_VISIBLE_KEY = 'garden-visible-v1';
   let gardenVisible = true;
 
@@ -5156,7 +5973,11 @@ const Garden = (function () {
       heroEl.style.transform = `translate(${x}px, ${y}px) scaleX(${heroFacing})`;
       const heldHtml = heldItemPreviewHtml();
       const heldWrap = heldHtml ? `<div class="garden-held-indicator">${heldHtml}</div>` : '';
-      heroEl.innerHTML = `${heldWrap}<div class="sprite-shadow"></div>${heroSVG(heroDirection, getEquippedOutfit())}`;
+      /* The bubble lives inside the hero so it travels with them, which means
+         it has to be redrawn whenever the hero is. */
+      const thought = activeThought
+        ? `<div class="garden-thought">${Util.escapeHtml(activeThought)}</div>` : '';
+      heroEl.innerHTML = `${thought}${heldWrap}<div class="sprite-shadow"></div>${heroSVG(heroDirection, getEquippedOutfit())}`;
     }
   }
 
@@ -5326,21 +6147,19 @@ const Garden = (function () {
 
   function checkTreatDelivery() {
     if (!heldTreat) return;
-    const pet = ownedPets.find(p => p.id === heldTreat.petId);
-    if (!pet) {
-      heldTreat = null;
-      renderGarden();
-      return;
-    }
-    const dist = Math.abs(pet.row - heroPos.row) + Math.abs(pet.col - heroPos.col);
-    if (dist <= 1) {
-      const treatDef = W().treats[pet.type];
-      pet.friendship = Math.min(100, pet.friendship + (treatDef ? treatDef.gain : 15));
-      savePets();
-      spawnHeartsAt(pet.row, pet.col);
-      heldTreat = null;
-      renderGarden();
-    }
+    /* Whichever companion you reach first gets it. If two are equally close,
+       the one with the least friendship is the one that needs it most. */
+    const near = ownedPets
+      .filter(p => Math.abs(p.row - heroPos.row) + Math.abs(p.col - heroPos.col) <= 1)
+      .sort((a, b) => a.friendship - b.friendship);
+    const pet = near[0];
+    if (!pet) return;
+    const def = W().food;
+    pet.friendship = Math.min(100, pet.friendship + ((def && def.gain) || 18));
+    savePets();
+    spawnHeartsAt(pet.row, pet.col);
+    heldTreat = null;
+    renderGarden();
   }
 
   function handleGardenKeydown(event) {
@@ -5376,6 +6195,14 @@ const Garden = (function () {
     else return;
 
     event.preventDefault();
+    stepHero(dr, dc);
+  }
+
+  /* One step in a direction, with everything that a step can mean: watering
+     what you walk into, bumping off scenery, greeting a pet. Shared by the
+     keyboard and by the touch controls. Returns true if the hero actually
+     changed square. */
+  function stepHero(dr, dc) {
     if (dc !== 0) {
       heroFacing = dc;
       heroDirection = dc === -1 ? 'left' : 'right';
@@ -5391,7 +6218,7 @@ const Garden = (function () {
     if (targetRow < 0 || targetRow > gardenMaxUnlockedRow || targetCol < 0 || targetCol >= GARDEN_COLS) {
       saveHeroPos();
       positionHero();
-      return;
+      return false;
     }
 
     const plantId = findPlantAt(targetRow, targetCol);
@@ -5399,7 +6226,8 @@ const Garden = (function () {
       waterCheck(targetRow, targetCol, plantId);
       saveHeroPos();
       positionHero();
-      return;
+      lensLook(targetRow, targetCol);
+      return false;
     }
 
     const saplingHere = saplings.find(s => s.planted && s.row === targetRow && s.col === targetCol);
@@ -5407,19 +6235,22 @@ const Garden = (function () {
       waterSaplingCheck(targetRow, targetCol, saplingHere);
       saveHeroPos();
       positionHero();
-      return;
+      lensLook(targetRow, targetCol);
+      return false;
     }
 
     if (findDecorationAt(targetRow, targetCol)) {
       saveHeroPos();
       positionHero();
-      return;
+      lensLook(targetRow, targetCol);
+      return false;
     }
 
     if (cabinSites.some(s => s.complete && s.row === targetRow && s.col === targetCol)) {
       saveHeroPos();
       positionHero();
-      return;
+      lensLook(targetRow, targetCol);
+      return false;
     }
 
     heroPos = { row: targetRow, col: targetCol };
@@ -5429,6 +6260,8 @@ const Garden = (function () {
     reactPetsToHero();
     checkTreatDelivery();
     checkAnimalSounds();
+    lensLook();
+    return true;
   }
 
   const animalSoundCooldown = new Map();
@@ -5601,48 +6434,121 @@ const Garden = (function () {
 
     const treat = findAdjacentTreat();
     if (treat) {
-      heldTreat = { id: treat.id, petId: treat.petId };
+      heldTreat = { id: treat.id };
       pendingTreats = pendingTreats.filter(t => t.id !== treat.id);
       playPickupSound();
       renderGarden();
     }
   }
 
-  function renderSectionSideLabels(bandsToRender, unlockedCount) {
-    const wrap = document.getElementById('garden-side-labels');
-    if (!wrap) return;
-    wrap.style.height = (bandsToRender * SECTION_ROWS * CELL_SIZE) + 'px';
+  /* ------------------------------------------------------------------ */
+  /* Magnifying glass                                                     */
+  /* Bought once and kept. With it, standing next to anything names that  */
+  /* thing in a thought bubble over your head for a moment - which is why */
+  /* there is no longer a list of plant names down the side of the plot.  */
+  /* ------------------------------------------------------------------ */
 
-    let html = '';
-    for (let i = 0; i < bandsToRender; i++) {
-      const info = sectionInfo(i);
-      const top = i * SECTION_ROWS * CELL_SIZE + (SECTION_ROWS * CELL_SIZE) / 2;
-      const dimClass = i >= unlockedCount ? ' dimmed' : '';
+  function loadLens() {
+    hasLens = Store.kv.getItem(LENS_KEY) === '1';
+  }
 
-      const counts = {};
-      let total = 0;
-      Object.values(gardenLayout).forEach(pos => {
-        if (Math.floor(pos.row / SECTION_ROWS) !== i) return;
-        const variety = W().plants[pos.variety] || W().plants[0];
-        counts[variety.name] = (counts[variety.name] || 0) + 1;
-        total++;
-      });
-      const parts = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-      let summaryHtml;
-      if (total === 0) {
-        summaryHtml = '<ul class="garden-side-label-summary"><li>No plants yet</li></ul>';
-      } else {
-        const shown = parts.slice(0, 3).map(([name, n]) => `<li>${n} ${Util.escapeHtml(name)}</li>`).join('');
-        const extra = parts.length > 3 ? `<li>+${parts.length - 3} more</li>` : '';
-        summaryHtml = `<ul class="garden-side-label-summary">${shown}${extra}</ul>`;
-      }
+  function saveLens() {
+    Store.kv.setItem(LENS_KEY, hasLens ? '1' : '0');
+  }
 
-      html += `<div class="garden-side-label${dimClass}" style="top:${top}px;">
-        <div class="garden-side-label-name">${info.icon} ${Util.escapeHtml(info.name)}</div>
-        ${summaryHtml}
-      </div>`;
+  function buyLens() {
+    if (hasLens || coins < LENS_COST) return;
+    coins -= LENS_COST;
+    hasLens = true;
+    saveCoins();
+    saveLens();
+    renderCoins();
+    renderShop();
+    showThought('You can name things now');
+  }
+
+  function decorName(key) {
+    const names = W().decorNames || {};
+    return names[key] || null;
+  }
+
+  /* What is standing on this square, in plain words - or null if nothing is. */
+  function describeAt(row, col) {
+    const plantId = findPlantAt(row, col);
+    if (plantId) {
+      const pos = gardenLayout[plantId];
+      const variety = W().plants[pos.variety] || W().plants[0];
+      return variety.name;
     }
-    wrap.innerHTML = html;
+
+    const pet = ownedPets.find(p => p.row === row && p.col === col);
+    if (pet) {
+      const def = W().pets[pet.type];
+      return def ? def.label : null;
+    }
+
+    const sapling = saplings.find(x => x.planted && x.row === row && x.col === col);
+    if (sapling) return decorName(isSaplingGrown(sapling) ? 'tree' : 'sapling');
+
+    const log = groundLogs.find(l => l.row === row && l.col === col);
+    if (log) return decorName('log');
+
+    const cabin = cabinSites.find(c => c.row === row && c.col === col);
+    if (cabin) return decorName('cabin');
+
+    const food = pendingTreats.find(t => t.row === row && t.col === col);
+    if (food) return W().food.label;
+
+    const item = purchasedItems.find(it => it.row === row && it.col === col);
+    if (item) {
+      const def = W().items[item.kind];
+      if (def) return def.label;
+    }
+
+    const decor = placedDecorations.find(d =>
+      row >= d.row && row < d.row + d.height &&
+      col >= d.col && col < d.col + d.width);
+    if (decor) {
+      if (decor.kind && W().items[decor.kind]) return W().items[decor.kind].label;
+      return decorName(decor.art || decor.kind);
+    }
+
+    return null;
+  }
+
+  /* The square in front plus the four around it - whatever you have walked up
+     to. The nearest thing wins, and the same thing does not announce itself
+     twice in a row. */
+  function lensLook(facingRow, facingCol) {
+    if (!hasLens) return;
+    const cells = [];
+    if (Number.isFinite(facingRow) && Number.isFinite(facingCol)) cells.push([facingRow, facingCol]);
+    [[-1, 0], [0, 1], [1, 0], [0, -1]].forEach(([dr, dc]) =>
+      cells.push([heroPos.row + dr, heroPos.col + dc]));
+
+    for (const [r, c] of cells) {
+      const name = describeAt(r, c);
+      if (name) {
+        const key = r + ':' + c + ':' + name;
+        if (key === lensLastKey) return;
+        lensLastKey = key;
+        showThought(name);
+        return;
+      }
+    }
+    lensLastKey = '';
+  }
+
+  function showThought(text) {
+    if (!text) return;
+    activeThought = text;
+    positionHero();
+    if (lensTimer) clearTimeout(lensTimer);
+    lensTimer = setTimeout(() => {
+      activeThought = null;
+      lensTimer = null;
+      positionHero();
+    }, 1500);
   }
 
   function findFreeCellNearHero() {
@@ -5794,16 +6700,16 @@ const Garden = (function () {
     renderGarden();
   }
 
-  function buyTreat(petId) {
-    const pet = ownedPets.find(p => p.id === petId);
-    const treatDef = pet && W().treats[pet.type];
-    if (!pet || !treatDef || coins < treatDef.cost) return;
-    coins -= treatDef.cost;
+  /* One bowl of food, good for any companion. It lands beside you; pick it up
+     and walk it over to whichever animal you want to win over. */
+  function buyFood() {
+    const def = W().food;
+    if (!ownedPets.length || !def || coins < def.cost) return;
+    coins -= def.cost;
     saveCoins();
     const cell = findFreeCellNearHero();
     pendingTreats.push({
-      id: 'treat-' + hashStr(petId + pendingTreats.length + Math.random()),
-      petId,
+      id: 'food-' + hashStr(pendingTreats.length + '' + Math.random()),
       row: cell.row,
       col: cell.col
     });
@@ -5856,6 +6762,12 @@ const Garden = (function () {
           <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))} (water 5x to grow)</span>
           <span class="shop-tile-action">\u{1FA99}${SAPLING_COST}</span>
         </button>` +
+        `<button class="shop-tile ${hasLens ? 'owned' : ''}" ${(hasLens || coins < LENS_COST) ? 'disabled' : ''} onclick="buyLens()"
+           title="Walk up to anything and it tells you what it is">
+          <span class="shop-tile-icon">\u{1F50D}</span>
+          <span class="shop-tile-label">Magnifying glass (names things)</span>
+          <span class="shop-tile-action">${hasLens ? 'Owned' : '\u{1FA99}' + LENS_COST}</span>
+        </button>` +
         `<button class="shop-tile" ${coins < RESET_PURCHASES_COST ? 'disabled' : ''} onclick="resetGarden()">
           <span class="shop-tile-icon">\u{267B}</span>
           <span class="shop-tile-label">Reset ${Util.escapeHtml(terms().place)}</span>
@@ -5867,19 +6779,21 @@ const Garden = (function () {
     const treatsWrap = document.getElementById('shop-treats');
     if (treatsWrap) {
       if (!ownedPets.length) {
-        treatsWrap.innerHTML = '<div class="shop-empty">Buy a pet to unlock treats.</div>';
+        treatsWrap.innerHTML = `<div class="shop-empty">Buy a companion to unlock ${Util.escapeHtml(W().food.label.toLowerCase())}.</div>`;
       } else {
-        const tiles = ownedPets.map(p => {
-          const petDef = W().pets[p.type];
-          const treatDef = W().treats[p.type];
-          const waiting = pendingTreats.some(t => t.petId === p.id) || (heldTreat && heldTreat.petId === p.id);
-          return `<button class="shop-tile" ${(coins < treatDef.cost || waiting) ? 'disabled' : ''} onclick="buyTreat('${p.id}')">
-            <span class="shop-tile-icon">${petDef.icon}</span>
-            <span class="shop-tile-label">${Util.escapeHtml(petDef.label)} ${p.friendship}%</span>
-            <span class="shop-tile-action">${treatDef.icon} \u{1FA99}${treatDef.cost}</span>
+        const def = W().food;
+        const tile = `<button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyFood()">
+            <span class="shop-tile-icon">${def.icon}</span>
+            <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
+            <span class="shop-tile-action">\u{1FA99}${def.cost}</span>
           </button>`;
+        /* Who still needs winning over, so the one food tile is enough. */
+        const roster = ownedPets.map(p => {
+          const petDef = W().pets[p.type];
+          return `<li><span>${petDef.icon} ${Util.escapeHtml(petDef.label)}</span><span>${p.friendship}%</span></li>`;
         }).join('');
-        treatsWrap.innerHTML = `<div class="shop-grid">${tiles}</div>`;
+        treatsWrap.innerHTML = `<div class="shop-grid">${tile}</div>
+          <ul class="pet-roster">${roster}</ul>`;
       }
     }
 
@@ -6154,7 +7068,6 @@ const Garden = (function () {
     heroPos.col = Math.min(heroPos.col, GARDEN_COLS - 1);
     positionHero();
 
-    renderSectionSideLabels(bandsToRender, unlockedCount);
     renderCoins();
 
     document.getElementById('garden-gardener').innerHTML = heroSVG('down', getEquippedOutfit());
@@ -6181,7 +7094,7 @@ const Garden = (function () {
       shovel: { icon: '\u{1FACF}', title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
       sapling: { icon: '\u{1F331}', title: t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's', body: 'Buy one and it appears at the top. Carry it to an empty spot and press E to plant it. Move into it to water it - five waterings, once a minute, and it grows into ' + t.sprouted + '. Press F to grow every planted one at once.' },
       cabin: { icon: '\u{1FAB5}', title: 'Building a ' + t.build, body: 'Carry ' + t.log + ' onto a tile that already has some to start a ' + t.build + ' site. Keep bringing more and watch it rise in stages - foundation, walls, roof, then doors and windows once it finishes at 10.' },
-      pets: { icon: '\u{1F43E}', title: 'Companions', body: 'Buy one, or unlock a random one (10 max). Buy treats to feed them - you carry the food over yourself. Friendly ones stick close, skittish ones flee until you win them over.' },
+      pets: { icon: '\u{1F43E}', title: 'Companions', body: 'Buy one, or unlock a random one (10 max). One food suits every animal: buy a bowl, pick it up and walk it over to whichever one you want. Friendly ones stick close, skittish ones flee until you win them over.' },
       unlock: { icon: '\u{1F512}', title: 'Unlocking sections', body: 'Every 10 completed tickets unlocks the next part of ' + t.place + '. The next locked section is always visible ahead, dimmed, behind a gate.' }
     };
   }
@@ -6222,6 +7135,8 @@ const Garden = (function () {
     placedDecorations = [];
     wateredCooldown.clear();
     currentHelpTopic = null;
+    activeThought = null;
+    lensLastKey = '';
 
     loadGardenLayout();
     loadHeroPos();
@@ -6229,6 +7144,7 @@ const Garden = (function () {
     loadPurchasedItems();
     loadPets();
     loadCoins();
+    loadLens();
     loadOutfits();
     loadChoppedTrees();
     loadGroundLogs();
@@ -6240,11 +7156,21 @@ const Garden = (function () {
     stateLoaded = true;
   }
 
+  /* The keyboard hint is no use on a phone, so each device is told how it
+     actually moves. */
+  function moveHintText() {
+    return isTouchDevice()
+      ? 'Tap a square to walk there, swipe to step one square, tap yourself to pick up or use.'
+      : terms().moveHint;
+  }
+
   function start() {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
     const hint = document.getElementById('garden-move-hint');
-    if (hint) hint.textContent = terms().moveHint;
+    if (hint) hint.textContent = moveHintText();
+    const useHint = document.getElementById('garden-use-hint');
+    if (useHint) useHint.hidden = isTouchDevice();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     render();
@@ -6262,7 +7188,9 @@ const Garden = (function () {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
     const hint = document.getElementById('garden-move-hint');
-    if (hint) hint.textContent = terms().moveHint;
+    if (hint) hint.textContent = moveHintText();
+    const useHint = document.getElementById('garden-use-hint');
+    if (useHint) useHint.hidden = isTouchDevice();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     currentHelpTopic = null;
@@ -6277,6 +7205,7 @@ const Garden = (function () {
   function stop() {
     if (petTickTimer) clearInterval(petTickTimer);
     petTickTimer = null;
+    stopWalking();
   }
 
   /* Inline handlers in generated markup call these by name. */
@@ -6284,11 +7213,14 @@ const Garden = (function () {
   window.buyPet = buyPet;
   window.buyPlant = buyPlant;
   window.buySapling = buySapling;
-  window.buyTreat = buyTreat;
+  window.buyFood = buyFood;
+  window.buyLens = buyLens;
   window.unlockRandomPet = unlockRandomPet;
   window.resetGarden = resetGarden;
   window.showHelpTopic = showHelpTopic;
   window.handleGardenKeydown = handleGardenKeydown;
+  window.handleGardenTouchStart = handleGardenTouchStart;
+  window.handleGardenTouchEnd = handleGardenTouchEnd;
   window.focusGarden = focusGarden;
   window.toggleGardenVisibility = toggleGardenVisibility;
 
@@ -6791,12 +7723,18 @@ const App = (function () {
     document.getElementById('toggle-archived-btn').textContent = showArchived ? 'Hide archived' : `Show archived (${archived.length})`;
   }
 
+  /* A click anywhere on the row that is not one of its own controls opens the
+     ticket's details. That is where the dates now live - the collapsed row
+     carries only what you need to scan the list. */
+  function taskRowClick(id, ev) {
+    if (ev && ev.target && ev.target.closest('button, input, a, label, .task-subtasks')) return;
+    showTaskDetail(id);
+  }
+
   function renderTaskItem(t) {
     const done = !!t.completedAt;
-    let metaText = done
-      ? `Created ${Util.formatDate(t.createdAt)} &middot; Completed ${Util.formatDate(t.completedAt)}`
-      : `Created ${Util.formatDate(t.createdAt)}`;
-    if (t.setting) metaText += ` &middot; Came up: ${Util.escapeHtml(t.setting)}`;
+    /* Created and completed dates live in the detail view, not here. */
+    const metaText = t.setting ? `Came up: ${Util.escapeHtml(t.setting)}` : '';
 
     const notesHtml = t.notes ? `<div class="task-notes">${Util.escapeHtml(t.notes)}</div>` : '';
     const catColor = categoryColor(t.category);
@@ -6828,14 +7766,15 @@ const App = (function () {
     const draggable = (!done || t.archived) ? 'true' : 'false';
 
     return `
-      <li class="task ${done ? 'done' : ''} ${t.archived ? 'archived' : ''}"${borderStyle} data-id="${t.id}" draggable="${draggable}">
+      <li class="task ${done ? 'done' : ''} ${t.archived ? 'archived' : ''}"${borderStyle} data-id="${t.id}" draggable="${draggable}"
+          title="Open the ticket" onclick="App.taskRowClick('${t.id}', event)">
         <input type="checkbox" ${done ? 'checked' : ''} onchange="App.toggleTask('${t.id}', this)">
         <div class="task-body">
           <div class="task-title">${Util.escapeHtml(t.title)}</div>
           ${notesHtml}
           ${tagsHtml}
           ${renderSubtaskList(t)}
-          <div class="task-meta">${metaText}</div>
+          ${metaText ? `<div class="task-meta">${metaText}</div>` : ''}
         </div>
         <div class="task-actions">
           ${starBtn}
@@ -6977,6 +7916,18 @@ const App = (function () {
     applyCalendarWidth();
   }
 
+  /* Weekends on by default; a working week of five columns is wider per day,
+     which matters most on a phone. */
+  function showWeekends() {
+    return Store.prefs().calWeekends !== false;
+  }
+
+  function toggleWeekends() {
+    Store.prefs().calWeekends = !showWeekends();
+    Store.savePrefs();
+    renderCalendar();
+  }
+
   /* The list view claims the whole row while it is on screen. */
   function applyCalendarWidth() {
     const layout = document.querySelector('.app-layout');
@@ -6992,6 +7943,17 @@ const App = (function () {
     host.innerHTML = [['numbers', 'Numbers'], ['agenda', 'List']].map(([key, label]) =>
       `<button type="button" class="${view === key ? 'on' : ''}" onclick="App.setCalView('${key}')">${label}</button>`
     ).join('');
+  }
+
+  function renderWeekendToggle() {
+    const host = document.getElementById('cal-weekend-toggle');
+    if (!host) return;
+    const on = showWeekends();
+    host.innerHTML = `<button type="button" class="weekend-toggle ${on ? 'on' : ''}"
+        onclick="App.toggleWeekends()"
+        title="${on ? 'Hide Saturday and Sunday' : 'Show Saturday and Sunday'}">
+        ${on ? 'Hide weekends' : 'Show weekends'}
+      </button>`;
   }
 
   function calSeries() {
@@ -7036,8 +7998,10 @@ const App = (function () {
     });
     renderCalendarLegend();
     renderCalViewToggle();
+    renderWeekendToggle();
     const series = calSeries();
     const agenda = calView() === 'agenda';
+    const weekends = showWeekends();
 
     const firstOfMonth = new Date(calYear, calMonth, 1);
     /* Weeks run Monday to Sunday, so shift getDay()'s Sunday-first numbering. */
@@ -7045,12 +8009,18 @@ const App = (function () {
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
     const today = Util.todayStr();
 
-    const dows = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const allDows = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const dows = weekends ? allDows : allDows.slice(0, 5);
     let html = dows.map(d => `<div class="dow">${d}</div>`).join('');
 
-    for (let i = 0; i < startWeekday; i++) html += '<div class="cal-cell empty"></div>';
+    /* A month that opens on a Saturday or Sunday starts its first visible week
+       on the Monday, so with the weekend columns gone it needs no padding. */
+    const leading = weekends ? startWeekday : (startWeekday >= 5 ? 0 : startWeekday);
+    for (let i = 0; i < leading; i++) html += '<div class="cal-cell empty"></div>';
 
     for (let day = 1; day <= daysInMonth; day++) {
+      const weekday = (new Date(calYear, calMonth, day).getDay() + 6) % 7;
+      if (!weekends && weekday > 4) continue;
       const iso = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const isToday = iso === today;
       const madeCount = series.created ? (createdByDay[iso] || []).length : 0;
@@ -7108,7 +8078,7 @@ const App = (function () {
                </div>`;
     }
     const grid = document.getElementById('cal-grid');
-    grid.className = 'cal-grid' + (agenda ? ' agenda' : '');
+    grid.className = 'cal-grid' + (agenda ? ' agenda' : '') + (weekends ? '' : ' no-weekends');
     grid.innerHTML = html;
   }
 
@@ -7286,6 +8256,7 @@ const App = (function () {
         <div class="acct-name">${Util.escapeHtml(name)}</div>
         <div class="acct-sub">${isCloud ? Util.escapeHtml(Store.email()) : 'Local profile on this device'}</div>
       </div>
+      <button class="acct-item" onclick="App.openInstall()">Get Tend on your phone</button>
       <button class="acct-item" onclick="App.openSettings()">Settings &amp; backup</button>
       <button class="acct-item" onclick="App.exportBackup()">Export a backup</button>
       ${repoLinkHTML()}
@@ -7329,8 +8300,125 @@ const App = (function () {
 
   /* ========================= settings + backup ========================= */
 
+  /* ---------------------------------------------------------------
+     Getting Tend onto a phone.
+
+     There is no link that installs a web app by itself - Apple has no
+     API for it at all, and Chrome will only offer its own prompt. So
+     this shows the address as a QR code to scan, the link to send, and
+     the two taps each phone needs after that. On Chrome, where the
+     browser does allow it, there is a real one-tap install button.
+     --------------------------------------------------------------- */
+
+  function installUrl() {
+    /* The address of the app itself, without whatever query or hash the
+       current tab happens to carry. */
+    const path = location.pathname.replace(/index\.html$/i, '');
+    return location.origin + path;
+  }
+
+  function setSettingsTitle(text) {
+    const h = document.getElementById('settings-title');
+    if (h) h.textContent = text;
+  }
+
+  function openInstall() {
+    document.getElementById('account-dropdown').hidden = true;
+    setSettingsTitle('Get Tend on your phone');
+    const url = installUrl();
+    const local = location.protocol === 'file:' || /^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname);
+
+    let qr = '';
+    try {
+      qr = Qr.svg(url, { width: 190, dark: '#1d2333' });
+    } catch (e) {
+      qr = '<div class="install-qr-fallback">Could not draw the code</div>';
+    }
+
+    const installed = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+
+    document.getElementById('settings-body').innerHTML = `
+      ${installed ? '<div class="settings-note install-done">You are already using the installed app.</div>' : ''}
+
+      <div class="settings-section install-section">
+        <h4>Scan this with a phone</h4>
+        <p>Point the camera at the code. It opens Tend in the phone's browser, ready to be added to the home screen.</p>
+        <div class="install-qr">${qr}</div>
+        ${local ? '<div class="settings-note">This is a local address, so the code only works on this computer. Open the published site to get a code your phone can use.</div>' : ''}
+      </div>
+
+      <div class="settings-section">
+        <h4>Or send the link</h4>
+        <div class="settings-row">
+          <input type="text" id="install-link" value="${Util.escapeHtml(url)}" readonly onclick="this.select()">
+          <button class="settings-btn primary" onclick="App.copyInstallLink()">Copy</button>
+        </div>
+        <div class="settings-note" id="install-copy-note"></div>
+      </div>
+
+      <div class="settings-section" id="install-prompt-section" hidden>
+        <h4>Install it here</h4>
+        <p>This browser can add Tend properly, with its own icon and no address bar.</p>
+        <div class="settings-row">
+          <button class="settings-btn primary" onclick="App.runInstallPrompt()">Install Tend</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Adding it to the home screen</h4>
+        <p>Once the site is open on the phone:</p>
+        <ul class="install-steps">
+          <li><strong>iPhone or iPad</strong> — in Safari, tap Share (the square with the arrow), scroll down, tap <strong>Add to Home Screen</strong>, then Add.</li>
+          <li><strong>Android</strong> — in Chrome, tap the three dots, then <strong>Install app</strong> (or Add to Home screen).</li>
+        </ul>
+        <p class="settings-note">Apple does not let a link or a code do this last step on its own &mdash; every web app on an iPhone is added the same way.</p>
+      </div>`;
+
+    if (deferredInstall) {
+      const sec = document.getElementById('install-prompt-section');
+      if (sec) sec.hidden = false;
+    }
+    document.getElementById('settings-modal-backdrop').classList.add('active');
+  }
+
+  function copyInstallLink() {
+    const input = document.getElementById('install-link');
+    const note = document.getElementById('install-copy-note');
+    const done = () => { if (note) note.textContent = 'Link copied.'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(input.value).then(done, () => {
+        input.select();
+        if (note) note.textContent = 'Press Ctrl+C (or Cmd+C) to copy.';
+      });
+    } else {
+      input.select();
+      if (note) note.textContent = 'Press Ctrl+C (or Cmd+C) to copy.';
+    }
+  }
+
+  /* Chrome hands us its install prompt ahead of time; we hold on to it so the
+     button above can fire it at the moment somebody asks. */
+  let deferredInstall = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredInstall = e;
+    const sec = document.getElementById('install-prompt-section');
+    if (sec) sec.hidden = false;
+  });
+  window.addEventListener('appinstalled', function () { deferredInstall = null; });
+
+  async function runInstallPrompt() {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    try { await deferredInstall.userChoice; } catch (e) { /* ignore */ }
+    deferredInstall = null;
+    const sec = document.getElementById('install-prompt-section');
+    if (sec) sec.hidden = true;
+  }
+
   function openSettings() {
     document.getElementById('account-dropdown').hidden = true;
+    setSettingsTitle('Settings & backup');
     const isCloud = Store.isCloud();
     document.getElementById('settings-body').innerHTML = `
       <div class="settings-section">
@@ -7601,6 +8689,27 @@ const App = (function () {
     Garden.render();
   }
 
+  /* A brief note when something arrives from another device, so the screen
+     changing under you is explained rather than startling. The header badge is
+     hidden on a phone, which is exactly where this matters most. */
+  let syncedFlashTimer = null;
+  function flashSynced() {
+    let el = document.getElementById('sync-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'sync-toast';
+      el.className = 'sync-toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = 'Updated from your other device';
+    el.classList.add('show');
+    if (syncedFlashTimer) clearTimeout(syncedFlashTimer);
+    syncedFlashTimer = setTimeout(function () {
+      el.classList.remove('show');
+      syncedFlashTimer = null;
+    }, 2200);
+  }
+
   function boot() {
     loadViewPrefs();
 
@@ -7618,6 +8727,18 @@ const App = (function () {
       booted = true;
       Store.onStatus(renderSyncBadge);
       primeDownloadBridge();
+
+      /* Something changed on another device: take the new state and redraw,
+         garden included. */
+      if (Store.onChange) {
+        Store.onChange(function () {
+          Garden.loadAll();
+          renderAll();
+          applyCalendarWidth();
+          Garden.reskin();
+          flashSynced();
+        });
+      }
 
       document.getElementById('new-task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
       document.getElementById('search-input').addEventListener('input', renderList);
@@ -7642,12 +8763,14 @@ const App = (function () {
     tickets, categories, categoryColor, DEFAULT_CATEGORY_COLOR,
     addTask, toggleTask, togglePriority, toggleArchive, deleteTask,
     openNewTaskModal, closeNewTaskModal, closeNewTaskModalOnBackdrop,
+    taskRowClick,
     openEditModal, saveEditedTask, closeEditModal, closeEditModalOnBackdrop,
     onCategoryChange, onEditCategoryChange,
     submitAddCategory, removeCategoryByIndex,
     toggleSubtask, toggleSubtaskList, editorAdd, editorRemove, editorRename, editorToggle,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
-    setCalView, showDueToday,
+    setCalView, toggleWeekends, showDueToday,
+    openInstall, copyInstallLink, runInstallPrompt,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

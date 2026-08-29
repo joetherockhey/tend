@@ -46,6 +46,31 @@ const Store = (function () {
   let dirty = { tickets: false, categories: false, state: false };
   let retryTimer = null;
 
+  /* ---- live sync ---- */
+  let channel = null;            // supabase realtime subscription
+  let changeListeners = [];      // told when the server sent us newer data
+  let liveTimer = null;          // debounce for incoming realtime events
+  let pollTimer = null;          // fallback poll while the tab is on screen
+  let refreshing = false;
+  let liveHooked = false;
+  const POLL_MS = 25000;
+
+  /* Where the hero is standing belongs to the device you are standing on. If
+     it synced, moving on the laptop would drag the phone's farmer around. */
+  const DEVICE_LOCAL_KEYS = ['garden-hero-v5', 'garden-visible-v1'];
+
+  function isDeviceLocal(key) {
+    return DEVICE_LOCAL_KEYS.indexOf(key) !== -1;
+  }
+
+  /* The part of the garden bag that belongs to the account rather than to
+     this particular browser. */
+  function syncableBag() {
+    const out = {};
+    Object.keys(gardenBag).forEach(k => { if (!isDeviceLocal(k)) out[k] = gardenBag[k]; });
+    return out;
+  }
+
   /* ========================= status plumbing ========================= */
 
   function setStatus(s) {
@@ -126,12 +151,12 @@ const Store = (function () {
     setItem: function (key, value) {
       gardenBag[key] = String(value);
       lsRawSet(kvKey(key), String(value));
-      markDirty('state');
+      if (!isDeviceLocal(key)) markDirty('state');
     },
     removeItem: function (key) {
       delete gardenBag[key];
       try { localStorage.removeItem(kvKey(key)); } catch (e) { /* ignore */ }
-      markDirty('state');
+      if (!isDeviceLocal(key)) markDirty('state');
     }
   };
 
@@ -279,7 +304,7 @@ const Store = (function () {
       user_id: account.id,
       display_name: account.name || '',
       prefs: prefs,
-      garden: gardenBag,
+      garden: syncableBag(),
       updated_at: new Date().toISOString()
     };
     const json = JSON.stringify({ display_name: row.display_name, prefs: row.prefs, garden: row.garden });
@@ -312,7 +337,10 @@ const Store = (function () {
 
     const st = sRes.data;
     prefs = (st && st.prefs) || {};
-    gardenBag = (st && st.garden) || {};
+    /* Keep this device's own keys - the server never had them. */
+    const keepLocal = {};
+    DEVICE_LOCAL_KEYS.forEach(k => { if (gardenBag[k] !== undefined) keepLocal[k] = gardenBag[k]; });
+    gardenBag = Object.assign({}, (st && st.garden) || {}, keepLocal);
     if (st && st.display_name) account.name = st.display_name;
 
     /* Rebuild the snapshot so the next flush only sends real changes. */
@@ -321,7 +349,7 @@ const Store = (function () {
     categories.forEach((c, i) => {
       snapshot.categories[c.id] = JSON.stringify({ id: c.id, user_id: account.id, name: c.name, color: c.color, sort_index: i });
     });
-    snapshot.state = JSON.stringify({ display_name: account.name || '', prefs: prefs, garden: gardenBag });
+    snapshot.state = JSON.stringify({ display_name: account.name || '', prefs: prefs, garden: syncableBag() });
 
     dirty = { tickets: false, categories: false, state: false };
 
@@ -341,6 +369,102 @@ const Store = (function () {
       stale.forEach(k => localStorage.removeItem(k));
       Object.keys(gardenBag).forEach(k => localStorage.setItem(prefix + k, gardenBag[k]));
     } catch (e) { /* ignore */ }
+  }
+
+  /* ========================= live sync =========================
+     Two devices, one account: whatever one of them changes should turn up on
+     the other without anybody reloading. Supabase pushes the change over a
+     websocket; if that never connects (realtime not enabled, a firewall, a
+     sleeping phone) a quiet poll and a check on waking cover the same ground
+     a little more slowly. */
+
+  function onChange(fn) {
+    changeListeners.push(fn);
+    return function () { changeListeners = changeListeners.filter(f => f !== fn); };
+  }
+
+  function announceChange() {
+    changeListeners.forEach(fn => { try { fn(); } catch (e) { console.warn('[Tend] change listener failed:', e); } });
+  }
+
+  /* Send anything of ours that is waiting, take everything of theirs, then
+     tell the app to redraw. Safe to call as often as you like. */
+  async function refresh() {
+    if (!CLOUD || !client || !account || refreshing) return false;
+    refreshing = true;
+    try {
+      if (anyDirty()) await flush();
+      const before = JSON.stringify({ t: tickets, c: categories, p: prefs, g: syncableBag() });
+      await pull();
+      const after = JSON.stringify({ t: tickets, c: categories, p: prefs, g: syncableBag() });
+      setStatus('idle');
+      if (before !== after) { announceChange(); return true; }
+      return false;
+    } catch (err) {
+      console.warn('[Tend] refresh failed:', err && err.message);
+      setStatus('offline');
+      return false;
+    } finally {
+      refreshing = false;
+    }
+  }
+
+  const scheduleRefresh = function () {
+    if (liveTimer) clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => { liveTimer = null; refresh(); }, 400);
+  };
+
+  function startRealtime() {
+    if (!CLOUD || !client || !account) return;
+    stopRealtime();
+    try {
+      const filter = 'user_id=eq.' + account.id;
+      channel = client.channel('tend-' + account.id);
+      ['tickets', 'categories', 'app_state'].forEach(table => {
+        channel.on('postgres_changes',
+          { event: '*', schema: 'public', table: table, filter: filter },
+          function () {
+            /* Our own writes come straight back to us too. Rather than trying
+               to time that out - which goes wrong the moment two devices are
+               both busy - every event just triggers a refresh, and refresh only
+               tells the app about it when the data genuinely differs. */
+            scheduleRefresh();
+          });
+      });
+      channel.subscribe(function (state) {
+        if (state === 'SUBSCRIBED') console.info('[Tend] live sync on');
+      });
+    } catch (err) {
+      console.warn('[Tend] live sync unavailable, falling back to polling:', err && err.message);
+      channel = null;
+    }
+  }
+
+  function stopRealtime() {
+    if (channel && client) {
+      try { client.removeChannel(channel); } catch (e) { /* ignore */ }
+    }
+    channel = null;
+  }
+
+  /* The belt and braces: check on waking, on coming back online, on returning
+     to the tab, and every so often while the tab is actually being looked at.
+     This alone is enough to keep a phone and a laptop in step. */
+  function hookLiveFallbacks() {
+    if (liveHooked || typeof document === 'undefined') return;
+    liveHooked = true;
+
+    const wake = function () {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('focus', wake);
+    window.addEventListener('online', function () { refresh(); });
+    window.addEventListener('pageshow', wake);
+
+    pollTimer = setInterval(function () {
+      if (document.visibilityState === 'visible') refresh();
+    }, POLL_MS);
   }
 
   /* ========================= opening an account ========================= */
@@ -372,17 +496,24 @@ const Store = (function () {
       dedupeCategories();               /* heals accounts that already piled up */
       seedDefaultsIfEmpty();            /* only if the server genuinely has none */
       setStatus('idle');
+      startRealtime();
+      hookLiveFallbacks();
       return { fromCache: false };
     } catch (err) {
       console.warn('[Tend] could not reach the server, using the offline copy:', err && err.message);
       seedDefaultsIfEmpty();
       setStatus('offline');
+      /* Still hook the wake-ups: the moment the connection is back we catch up. */
+      startRealtime();
+      hookLiveFallbacks();
       return { fromCache: true };
     }
   }
 
   function close() {
     scheduleFlush.flush();
+    stopRealtime();
+    if (liveTimer) { clearTimeout(liveTimer); liveTimer = null; }
     account = null;
     tickets = [];
     categories = [];
@@ -640,6 +771,8 @@ const Store = (function () {
     status: function () { return status; },
     onStatus,
     pull,
+    refresh,
+    onChange,
 
     /* local profiles */
     localProfiles, createLocalProfile, deleteLocalProfile, localProfileTicketCount, lastAccountId,
