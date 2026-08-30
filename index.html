@@ -50,7 +50,8 @@
     <button id="tab-list" class="active" onclick="App.switchView('list')">Tickets</button>
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
     <div class="nav-search" id="nav-search">
-      <span class="nav-search-icon" aria-hidden="true">&#128269;</span>
+      <button type="button" class="nav-search-icon" id="search-icon" onclick="App.toggleSearch()"
+              title="Search tickets" aria-label="Search tickets">&#128269;</button>
       <input type="search" class="search-input" id="search-input" placeholder="Search tickets"
              aria-label="Search tickets by title, notes, category or where it came up">
       <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
@@ -320,6 +321,34 @@
     <div id="settings-body"></div>
   </div>
 </div>
+
+<!-- Installed on a phone, Tend gets an app's bottom bar instead of making you
+     scroll to the bottom of the page to find the garden. Hidden everywhere
+     else by CSS. -->
+<nav class="bottom-nav" id="bottom-nav" aria-label="Sections">
+  <button type="button" class="bnav-btn active" id="bnav-list" onclick="App.switchView('list')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 6.5 5.6 8 8.5 5"/><path d="M4 12.5 5.6 14 8.5 11"/><path d="M4 18.5 5.6 20 8.5 17"/>
+      <path d="M12 6.5h8"/><path d="M12 12.5h8"/><path d="M12 18.5h8"/>
+    </svg>
+    <span class="bnav-label">Tickets</span>
+  </button>
+  <button type="button" class="bnav-btn" id="bnav-calendar" onclick="App.switchView('calendar')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3.2" y="5" width="17.6" height="16" rx="2.5"/><path d="M3.2 10h17.6"/>
+      <path d="M8 3v4"/><path d="M16 3v4"/>
+    </svg>
+    <span class="bnav-label">Calendar</span>
+  </button>
+  <button type="button" class="bnav-btn" id="bnav-garden" onclick="App.switchView('garden')">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 20.5 V12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+      <path d="M12 12.6 C12 8.9 9.4 6.8 6 6.8 C6 10.5 8.6 12.6 12 12.6 Z" fill="currentColor"/>
+      <path d="M12 14.1 C12 10.7 14.6 8.6 18 8.6 C18 12 15.4 14.1 12 14.1 Z" fill="currentColor" opacity="0.55"/>
+    </svg>
+    <span class="bnav-label" id="bnav-garden-label">Garden</span>
+  </button>
+</nav>
 
 <input type="file" id="import-file" accept="application/json,.json" hidden>
 

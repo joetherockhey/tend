@@ -215,9 +215,9 @@ const Store = (function () {
       follow_up: !!t.followUp,
       priority: !!t.priority,
       archived: !!t.archived,
-      due_date: t.dueDate || null,
-      created_on: t.createdAt || Util.todayStr(),
-      completed_on: t.completedAt || null,
+      due_date: Util.toIsoDate(t.dueDate),
+      created_on: Util.toIsoDate(t.createdAt) || Util.todayStr(),
+      completed_on: Util.toIsoDate(t.completedAt),
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
       sort_index: index
     };
@@ -233,9 +233,9 @@ const Store = (function () {
       followUp: !!r.follow_up,
       priority: !!r.priority,
       archived: !!r.archived,
-      dueDate: r.due_date || null,
-      createdAt: r.created_on || Util.todayStr(),
-      completedAt: r.completed_on || null,
+      dueDate: Util.toIsoDate(r.due_date),
+      createdAt: Util.toIsoDate(r.created_on) || Util.todayStr(),
+      completedAt: Util.toIsoDate(r.completed_on),
       subtasks: Array.isArray(r.subtasks) ? r.subtasks : [],
       _sort: r.sort_index == null ? 0 : r.sort_index
     };
@@ -479,6 +479,7 @@ const Store = (function () {
 
     if (!CLOUD) {
       seedDefaultsIfEmpty();
+      normaliseTicketDates();
       setStatus('local');
       return { fromCache: false };
     }
@@ -494,6 +495,7 @@ const Store = (function () {
       }
       await pull();
       dedupeCategories();               /* heals accounts that already piled up */
+      normaliseTicketDates();
       seedDefaultsIfEmpty();            /* only if the server genuinely has none */
       setStatus('idle');
       startRealtime();
@@ -502,6 +504,7 @@ const Store = (function () {
     } catch (err) {
       console.warn('[Tend] could not reach the server, using the offline copy:', err && err.message);
       seedDefaultsIfEmpty();
+      normaliseTicketDates();
       setStatus('offline');
       /* Still hook the wake-ups: the moment the connection is back we catch up. */
       startRealtime();
@@ -549,6 +552,25 @@ const Store = (function () {
     console.info('[Tend] merged ' + (categories.length - kept.length) + ' duplicate categories');
     categories = kept;
     if (CLOUD) markDirty('categories');
+    else writeCache();
+  }
+
+  /* Dates that came in from an import or an older version can be shaped
+     differently enough that the calendar never finds them. Straightened out
+     once, on the way in, and saved back so it only ever happens once. */
+  function normaliseTicketDates() {
+    if (!Array.isArray(tickets) || !tickets.length) return;
+    let changed = 0;
+    tickets.forEach(t => {
+      ['dueDate', 'createdAt', 'completedAt'].forEach(field => {
+        const fixed = Util.toIsoDate(t[field]);
+        if ((fixed || null) !== (t[field] || null)) { t[field] = fixed; changed++; }
+      });
+      if (!t.createdAt) { t.createdAt = Util.todayStr(); changed++; }
+    });
+    if (!changed) return;
+    console.info('[Tend] tidied ' + changed + ' date(s) so the calendar can see them');
+    if (CLOUD) markDirty('tickets');
     else writeCache();
   }
 
@@ -665,9 +687,10 @@ const Store = (function () {
       followUp: !!(t.followUp || t.jiraNeeded),
       priority: !!t.priority,
       archived: !!t.archived,
-      dueDate: t.dueDate || null,
-      createdAt: t.createdAt || Util.todayStr(),
-      completedAt: t.completedAt || null,
+      /* An imported file is the most likely source of an odd date shape. */
+      dueDate: Util.toIsoDate(t.dueDate || t.due || null),
+      createdAt: Util.toIsoDate(t.createdAt || t.created || null) || Util.todayStr(),
+      completedAt: Util.toIsoDate(t.completedAt || t.completed || null),
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : []
     }));
     if (Array.isArray(data.categories) && data.categories.length) {

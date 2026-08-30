@@ -849,7 +849,10 @@ const Garden = (function () {
 
   function applyGardenVisibility() {
     const col = document.querySelector('.garden-col');
-    if (col) col.style.display = gardenVisible ? '' : 'none';
+    /* Installed as an app the garden is a tab of its own, so which of the
+       three is on screen is the view's business, not this switch's. */
+    const appMode = window.App && App.isAppMode && App.isAppMode();
+    if (col) col.style.display = (appMode || gardenVisible) ? '' : 'none';
     /* The layout grid keeps a 420px track for the garden, so tell it when there
        is no garden to put there. */
     const layout = document.querySelector('.app-layout');
@@ -2169,6 +2172,11 @@ const Garden = (function () {
   window.focusGarden = focusGarden;
   window.toggleGardenVisibility = toggleGardenVisibility;
 
+  /* 'Garden' or 'Reef' - for the tab that opens it. */
+  function shortLabel() {
+    return cap(terms().place.replace(/^the\s+/i, ''));
+  }
+
   return {
     start: start,
     stop: stop,
@@ -2176,6 +2184,7 @@ const Garden = (function () {
     reskin: reskin,
     loadAll: loadAll,
     heroName: heroName,
+    shortLabel: shortLabel,
     renderCoins: renderCoins,
     renderShop: renderShop
   };

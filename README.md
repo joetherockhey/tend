@@ -169,6 +169,12 @@ standalone/tend.html    the whole app as one file
 
 ### How saving works
 
+Dates are normalised through `Util.toIsoDate` on the way in from the server, from an
+import, and again when the calendar buckets them. The calendar keys off an exact
+`YYYY-MM-DD` string, so a date shaped even slightly differently - a timestamp, an
+unpadded month - used to land in a bucket no square ever asked for and vanish without
+a trace. Anything already stored oddly is tidied once, on sign-in, and saved back.
+
 Every change is written to `localStorage` synchronously, so nothing is ever lost
 to a closed tab. In cloud mode the change is also queued and pushed about a
 second later, batched, and diffed against the last confirmed push so only real
@@ -248,6 +254,15 @@ Tend is a progressive web app, so it installs from the browser with no app store
 involved and no cost. On **iPhone**: open the site in Safari, Share, *Add to Home
 Screen*. On **Android**: Chrome offers *Install app*, or Menu → *Add to Home
 screen*. It then opens full screen with its own icon.
+
+Installed, Tend switches to an app shell: the three sections (Tickets, Calendar and
+the garden) move to a bar fixed at the bottom of the screen, the garden becomes a
+section of its own rather than something you scroll past the tickets to reach, and the
+ribbon shrinks to a title bar. None of that appears on the website. The switch is
+`(display-mode: standalone)`, read once at boot in `applyAppMode()` and stamped on
+`<html>` as `data-mode="app"`; every app-only rule in `styles.css` hangs off that
+attribute. Add `?app=1` to the address to see the app shell in an ordinary browser,
+`?app=0` to force it off.
 
 **Get Tend on your phone**, in the account menu, is the shortcut for all of that:
 it shows the site address as a QR code to point a camera at, the link to send to

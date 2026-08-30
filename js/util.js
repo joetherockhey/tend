@@ -39,6 +39,44 @@ const Util = (function () {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
+  /* The calendar buckets tickets by an exact 'YYYY-MM-DD' key, so anything
+     shaped even slightly differently - a timestamp, an unpadded month - lands
+     in a bucket no square ever asks for and silently disappears. Everything
+     that carries a date goes through here first.
+
+     Deliberately conservative: shapes that cannot be read unambiguously (a
+     slash date could be day-first or month-first) are handed back untouched
+     rather than guessed at. */
+  function toIsoDate(value) {
+    if (!value) return null;
+
+    if (value instanceof Date) {
+      return isNaN(value) ? null : dateToStr(value);
+    }
+
+    const raw = String(value).trim();
+    if (!raw) return null;
+
+    /* Already right. */
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+    /* '2026-8-4', or any ISO string with a time on the end. Taken apart by
+       hand rather than through Date, which would shift the day across a
+       timezone. */
+    const m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/.exec(raw);
+    if (m) {
+      return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+    }
+
+    /* A written date such as 'Aug 4, 2026'. Slash dates are left alone. */
+    if (!raw.includes('/')) {
+      const d = new Date(raw);
+      if (!isNaN(d)) return dateToStr(d);
+    }
+
+    return raw;
+  }
+
   /* A darker version of a colour, for text that has to stay readable on a
      pale tint of the same colour. Mixes towards the page's ink rather than
      towards black, so it never looks muddy. */
@@ -88,6 +126,6 @@ const Util = (function () {
 
   return {
     escapeHtml, dateToStr, todayStr, formatDate,
-    hexToRgba, inkShade, uid, initials, colorFor, debounce
+    hexToRgba, inkShade, toIsoDate, uid, initials, colorFor, debounce
   };
 })();

@@ -635,16 +635,102 @@ const App = (function () {
 
   /* ========================= calendar ========================= */
 
+  /* ---------------------------------------------------------------
+     App mode.
+
+     Tend installed on a home screen is the same page as Tend in a
+     browser - there is no second build. What changes is the shell:
+     a bar of sections fixed to the bottom, the garden promoted to a
+     section of its own rather than something you scroll to, and the
+     duplicate tabs taken out of the ribbon.
+
+     `?app=1` forces it on, which is how it can be looked at on a
+     desktop without installing anything.
+     --------------------------------------------------------------- */
+
+  let appMode = false;
+
+  function detectAppMode() {
+    try {
+      if (/[?&]app=1\b/.test(location.search)) return true;
+      if (/[?&]app=0\b/.test(location.search)) return false;
+      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+      /* Older iOS Safari predates display-mode and uses this instead. */
+      if (window.navigator.standalone === true) return true;
+    } catch (e) { /* ignore */ }
+    return false;
+  }
+
+  function isAppMode() { return appMode; }
+
+  function applyAppMode() {
+    appMode = detectAppMode();
+    if (appMode) document.documentElement.setAttribute('data-mode', 'app');
+    else document.documentElement.removeAttribute('data-mode');
+
+    const label = document.getElementById('bnav-garden-label');
+    if (label && window.Garden && Garden.shortLabel) label.textContent = Garden.shortLabel();
+
+    /* With the sections in the bottom bar the tab row is empty, so search
+       moves up beside the account chip rather than sitting on a row of its
+       own. Moved in the DOM rather than duplicated, so there is only ever
+       one search box and one piece of state. */
+    const search = document.getElementById('nav-search');
+    const topRow = document.querySelector('.header-top-row');
+    const account = document.querySelector('.account-menu');
+    const tabs = document.querySelector('nav.tabs');
+    const gardenBtn = document.getElementById('garden-toggle-btn');
+    if (!search || !topRow || !tabs) return;
+    if (appMode) {
+      if (search.parentElement !== topRow) topRow.insertBefore(search, account);
+    } else if (search.parentElement !== tabs) {
+      tabs.insertBefore(search, gardenBtn);
+    }
+  }
+
+  /* In the app the heading says which section you are in; on the website it
+     stays the page title it has always been. */
+  function updateAppTitle(view) {
+    if (!appMode) return;
+    const h = document.getElementById('page-title');
+    if (!h) return;
+    if (view === 'calendar') h.textContent = 'Calendar';
+    else if (view === 'garden') h.textContent = (window.Garden && Garden.shortLabel) ? Garden.shortLabel() : 'Garden';
+    else {
+      const name = Store.displayName() || 'Your';
+      h.textContent = (/s$/i.test(name) ? name + "'" : name + "'s") + ' Tickets';
+    }
+  }
+
+  let currentView = 'list';
+
   function switchView(view) {
+    /* The garden is only a section of its own inside the app. */
+    if (view === 'garden' && !appMode) view = 'list';
+    currentView = view;
+
     document.getElementById('view-list').classList.toggle('active', view === 'list');
     document.getElementById('view-calendar').classList.toggle('active', view === 'calendar');
     document.getElementById('tab-list').classList.toggle('active', view === 'list');
     document.getElementById('tab-calendar').classList.toggle('active', view === 'calendar');
-    /* There is nothing to search on the calendar. */
+
+    const layout = document.querySelector('.app-layout');
+    if (layout) layout.classList.toggle('view-garden', view === 'garden');
+
+    [['bnav-list', 'list'], ['bnav-calendar', 'calendar'], ['bnav-garden', 'garden']].forEach(([id, v]) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.classList.toggle('active', view === v);
+    });
+
+    /* There is nothing to search on the calendar or in the garden. */
     const search = document.getElementById('nav-search');
     if (search) search.hidden = view !== 'list';
+
     if (view === 'calendar') renderCalendar();
+    if (view === 'garden' && window.Garden) Garden.render();
     applyCalendarWidth();
+    updateAppTitle(view);
+    if (appMode) window.scrollTo(0, 0);
   }
 
   /* Keeps the little clear button and the widened field in step with whether
@@ -656,16 +742,36 @@ const App = (function () {
     if (!input || !wrap) return;
     const has = !!input.value;
     wrap.classList.toggle('has-text', has);
+    /* A filter that is on must not be able to hide itself. */
+    if (has) wrap.classList.add('open');
     if (clear) clear.hidden = !has;
+  }
+
+  /* On a phone the search is a magnifier until you ask for it. Tapping opens
+     the field; tapping again closes it, unless something is typed in. */
+  function toggleSearch() {
+    const wrap = document.getElementById('nav-search');
+    const input = document.getElementById('search-input');
+    if (!wrap || !input) return;
+    if (wrap.classList.contains('open') && !input.value) {
+      wrap.classList.remove('open');
+      input.blur();
+      return;
+    }
+    wrap.classList.add('open');
+    input.focus();
   }
 
   function clearSearch() {
     const input = document.getElementById('search-input');
+    const wrap = document.getElementById('nav-search');
     if (!input) return;
     input.value = '';
     syncSearchChrome();
     renderList();
-    input.focus();
+    /* Emptied by hand: fold it away again rather than leaving a blank bar. */
+    if (wrap) wrap.classList.remove('open');
+    input.blur();
   }
 
   function changeMonth(delta) {
@@ -727,7 +833,7 @@ const App = (function () {
     const layout = document.querySelector('.app-layout');
     if (!layout) return;
     const onCalendar = document.getElementById('view-calendar').classList.contains('active');
-    layout.classList.toggle('cal-wide', onCalendar && calView() === 'agenda');
+    layout.classList.toggle('cal-wide', currentView !== 'garden' && onCalendar && calView() === 'agenda');
   }
 
   function renderCalViewToggle() {
@@ -786,9 +892,14 @@ const App = (function () {
     dueByDay = {};
     completedByDay = {};
     tickets().forEach(t => {
-      if (t.createdAt) (createdByDay[t.createdAt] = createdByDay[t.createdAt] || []).push(t);
-      if (t.dueDate) (dueByDay[t.dueDate] = dueByDay[t.dueDate] || []).push(t);
-      if (t.completedAt) (completedByDay[t.completedAt] = completedByDay[t.completedAt] || []).push(t);
+      /* Normalised again here so a ticket with an odd date still lands on the
+         right square even before the store has tidied it away. */
+      const made = Util.toIsoDate(t.createdAt);
+      const due = Util.toIsoDate(t.dueDate);
+      const done = Util.toIsoDate(t.completedAt);
+      if (made) (createdByDay[made] = createdByDay[made] || []).push(t);
+      if (due) (dueByDay[due] = dueByDay[due] || []).push(t);
+      if (done) (completedByDay[done] = completedByDay[done] || []).push(t);
     });
     renderCalendarLegend();
     renderCalViewToggle();
@@ -879,7 +990,8 @@ const App = (function () {
   function showDayModal(iso) {
     const series = calSeries();
     const groups = [
-      { title: 'Due', list: series.due ? (dueByDay[iso] || []) : [] },
+      /* Same rule as the square: archived work is set aside, so it is not due. */
+      { title: 'Due', list: series.due ? (dueByDay[iso] || []).filter(t => !t.archived) : [] },
       { title: 'Created', list: series.created ? (createdByDay[iso] || []) : [] },
       { title: 'Complete', list: series.completed ? (completedByDay[iso] || []) : [] }
     ].filter(g => g.list.length);
@@ -1415,6 +1527,7 @@ const App = (function () {
     if (hero) prefs.hero = hero;
     Store.savePrefs();
     Garden.reskin();
+    applyAppMode();
     renderWorldSettings();
   }
 
@@ -1567,6 +1680,7 @@ const App = (function () {
   function boot() {
     loadViewPrefs();
     applyTheme();
+    applyAppMode();
 
     const now = new Date();
     calYear = now.getFullYear();
@@ -1575,8 +1689,8 @@ const App = (function () {
     renderHeader();
     Garden.loadAll();   /* hydrate the garden before anything renders or saves it */
     renderAll();
-    applyCalendarWidth();
     Garden.start();
+    switchView(currentView);   /* sets the bar, the sections and the widths */
 
     if (!booted) {
       booted = true;
@@ -1603,6 +1717,11 @@ const App = (function () {
       });
       document.getElementById('search-input').addEventListener('keydown', function (e) {
         if (e.key === 'Escape') { e.stopPropagation(); clearSearch(); }
+      });
+      /* Tapping away from an empty box folds it back to the magnifier. */
+      document.getElementById('search-input').addEventListener('blur', function () {
+        const wrap = document.getElementById('nav-search');
+        if (wrap && !this.value) wrap.classList.remove('open');
       });
       document.getElementById('import-file').addEventListener('change', function () { handleImportFile(this); });
 
@@ -1633,7 +1752,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt,
-    clearSearch, setTheme,
+    clearSearch, toggleSearch, setTheme, isAppMode,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

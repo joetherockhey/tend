@@ -729,6 +729,11 @@ li.task.done .task-title {
   opacity: 0.75;
   line-height: 1;
   flex: none;
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
 }
 
 .search-input {
@@ -2059,17 +2064,71 @@ body.gated { overflow: hidden; }
   .modal { max-height: 85vh; }
   nav.tabs button { padding: 10px 12px; font-size: 0.9rem; }
   .garden-toggle-btn { font-size: 0.72rem; padding: 5px 9px; }
-  /* On a phone the ribbon has no room for a fourth item on one line, so
-     search drops to its own full-width row under the tabs. */
+  /* On a phone a permanent search bar costs a whole row of the screen, so it
+     shrinks to just its magnifier, sitting on the tab line. Tapping it opens
+     the field; it closes again when emptied. */
   nav.tabs { flex-wrap: wrap; }
+
   .nav-search {
-    order: 3;
-    margin: 0 0 8px;
-    width: 100%;
+    order: 0;
+    margin: 0 0 0 auto;
+    width: auto;
+    padding: 0;
+    height: auto;
+    background: none;
+    border: none;
+    align-self: center;
   }
-  .search-input,
-  .nav-search:focus-within .search-input,
-  .nav-search.has-text .search-input { width: 100%; flex: 1; }
+
+  .nav-search .search-input,
+  .nav-search .nav-search-clear { display: none; }
+
+  .nav-search-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--header-chip);
+    border: 1px solid var(--header-chip-line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    font-size: 0.85rem;
+  }
+
+  /* Something is filtered but the box is shut - say so on the icon. */
+  .nav-search.has-text .nav-search-icon {
+    background: var(--series-made);
+    border-color: var(--series-made);
+  }
+
+  .garden-toggle-btn { margin-left: 10px; }
+
+  /* Open: the full row, but only while it is being used. */
+  .nav-search.open {
+    order: 3;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 0 6px 0 10px;
+    height: 34px;
+    background: var(--header-chip);
+    border: 1px solid var(--header-chip-line);
+    border-radius: 999px;
+  }
+
+  .nav-search.open .search-input,
+  .nav-search.open .nav-search-clear { display: block; }
+  .nav-search.open .search-input { width: 100%; flex: 1; }
+
+  .nav-search.open .nav-search-icon {
+    width: auto;
+    height: auto;
+    background: none;
+    border: none;
+    border-radius: 0;
+    opacity: 0.75;
+    font-size: 0.8rem;
+  }
 }
 
 /* ============================================================
@@ -2880,6 +2939,106 @@ html[data-theme="paper"] .brand-mark { box-shadow: 0 1px 3px rgba(31, 36, 48, 0.
   color: var(--accent);
 }
 
+/* ---------------------------------------------------------------------------
+   App mode: what Tend looks like when it has been added to a home screen and
+   opened from its own icon, rather than visited in a browser. The page is the
+   same page; `data-mode="app"` is set at runtime from
+   (display-mode: standalone), so a visitor to the website never sees any of
+   this.
+   --------------------------------------------------------------------------- */
+
+.bottom-nav { display: none; }
+
+html[data-mode="app"] .bottom-nav {
+  display: flex;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 150;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -2px 14px rgba(20, 24, 40, 0.07);
+}
+
+.bnav-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 2px 4px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bnav-btn svg {
+  width: 23px;
+  height: 23px;
+  display: block;
+}
+
+.bnav-btn.active { color: var(--accent); }
+
+.bnav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* The bar floats over the page, so the page has to end above it. */
+html[data-mode="app"] main { padding-bottom: 92px; }
+html[data-mode="app"] .new-task-btn-row { bottom: 86px; }
+
+/* The sections all live in the bottom bar now, so the tab row goes entirely
+   and the ribbon shrinks to a title bar. Search is moved up beside the
+   account chip by applyAppMode(). */
+html[data-mode="app"] nav.tabs { display: none; }
+html[data-mode="app"] .subtitle { display: none; }
+
+html[data-mode="app"] .header-inner { padding-bottom: 14px; }
+html[data-mode="app"] h1 { font-size: 1.35rem; }
+html[data-mode="app"] .header-top-row { flex-wrap: wrap; margin-bottom: 12px; }
+html[data-mode="app"] .header-top-row .nav-search { margin-left: auto; }
+
+/* Opened, the box needs the width, so it drops to a line of its own. */
+html[data-mode="app"] .header-top-row .nav-search.open {
+  order: 9;
+  width: 100%;
+  margin: 4px 0 0;
+}
+
+/* Garden as a section of its own: it takes the whole width, and the other two
+   stand down. */
+html[data-mode="app"] .app-layout.view-garden,
+html[data-mode="app"] .app-layout.no-garden.view-garden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "garden";
+}
+
+html[data-mode="app"] .app-layout.view-garden > .content-col,
+html[data-mode="app"] .app-layout.view-garden > .sidebar { display: none; }
+
+html[data-mode="app"] .app-layout:not(.view-garden) > .garden-col { display: none; }
+
+/* On the garden section the plot should sit at the top, not stick. */
+html[data-mode="app"] .app-layout.view-garden > .garden-col {
+  position: static;
+  max-width: 560px;
+  margin: 0 auto;
+  width: 100%;
+}
+
 </style>
 </head>
 <body class="gated">
@@ -2915,7 +3074,8 @@ html[data-theme="paper"] .brand-mark { box-shadow: 0 1px 3px rgba(31, 36, 48, 0.
     <button id="tab-list" class="active" onclick="App.switchView('list')">Tickets</button>
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
     <div class="nav-search" id="nav-search">
-      <span class="nav-search-icon" aria-hidden="true">&#128269;</span>
+      <button type="button" class="nav-search-icon" id="search-icon" onclick="App.toggleSearch()"
+              title="Search tickets" aria-label="Search tickets">&#128269;</button>
       <input type="search" class="search-input" id="search-input" placeholder="Search tickets"
              aria-label="Search tickets by title, notes, category or where it came up">
       <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
@@ -3186,6 +3346,34 @@ html[data-theme="paper"] .brand-mark { box-shadow: 0 1px 3px rgba(31, 36, 48, 0.
   </div>
 </div>
 
+<!-- Installed on a phone, Tend gets an app's bottom bar instead of making you
+     scroll to the bottom of the page to find the garden. Hidden everywhere
+     else by CSS. -->
+<nav class="bottom-nav" id="bottom-nav" aria-label="Sections">
+  <button type="button" class="bnav-btn active" id="bnav-list" onclick="App.switchView('list')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 6.5 5.6 8 8.5 5"/><path d="M4 12.5 5.6 14 8.5 11"/><path d="M4 18.5 5.6 20 8.5 17"/>
+      <path d="M12 6.5h8"/><path d="M12 12.5h8"/><path d="M12 18.5h8"/>
+    </svg>
+    <span class="bnav-label">Tickets</span>
+  </button>
+  <button type="button" class="bnav-btn" id="bnav-calendar" onclick="App.switchView('calendar')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3.2" y="5" width="17.6" height="16" rx="2.5"/><path d="M3.2 10h17.6"/>
+      <path d="M8 3v4"/><path d="M16 3v4"/>
+    </svg>
+    <span class="bnav-label">Calendar</span>
+  </button>
+  <button type="button" class="bnav-btn" id="bnav-garden" onclick="App.switchView('garden')">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 20.5 V12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+      <path d="M12 12.6 C12 8.9 9.4 6.8 6 6.8 C6 10.5 8.6 12.6 12 12.6 Z" fill="currentColor"/>
+      <path d="M12 14.1 C12 10.7 14.6 8.6 18 8.6 C18 12 15.4 14.1 12 14.1 Z" fill="currentColor" opacity="0.55"/>
+    </svg>
+    <span class="bnav-label" id="bnav-garden-label">Garden</span>
+  </button>
+</nav>
+
 <input type="file" id="import-file" accept="application/json,.json" hidden>
 
 </div><!-- /app-shell -->
@@ -3288,6 +3476,44 @@ const Util = (function () {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
+  /* The calendar buckets tickets by an exact 'YYYY-MM-DD' key, so anything
+     shaped even slightly differently - a timestamp, an unpadded month - lands
+     in a bucket no square ever asks for and silently disappears. Everything
+     that carries a date goes through here first.
+
+     Deliberately conservative: shapes that cannot be read unambiguously (a
+     slash date could be day-first or month-first) are handed back untouched
+     rather than guessed at. */
+  function toIsoDate(value) {
+    if (!value) return null;
+
+    if (value instanceof Date) {
+      return isNaN(value) ? null : dateToStr(value);
+    }
+
+    const raw = String(value).trim();
+    if (!raw) return null;
+
+    /* Already right. */
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+    /* '2026-8-4', or any ISO string with a time on the end. Taken apart by
+       hand rather than through Date, which would shift the day across a
+       timezone. */
+    const m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/.exec(raw);
+    if (m) {
+      return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+    }
+
+    /* A written date such as 'Aug 4, 2026'. Slash dates are left alone. */
+    if (!raw.includes('/')) {
+      const d = new Date(raw);
+      if (!isNaN(d)) return dateToStr(d);
+    }
+
+    return raw;
+  }
+
   /* A darker version of a colour, for text that has to stay readable on a
      pale tint of the same colour. Mixes towards the page's ink rather than
      towards black, so it never looks muddy. */
@@ -3337,7 +3563,7 @@ const Util = (function () {
 
   return {
     escapeHtml, dateToStr, todayStr, formatDate,
-    hexToRgba, inkShade, uid, initials, colorFor, debounce
+    hexToRgba, inkShade, toIsoDate, uid, initials, colorFor, debounce
   };
 })();
 
@@ -4845,9 +5071,9 @@ const Store = (function () {
       follow_up: !!t.followUp,
       priority: !!t.priority,
       archived: !!t.archived,
-      due_date: t.dueDate || null,
-      created_on: t.createdAt || Util.todayStr(),
-      completed_on: t.completedAt || null,
+      due_date: Util.toIsoDate(t.dueDate),
+      created_on: Util.toIsoDate(t.createdAt) || Util.todayStr(),
+      completed_on: Util.toIsoDate(t.completedAt),
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
       sort_index: index
     };
@@ -4863,9 +5089,9 @@ const Store = (function () {
       followUp: !!r.follow_up,
       priority: !!r.priority,
       archived: !!r.archived,
-      dueDate: r.due_date || null,
-      createdAt: r.created_on || Util.todayStr(),
-      completedAt: r.completed_on || null,
+      dueDate: Util.toIsoDate(r.due_date),
+      createdAt: Util.toIsoDate(r.created_on) || Util.todayStr(),
+      completedAt: Util.toIsoDate(r.completed_on),
       subtasks: Array.isArray(r.subtasks) ? r.subtasks : [],
       _sort: r.sort_index == null ? 0 : r.sort_index
     };
@@ -5109,6 +5335,7 @@ const Store = (function () {
 
     if (!CLOUD) {
       seedDefaultsIfEmpty();
+      normaliseTicketDates();
       setStatus('local');
       return { fromCache: false };
     }
@@ -5124,6 +5351,7 @@ const Store = (function () {
       }
       await pull();
       dedupeCategories();               /* heals accounts that already piled up */
+      normaliseTicketDates();
       seedDefaultsIfEmpty();            /* only if the server genuinely has none */
       setStatus('idle');
       startRealtime();
@@ -5132,6 +5360,7 @@ const Store = (function () {
     } catch (err) {
       console.warn('[Tend] could not reach the server, using the offline copy:', err && err.message);
       seedDefaultsIfEmpty();
+      normaliseTicketDates();
       setStatus('offline');
       /* Still hook the wake-ups: the moment the connection is back we catch up. */
       startRealtime();
@@ -5179,6 +5408,25 @@ const Store = (function () {
     console.info('[Tend] merged ' + (categories.length - kept.length) + ' duplicate categories');
     categories = kept;
     if (CLOUD) markDirty('categories');
+    else writeCache();
+  }
+
+  /* Dates that came in from an import or an older version can be shaped
+     differently enough that the calendar never finds them. Straightened out
+     once, on the way in, and saved back so it only ever happens once. */
+  function normaliseTicketDates() {
+    if (!Array.isArray(tickets) || !tickets.length) return;
+    let changed = 0;
+    tickets.forEach(t => {
+      ['dueDate', 'createdAt', 'completedAt'].forEach(field => {
+        const fixed = Util.toIsoDate(t[field]);
+        if ((fixed || null) !== (t[field] || null)) { t[field] = fixed; changed++; }
+      });
+      if (!t.createdAt) { t.createdAt = Util.todayStr(); changed++; }
+    });
+    if (!changed) return;
+    console.info('[Tend] tidied ' + changed + ' date(s) so the calendar can see them');
+    if (CLOUD) markDirty('tickets');
     else writeCache();
   }
 
@@ -5295,9 +5543,10 @@ const Store = (function () {
       followUp: !!(t.followUp || t.jiraNeeded),
       priority: !!t.priority,
       archived: !!t.archived,
-      dueDate: t.dueDate || null,
-      createdAt: t.createdAt || Util.todayStr(),
-      completedAt: t.completedAt || null,
+      /* An imported file is the most likely source of an odd date shape. */
+      dueDate: Util.toIsoDate(t.dueDate || t.due || null),
+      createdAt: Util.toIsoDate(t.createdAt || t.created || null) || Util.todayStr(),
+      completedAt: Util.toIsoDate(t.completedAt || t.completed || null),
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : []
     }));
     if (Array.isArray(data.categories) && data.categories.length) {
@@ -6188,7 +6437,10 @@ const Garden = (function () {
 
   function applyGardenVisibility() {
     const col = document.querySelector('.garden-col');
-    if (col) col.style.display = gardenVisible ? '' : 'none';
+    /* Installed as an app the garden is a tab of its own, so which of the
+       three is on screen is the view's business, not this switch's. */
+    const appMode = window.App && App.isAppMode && App.isAppMode();
+    if (col) col.style.display = (appMode || gardenVisible) ? '' : 'none';
     /* The layout grid keeps a 420px track for the garden, so tell it when there
        is no garden to put there. */
     const layout = document.querySelector('.app-layout');
@@ -7507,6 +7759,11 @@ const Garden = (function () {
   window.focusGarden = focusGarden;
   window.toggleGardenVisibility = toggleGardenVisibility;
 
+  /* 'Garden' or 'Reef' - for the tab that opens it. */
+  function shortLabel() {
+    return cap(terms().place.replace(/^the\s+/i, ''));
+  }
+
   return {
     start: start,
     stop: stop,
@@ -7514,6 +7771,7 @@ const Garden = (function () {
     reskin: reskin,
     loadAll: loadAll,
     heroName: heroName,
+    shortLabel: shortLabel,
     renderCoins: renderCoins,
     renderShop: renderShop
   };
@@ -8157,16 +8415,102 @@ const App = (function () {
 
   /* ========================= calendar ========================= */
 
+  /* ---------------------------------------------------------------
+     App mode.
+
+     Tend installed on a home screen is the same page as Tend in a
+     browser - there is no second build. What changes is the shell:
+     a bar of sections fixed to the bottom, the garden promoted to a
+     section of its own rather than something you scroll to, and the
+     duplicate tabs taken out of the ribbon.
+
+     `?app=1` forces it on, which is how it can be looked at on a
+     desktop without installing anything.
+     --------------------------------------------------------------- */
+
+  let appMode = false;
+
+  function detectAppMode() {
+    try {
+      if (/[?&]app=1\b/.test(location.search)) return true;
+      if (/[?&]app=0\b/.test(location.search)) return false;
+      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+      /* Older iOS Safari predates display-mode and uses this instead. */
+      if (window.navigator.standalone === true) return true;
+    } catch (e) { /* ignore */ }
+    return false;
+  }
+
+  function isAppMode() { return appMode; }
+
+  function applyAppMode() {
+    appMode = detectAppMode();
+    if (appMode) document.documentElement.setAttribute('data-mode', 'app');
+    else document.documentElement.removeAttribute('data-mode');
+
+    const label = document.getElementById('bnav-garden-label');
+    if (label && window.Garden && Garden.shortLabel) label.textContent = Garden.shortLabel();
+
+    /* With the sections in the bottom bar the tab row is empty, so search
+       moves up beside the account chip rather than sitting on a row of its
+       own. Moved in the DOM rather than duplicated, so there is only ever
+       one search box and one piece of state. */
+    const search = document.getElementById('nav-search');
+    const topRow = document.querySelector('.header-top-row');
+    const account = document.querySelector('.account-menu');
+    const tabs = document.querySelector('nav.tabs');
+    const gardenBtn = document.getElementById('garden-toggle-btn');
+    if (!search || !topRow || !tabs) return;
+    if (appMode) {
+      if (search.parentElement !== topRow) topRow.insertBefore(search, account);
+    } else if (search.parentElement !== tabs) {
+      tabs.insertBefore(search, gardenBtn);
+    }
+  }
+
+  /* In the app the heading says which section you are in; on the website it
+     stays the page title it has always been. */
+  function updateAppTitle(view) {
+    if (!appMode) return;
+    const h = document.getElementById('page-title');
+    if (!h) return;
+    if (view === 'calendar') h.textContent = 'Calendar';
+    else if (view === 'garden') h.textContent = (window.Garden && Garden.shortLabel) ? Garden.shortLabel() : 'Garden';
+    else {
+      const name = Store.displayName() || 'Your';
+      h.textContent = (/s$/i.test(name) ? name + "'" : name + "'s") + ' Tickets';
+    }
+  }
+
+  let currentView = 'list';
+
   function switchView(view) {
+    /* The garden is only a section of its own inside the app. */
+    if (view === 'garden' && !appMode) view = 'list';
+    currentView = view;
+
     document.getElementById('view-list').classList.toggle('active', view === 'list');
     document.getElementById('view-calendar').classList.toggle('active', view === 'calendar');
     document.getElementById('tab-list').classList.toggle('active', view === 'list');
     document.getElementById('tab-calendar').classList.toggle('active', view === 'calendar');
-    /* There is nothing to search on the calendar. */
+
+    const layout = document.querySelector('.app-layout');
+    if (layout) layout.classList.toggle('view-garden', view === 'garden');
+
+    [['bnav-list', 'list'], ['bnav-calendar', 'calendar'], ['bnav-garden', 'garden']].forEach(([id, v]) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.classList.toggle('active', view === v);
+    });
+
+    /* There is nothing to search on the calendar or in the garden. */
     const search = document.getElementById('nav-search');
     if (search) search.hidden = view !== 'list';
+
     if (view === 'calendar') renderCalendar();
+    if (view === 'garden' && window.Garden) Garden.render();
     applyCalendarWidth();
+    updateAppTitle(view);
+    if (appMode) window.scrollTo(0, 0);
   }
 
   /* Keeps the little clear button and the widened field in step with whether
@@ -8178,16 +8522,36 @@ const App = (function () {
     if (!input || !wrap) return;
     const has = !!input.value;
     wrap.classList.toggle('has-text', has);
+    /* A filter that is on must not be able to hide itself. */
+    if (has) wrap.classList.add('open');
     if (clear) clear.hidden = !has;
+  }
+
+  /* On a phone the search is a magnifier until you ask for it. Tapping opens
+     the field; tapping again closes it, unless something is typed in. */
+  function toggleSearch() {
+    const wrap = document.getElementById('nav-search');
+    const input = document.getElementById('search-input');
+    if (!wrap || !input) return;
+    if (wrap.classList.contains('open') && !input.value) {
+      wrap.classList.remove('open');
+      input.blur();
+      return;
+    }
+    wrap.classList.add('open');
+    input.focus();
   }
 
   function clearSearch() {
     const input = document.getElementById('search-input');
+    const wrap = document.getElementById('nav-search');
     if (!input) return;
     input.value = '';
     syncSearchChrome();
     renderList();
-    input.focus();
+    /* Emptied by hand: fold it away again rather than leaving a blank bar. */
+    if (wrap) wrap.classList.remove('open');
+    input.blur();
   }
 
   function changeMonth(delta) {
@@ -8249,7 +8613,7 @@ const App = (function () {
     const layout = document.querySelector('.app-layout');
     if (!layout) return;
     const onCalendar = document.getElementById('view-calendar').classList.contains('active');
-    layout.classList.toggle('cal-wide', onCalendar && calView() === 'agenda');
+    layout.classList.toggle('cal-wide', currentView !== 'garden' && onCalendar && calView() === 'agenda');
   }
 
   function renderCalViewToggle() {
@@ -8308,9 +8672,14 @@ const App = (function () {
     dueByDay = {};
     completedByDay = {};
     tickets().forEach(t => {
-      if (t.createdAt) (createdByDay[t.createdAt] = createdByDay[t.createdAt] || []).push(t);
-      if (t.dueDate) (dueByDay[t.dueDate] = dueByDay[t.dueDate] || []).push(t);
-      if (t.completedAt) (completedByDay[t.completedAt] = completedByDay[t.completedAt] || []).push(t);
+      /* Normalised again here so a ticket with an odd date still lands on the
+         right square even before the store has tidied it away. */
+      const made = Util.toIsoDate(t.createdAt);
+      const due = Util.toIsoDate(t.dueDate);
+      const done = Util.toIsoDate(t.completedAt);
+      if (made) (createdByDay[made] = createdByDay[made] || []).push(t);
+      if (due) (dueByDay[due] = dueByDay[due] || []).push(t);
+      if (done) (completedByDay[done] = completedByDay[done] || []).push(t);
     });
     renderCalendarLegend();
     renderCalViewToggle();
@@ -8401,7 +8770,8 @@ const App = (function () {
   function showDayModal(iso) {
     const series = calSeries();
     const groups = [
-      { title: 'Due', list: series.due ? (dueByDay[iso] || []) : [] },
+      /* Same rule as the square: archived work is set aside, so it is not due. */
+      { title: 'Due', list: series.due ? (dueByDay[iso] || []).filter(t => !t.archived) : [] },
       { title: 'Created', list: series.created ? (createdByDay[iso] || []) : [] },
       { title: 'Complete', list: series.completed ? (completedByDay[iso] || []) : [] }
     ].filter(g => g.list.length);
@@ -8937,6 +9307,7 @@ const App = (function () {
     if (hero) prefs.hero = hero;
     Store.savePrefs();
     Garden.reskin();
+    applyAppMode();
     renderWorldSettings();
   }
 
@@ -9089,6 +9460,7 @@ const App = (function () {
   function boot() {
     loadViewPrefs();
     applyTheme();
+    applyAppMode();
 
     const now = new Date();
     calYear = now.getFullYear();
@@ -9097,8 +9469,8 @@ const App = (function () {
     renderHeader();
     Garden.loadAll();   /* hydrate the garden before anything renders or saves it */
     renderAll();
-    applyCalendarWidth();
     Garden.start();
+    switchView(currentView);   /* sets the bar, the sections and the widths */
 
     if (!booted) {
       booted = true;
@@ -9125,6 +9497,11 @@ const App = (function () {
       });
       document.getElementById('search-input').addEventListener('keydown', function (e) {
         if (e.key === 'Escape') { e.stopPropagation(); clearSearch(); }
+      });
+      /* Tapping away from an empty box folds it back to the magnifier. */
+      document.getElementById('search-input').addEventListener('blur', function () {
+        const wrap = document.getElementById('nav-search');
+        if (wrap && !this.value) wrap.classList.remove('open');
       });
       document.getElementById('import-file').addEventListener('change', function () { handleImportFile(this); });
 
@@ -9155,7 +9532,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt,
-    clearSearch, setTheme,
+    clearSearch, toggleSearch, setTheme, isAppMode,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
