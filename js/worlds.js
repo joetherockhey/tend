@@ -66,6 +66,15 @@ const Worlds = (function () {
     function shovelSVG() {
       return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="2" width="2" height="12" fill="#8a5a2e"/><rect x="5" y="13" width="6" height="6" fill="#a4aab3"/><rect x="6" y="14" width="4" height="4" fill="#8a8f98"/></svg>`;
     }
+    /* The seedling every bought plant starts as. Shapes only, no <svg> of its
+       own, so it can be dropped straight into the plant sprite's 14x20 box
+       above the pot rim. */
+    function seedlingShapes() {
+      return '<rect x="6" y="10" width="2" height="5" fill="#6b4423"/>'
+           + '<rect x="3" y="7" width="3" height="3" fill="#4fa754"/>'
+           + '<rect x="8" y="8" width="3" height="2" fill="#6bc06e"/>'
+           + '<rect x="6" y="6" width="2" height="2" fill="#6bc06e"/>';
+    }
     function saplingSVG() {
       return `<svg width="18" height="22" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="14" width="2" height="5" fill="#6b4423"/><rect x="5" y="9" width="6" height="6" fill="#4fa754"/><rect x="6" y="7" width="4" height="4" fill="#6bc06e"/></svg>`;
     }
@@ -344,6 +353,13 @@ const Worlds = (function () {
 
   function driftwoodSVG() {
     return `<svg width="26" height="26" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="7" width="12" height="4" fill="#a89880"/><rect x="2" y="7" width="12" height="1" fill="#c0b298"/><rect x="4" y="9" width="2" height="1" fill="#8a7c68"/><rect x="9" y="9" width="3" height="1" fill="#8a7c68"/></svg>`;
+  }
+
+  function oceanSeedlingShapes() {
+    return '<rect x="6" y="10" width="2" height="5" fill="#2f6b46"/>'
+         + '<rect x="3" y="8" width="3" height="2" fill="#56b07a"/>'
+         + '<rect x="8" y="7" width="3" height="2" fill="#56b07a"/>'
+         + '<rect x="6" y="5" width="2" height="3" fill="#7cc79a"/>';
   }
 
   function kelpSproutSVG() {
@@ -749,7 +765,7 @@ const Worlds = (function () {
       tree: treeSVG, fruitTree: fruitTreeSVG, washingLine: washingLineSVG,
       bush: bushSVG, mower: mowerSVG, wheelbarrow: wheelbarrowSVG,
       table: tableSVG, grill: grillSVG, hedge: hedgeSVG, lilyPad: lilyPadSVG,
-      sapling: saplingSVG, log: logSVG, build: cabinSVG, treat: treatSVG
+      sapling: saplingSVG, seedling: seedlingShapes, log: logSVG, build: cabinSVG, treat: treatSVG
     },
     hero: {
       male: { front: gardenerFrontSVG, back: gardenerBackSVG, side: gardenerSideSVG },
@@ -799,7 +815,7 @@ const Worlds = (function () {
       tree: kelpSVG, fruitTree: coralTreeSVG, washingLine: fishingNetSVG,
       bush: spongeSVG, mower: anchorSVG, wheelbarrow: chestSVG,
       table: flatRockSVG, grill: ventSVG, hedge: coralWallSVG, lilyPad: bubbleAnemoneSVG,
-      sapling: kelpSproutSVG, log: driftwoodSVG, build: grottoSVG, treat: krillSVG
+      sapling: kelpSproutSVG, seedling: oceanSeedlingShapes, log: driftwoodSVG, build: grottoSVG, treat: krillSVG
     },
     hero: {
       male: { front: merMaleFrontSVG, back: merMaleBackSVG, side: merMaleSideSVG },

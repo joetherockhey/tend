@@ -2931,16 +2931,19 @@ html[data-theme="paper"] .brand-mark { box-shadow: 0 1px 3px rgba(31, 36, 48, 0.
 }
 
 /* ---------------------------------------------------------------------------
-   App mode: what Tend looks like when it has been added to a home screen and
-   opened from its own icon, rather than visited in a browser. The page is the
-   same page; `data-mode="app"` is set at runtime from
-   (display-mode: standalone), so a visitor to the website never sees any of
-   this.
+   Phone view: sections in a bar fixed to the bottom, the garden promoted to a
+   section of its own, and the ribbon shrunk to a title bar. Desktop view is
+   everything else in this file - tabs at the top and the garden as a column.
+
+   Which one you get is decided at runtime and stamped on <html> as
+   data-mode="phone", from the width of the window unless the setting says
+   otherwise. A wide window is a desktop whether or not Tend was opened from
+   an icon, so an installed copy on a laptop still looks like the website.
    --------------------------------------------------------------------------- */
 
 .bottom-nav { display: none; }
 
-html[data-mode="app"] .bottom-nav {
+html[data-mode="phone"] .bottom-nav {
   display: flex;
   position: fixed;
   left: 0;
@@ -2988,51 +2991,133 @@ html[data-mode="app"] .bottom-nav {
 }
 
 /* The bar floats over the page, so the page has to end above it. */
-html[data-mode="app"] main { padding-bottom: 92px; }
-html[data-mode="app"] .new-task-btn-row { bottom: 86px; }
+html[data-mode="phone"] main { padding-bottom: 92px; }
+/* Clear of the bar, at any width - the width-based rule below only fires
+   under 900px, which left it sitting under the bar in a wide app window. */
+html[data-mode="phone"] .new-task-btn-row {
+  position: fixed;
+  right: 16px;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  margin: 0;
+}
 
 /* The sections all live in the bottom bar now, so the tab row goes entirely
    and the ribbon shrinks to a title bar. Search is moved up beside the
    account chip by applyAppMode(). */
-html[data-mode="app"] nav.tabs { display: none; }
-html[data-mode="app"] .subtitle { display: none; }
+html[data-mode="phone"] nav.tabs { display: none; }
+html[data-mode="phone"] .subtitle { display: none; }
 
-html[data-mode="app"] .header-inner { padding-bottom: 14px; }
-html[data-mode="app"] h1 { font-size: 1.35rem; }
-html[data-mode="app"] .header-top-row { flex-wrap: wrap; margin-bottom: 12px; }
+html[data-mode="phone"] .header-inner { padding-bottom: 14px; }
+html[data-mode="phone"] h1 { font-size: 1.35rem; }
+html[data-mode="phone"] .header-top-row { flex-wrap: wrap; margin-bottom: 12px; }
 
 /* The magnifier goes to the far right, past the account chip, so it is under
    the thumb rather than stranded in the middle of the bar. */
-html[data-mode="app"] .header-top-row .account-menu { margin-left: auto; }
-html[data-mode="app"] .header-top-row .nav-search { order: 5; margin-left: 4px; }
+html[data-mode="phone"] .header-top-row .account-menu { margin-left: auto; }
+html[data-mode="phone"] .header-top-row .nav-search { order: 5; margin-left: 4px; }
 
 /* Opened, the box needs the width, so it drops to a line of its own. */
-html[data-mode="app"] .header-top-row .nav-search.open {
+html[data-mode="phone"] .header-top-row .nav-search.open {
   order: 9;
   width: 100%;
   margin: 4px 0 0;
 }
 
+/* One column, whatever the window is doing. Without this a wide window in
+   phone view keeps the three-column grid and leaves an empty track where the
+   garden column used to be, pushing everything to the right. */
+html[data-mode="phone"] .app-layout,
+html[data-mode="phone"] .app-layout.no-garden,
+html[data-mode="phone"] .app-layout.cal-wide {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "content" "sidebar";
+}
+
 /* Garden as a section of its own: it takes the whole width, and the other two
    stand down. */
-html[data-mode="app"] .app-layout.view-garden,
-html[data-mode="app"] .app-layout.no-garden.view-garden {
+html[data-mode="phone"] .app-layout.view-garden,
+html[data-mode="phone"] .app-layout.no-garden.view-garden {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "garden";
 }
 
-html[data-mode="app"] .app-layout.view-garden > .content-col,
-html[data-mode="app"] .app-layout.view-garden > .sidebar { display: none; }
+html[data-mode="phone"] .app-layout.view-garden > .content-col,
+html[data-mode="phone"] .app-layout.view-garden > .sidebar { display: none; }
 
-html[data-mode="app"] .app-layout:not(.view-garden) > .garden-col { display: none; }
+html[data-mode="phone"] .app-layout:not(.view-garden) > .garden-col { display: none; }
 
 /* On the garden section the plot should sit at the top, not stick. */
-html[data-mode="app"] .app-layout.view-garden > .garden-col {
+html[data-mode="phone"] .app-layout.view-garden > .garden-col {
   position: static;
   max-width: 560px;
   margin: 0 auto;
   width: 100%;
 }
+
+/* Layout picker in Settings. */
+.mode-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.mode-tile {
+  display: block;
+  text-align: left;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 9px 12px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.mode-tile:hover { border-color: var(--accent); }
+.mode-tile.on { border-color: var(--accent); background: var(--accent-soft); }
+
+.mode-name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.mode-tile.on .mode-name::after {
+  content: ' \2713';
+  color: var(--accent);
+}
+
+.mode-hint {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* What's new. */
+.update-block { margin-bottom: 16px; }
+.update-block:last-child { margin-bottom: 0; }
+
+.update-date {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 7px;
+}
+
+.update-items {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.update-items li { margin-bottom: 3px; }
 
 </style>
 </head>
@@ -3100,7 +3185,7 @@ html[data-mode="app"] .app-layout.view-garden > .garden-col {
     <ul class="garden-hint">
       <li id="garden-move-hint">Click the garden, then move with WASD or the arrow keys.</li>
       <li id="garden-use-hint">Press E to pick up, plant, or use whatever you are next to.</li>
-      <li id="garden-buy-hint">Finish a task to earn a coin, then buy a plant in the shop below.</li>
+      <li id="garden-buy-hint">Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.</li>
     </ul>
     <div class="garden-help-icons">
       <button class="help-icon-btn coin-help-btn" onclick="showHelpTopic('coins')" title="Coins and plants"></button>
@@ -4040,6 +4125,15 @@ const Worlds = (function () {
     function shovelSVG() {
       return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="2" width="2" height="12" fill="#8a5a2e"/><rect x="5" y="13" width="6" height="6" fill="#a4aab3"/><rect x="6" y="14" width="4" height="4" fill="#8a8f98"/></svg>`;
     }
+    /* The seedling every bought plant starts as. Shapes only, no <svg> of its
+       own, so it can be dropped straight into the plant sprite's 14x20 box
+       above the pot rim. */
+    function seedlingShapes() {
+      return '<rect x="6" y="10" width="2" height="5" fill="#6b4423"/>'
+           + '<rect x="3" y="7" width="3" height="3" fill="#4fa754"/>'
+           + '<rect x="8" y="8" width="3" height="2" fill="#6bc06e"/>'
+           + '<rect x="6" y="6" width="2" height="2" fill="#6bc06e"/>';
+    }
     function saplingSVG() {
       return `<svg width="18" height="22" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="14" width="2" height="5" fill="#6b4423"/><rect x="5" y="9" width="6" height="6" fill="#4fa754"/><rect x="6" y="7" width="4" height="4" fill="#6bc06e"/></svg>`;
     }
@@ -4318,6 +4412,13 @@ const Worlds = (function () {
 
   function driftwoodSVG() {
     return `<svg width="26" height="26" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="7" width="12" height="4" fill="#a89880"/><rect x="2" y="7" width="12" height="1" fill="#c0b298"/><rect x="4" y="9" width="2" height="1" fill="#8a7c68"/><rect x="9" y="9" width="3" height="1" fill="#8a7c68"/></svg>`;
+  }
+
+  function oceanSeedlingShapes() {
+    return '<rect x="6" y="10" width="2" height="5" fill="#2f6b46"/>'
+         + '<rect x="3" y="8" width="3" height="2" fill="#56b07a"/>'
+         + '<rect x="8" y="7" width="3" height="2" fill="#56b07a"/>'
+         + '<rect x="6" y="5" width="2" height="3" fill="#7cc79a"/>';
   }
 
   function kelpSproutSVG() {
@@ -4723,7 +4824,7 @@ const Worlds = (function () {
       tree: treeSVG, fruitTree: fruitTreeSVG, washingLine: washingLineSVG,
       bush: bushSVG, mower: mowerSVG, wheelbarrow: wheelbarrowSVG,
       table: tableSVG, grill: grillSVG, hedge: hedgeSVG, lilyPad: lilyPadSVG,
-      sapling: saplingSVG, log: logSVG, build: cabinSVG, treat: treatSVG
+      sapling: saplingSVG, seedling: seedlingShapes, log: logSVG, build: cabinSVG, treat: treatSVG
     },
     hero: {
       male: { front: gardenerFrontSVG, back: gardenerBackSVG, side: gardenerSideSVG },
@@ -4773,7 +4874,7 @@ const Worlds = (function () {
       tree: kelpSVG, fruitTree: coralTreeSVG, washingLine: fishingNetSVG,
       bush: spongeSVG, mower: anchorSVG, wheelbarrow: chestSVG,
       table: flatRockSVG, grill: ventSVG, hedge: coralWallSVG, lilyPad: bubbleAnemoneSVG,
-      sapling: kelpSproutSVG, log: driftwoodSVG, build: grottoSVG, treat: krillSVG
+      sapling: kelpSproutSVG, seedling: oceanSeedlingShapes, log: driftwoodSVG, build: grottoSVG, treat: krillSVG
     },
     hero: {
       male: { front: merMaleFrontSVG, back: merMaleBackSVG, side: merMaleSideSVG },
@@ -5707,6 +5808,10 @@ const Garden = (function () {
   const PLANT_COST = 1;
   const SAPLING_COST = 5;
   const SAPLING_WATERS_NEEDED = 5;
+  /* Everything you buy from the plant shop starts as a seedling and only
+     becomes its own variety once it has been planted in the ground and
+     watered. In a pot it stays a seedling however often you water it. */
+  const PLANT_WATERS_NEEDED = 5;
   const CABIN_LOGS_NEEDED = 10;
 
   const MAX_PETS = 10;
@@ -6141,6 +6246,8 @@ const Garden = (function () {
   let gardenRows = SECTION_ROWS;
   let gardenMaxUnlockedRow = SECTION_ROWS - 1;
   let heldPlantId = null;
+  let heldPlantGrown = true;
+  let heldPlantWaters = 0;
   let heldPlantVariety = null;
   let heldPlantPot = null;
   let heldDecoration = null;
@@ -6415,8 +6522,8 @@ const Garden = (function () {
     const col = document.querySelector('.garden-col');
     /* Installed as an app the garden is a tab of its own, so which of the
        three is on screen is the view's business, not this switch's. */
-    const appMode = window.App && App.isAppMode && App.isAppMode();
-    if (col) col.style.display = (appMode || gardenVisible) ? '' : 'none';
+    const phoneView = window.App && App.isAppMode && App.isAppMode();
+    if (col) col.style.display = (phoneView || gardenVisible) ? '' : 'none';
     /* The layout grid keeps a 420px track for the garden, so tell it when there
        is no garden to put there. */
     const layout = document.querySelector('.app-layout');
@@ -6433,6 +6540,7 @@ const Garden = (function () {
 
   function heldItemPreviewHtml() {
     if (heldPlantId != null && heldPlantVariety != null) {
+      if (!heldPlantGrown) return seedlingSVG(false);
       const variety = W().plants[heldPlantVariety] || W().plants[0];
       return W().plantSVG(variety, heldPlantPot || NEUTRAL_POT);
     }
@@ -6513,6 +6621,34 @@ const Garden = (function () {
     }
   }
 
+  /* Anything planted before seedlings existed has no `grown` field at all, and
+     is a full plant - so only an explicit false counts as a seedling. */
+  function isSeedling(pos) {
+    return !!pos && pos.grown === false;
+  }
+
+  /* Every seedling looks the same, whatever it will turn into. Sitting in a
+     pot it keeps the pot; in the ground the pot comes off. */
+  function seedlingSVG(planted) {
+    /* One neutral pot for every seedling: until it has grown they are all
+       meant to look identical, so the plant's own pot colour waits. */
+    const pot = planted ? '' : `
+      <rect x="2" y="15" width="10" height="1" fill="${NEUTRAL_POT}"/>
+      <rect x="3" y="16" width="8" height="3" fill="${NEUTRAL_POT}"/>
+      <rect x="4" y="18" width="6" height="1" fill="rgba(0,0,0,0.18)"/>`;
+    return `<svg width="24" height="34" viewBox="0 0 14 20" shape-rendering="crispEdges">
+      ${W().art.seedling()}
+      ${pot}
+    </svg>`;
+  }
+
+  function seedlingLabel(pos) {
+    const n = pos.waterCount || 0;
+    const onDirt = isOnDirt(pos.row, pos.col);
+    if (!onDirt) return 'Seedling - plant it in the ground';
+    return 'Seedling - watered ' + n + ' of ' + PLANT_WATERS_NEEDED;
+  }
+
   function waterCheck(row, col, knownTaskId) {
     const taskId = knownTaskId || findPlantAt(row, col);
     if (!taskId) return;
@@ -6521,6 +6657,25 @@ const Garden = (function () {
     wateredCooldown.set(taskId, Date.now());
     spawnSparkleAt(row, col);
     playWaterSound();
+
+    const pos = gardenLayout[taskId];
+    if (!isSeedling(pos)) return;
+
+    /* Water goes straight through a pot. Roots need the ground. */
+    if (!isOnDirt(row, col)) {
+      showThought('Needs planting in the ground');
+      return;
+    }
+
+    pos.waterCount = (pos.waterCount || 0) + 1;
+    if (pos.waterCount >= PLANT_WATERS_NEEDED) {
+      pos.grown = true;
+      const variety = W().plants[pos.variety] || W().plants[0];
+      spawnSparkleAt(row, col);
+      showThought(variety.name + '!');
+    }
+    saveGardenLayout();
+    renderGarden();
   }
 
   function findAdjacentPlant() {
@@ -6760,11 +6915,14 @@ const Garden = (function () {
     if (heldPlantId) {
       gardenLayout[heldPlantId] = {
         row: heroPos.row, col: heroPos.col,
-        variety: heldPlantVariety, potColor: heldPlantPot
+        variety: heldPlantVariety, potColor: heldPlantPot,
+        grown: heldPlantGrown, waterCount: heldPlantWaters
       };
       heldPlantId = null;
       heldPlantVariety = null;
       heldPlantPot = null;
+      heldPlantGrown = true;
+      heldPlantWaters = 0;
       saveGardenLayout();
       playDirtSound();
       renderGarden();
@@ -6877,6 +7035,8 @@ const Garden = (function () {
     if (taskId) {
       heldPlantVariety = gardenLayout[taskId].variety;
       heldPlantPot = gardenLayout[taskId].potColor || potColorFor(taskId);
+      heldPlantGrown = !isSeedling(gardenLayout[taskId]);
+      heldPlantWaters = gardenLayout[taskId].waterCount || 0;
       heldPlantId = taskId;
       delete gardenLayout[taskId];
       saveGardenLayout();
@@ -6976,6 +7136,7 @@ const Garden = (function () {
     const plantId = findPlantAt(row, col);
     if (plantId) {
       const pos = gardenLayout[plantId];
+      if (isSeedling(pos)) return seedlingLabel(pos);
       const variety = W().plants[pos.variety] || W().plants[0];
       return variety.name;
     }
@@ -7121,7 +7282,9 @@ const Garden = (function () {
   }
 
   /* A plant is now something you buy with a coin you earned by finishing a
-     task, rather than something that appears on its own. */
+     task, rather than something that appears on its own. It arrives as a
+     seedling: every one looks the same until it has grown, and which variety
+     it turns out to be is a surprise kept until then. */
   function buyPlant() {
     if (coins < PLANT_COST) return;
     coins -= PLANT_COST;
@@ -7132,7 +7295,9 @@ const Garden = (function () {
       row: cell.row,
       col: cell.col,
       variety: Math.floor(Math.random() * W().plants.length),
-      potColor: POT_COLORS[Math.floor(Math.random() * POT_COLORS.length)]
+      potColor: POT_COLORS[Math.floor(Math.random() * POT_COLORS.length)],
+      grown: false,
+      waterCount: 0
     };
     saveGardenLayout();
     playPickupSound();
@@ -7236,13 +7401,17 @@ const Garden = (function () {
 
     const plantsWrap = document.getElementById('shop-plants');
     if (plantsWrap) {
-      const owned = Object.keys(gardenLayout).length;
+      const all = Object.values(gardenLayout);
+      const growing = all.filter(isSeedling).length;
+      const grown = all.length - growing;
+      const tally = grown + ' ' + (grown === 1 ? terms().plant : terms().plants)
+        + (growing ? ', ' + growing + ' still growing' : '');
       plantsWrap.innerHTML =
-        `<div class="shop-info">Growing: ${owned} ${owned === 1 ? terms().plant : terms().plants}</div>
+        `<div class="shop-info">Growing: ${Util.escapeHtml(tally)}</div>
          <div class="shop-grid">
            <button class="shop-tile" ${coins < PLANT_COST ? 'disabled' : ''} onclick="buyPlant()">
-             <span class="shop-tile-icon">\u{1F33B}</span>
-             <span class="shop-tile-label">${Util.escapeHtml(cap(terms().plant))} (random variety)</span>
+             <span class="shop-tile-icon">\u{1F331}</span>
+             <span class="shop-tile-label">Seedling (plant it, water 5x)</span>
              <span class="shop-tile-action">${coinSVG()}${PLANT_COST}</span>
            </button>
          </div>`;
@@ -7524,9 +7693,11 @@ const Garden = (function () {
       const variety = W().plants[pos.variety] || W().plants[0];
       const potColor = pos.potColor || potColorFor(id);
       const planted = isOnDirt(pos.row, pos.col);
-      cellsHtml += `<div class="garden-cell" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${Util.escapeHtml(variety.name)}">
+      const seedling = isSeedling(pos);
+      const label = seedling ? seedlingLabel(pos) : variety.name;
+      cellsHtml += `<div class="garden-cell" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${Util.escapeHtml(label)}">
         <div class="sprite-shadow"></div>
-        ${W().plantSVG(variety, potColor, planted)}
+        ${seedling ? seedlingSVG(planted) : W().plantSVG(variety, potColor, planted)}
       </div>`;
     });
 
@@ -7592,8 +7763,8 @@ const Garden = (function () {
     const who = heroName();
     const t = terms();
     return {
-      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each, a random variety - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
-      water: { icon: '\u{1F4A7}', title: 'Watering', body: 'Move right up next to a ' + t.plant + ' to water it (once per minute each). Watering is for the pleasure of it - a sparkle and a splash - it earns no coins. ' + t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's are the exception: they need five waterings to grow.' },
+      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
+      water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
       pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool.' },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
@@ -7680,7 +7851,7 @@ const Garden = (function () {
     const coinHelp = document.querySelector('.coin-help-btn');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
-    if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
+    if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.';
     render();
     applyGardenVisibility();
     startPetTicker();
@@ -7702,7 +7873,7 @@ const Garden = (function () {
     const coinHelp = document.querySelector('.coin-help-btn');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
-    if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
+    if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.';
     currentHelpTopic = null;
     const box = document.getElementById('help-explanation');
     if (box) { box.style.display = 'none'; box.innerHTML = ''; }
@@ -7740,7 +7911,18 @@ const Garden = (function () {
     return cap(terms().place.replace(/^the\s+/i, ''));
   }
 
+  /* Used only by the test harness: water a square without the once-a-minute
+     wait, so growing five stages does not take five minutes to check. */
+  function testWater(row, col) {
+    const id = findPlantAt(row, col);
+    if (!id) return;
+    wateredCooldown.delete(id);
+    waterCheck(row, col, id);
+  }
+
   return {
+    applyVisibility: applyGardenVisibility,
+    __testWater: testWater,
     start: start,
     stop: stop,
     render: render,
@@ -8380,37 +8562,58 @@ const App = (function () {
   /* ========================= calendar ========================= */
 
   /* ---------------------------------------------------------------
-     App mode.
+     Phone view and desktop view.
 
-     Tend installed on a home screen is the same page as Tend in a
-     browser - there is no second build. What changes is the shell:
-     a bar of sections fixed to the bottom, the garden promoted to a
-     section of its own rather than something you scroll to, and the
-     duplicate tabs taken out of the ribbon.
+     One page, two shells. Phone view puts the three sections in a bar
+     fixed to the bottom, promotes the garden to a section of its own
+     rather than something you scroll to, and shrinks the ribbon to a
+     title bar. Desktop view is the tabs-at-the-top layout with the
+     garden as a column beside the tasks.
 
-     `?app=1` forces it on, which is how it can be looked at on a
-     desktop without installing anything.
+     Which one you get follows the width of the window, because that is
+     what actually decides whether the layout fits - a wide window is a
+     desktop whether or not Tend was opened from an installed icon. The
+     setting can pin it either way. `?app=1` / `?app=0` force it, for
+     looking at one from the other.
      --------------------------------------------------------------- */
 
-  let appMode = false;
+  const PHONE_MAX_WIDTH = 900;
+  let phoneView = false;
 
-  function detectAppMode() {
+  function viewModePref() {
+    const m = (Store.prefs() || {}).viewMode;
+    return (m === 'phone' || m === 'desktop') ? m : 'auto';
+  }
+
+  function setViewMode(mode) {
+    Store.prefs().viewMode = (mode === 'phone' || mode === 'desktop') ? mode : 'auto';
+    Store.savePrefs();
+    applyLayoutMode();
+    renderViewModePicker();
+  }
+
+  function detectPhoneView() {
     try {
       if (/[?&]app=1\b/.test(location.search)) return true;
       if (/[?&]app=0\b/.test(location.search)) return false;
-      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
-      /* Older iOS Safari predates display-mode and uses this instead. */
-      if (window.navigator.standalone === true) return true;
     } catch (e) { /* ignore */ }
-    return false;
+    const pref = viewModePref();
+    if (pref === 'phone') return true;
+    if (pref === 'desktop') return false;
+    return window.innerWidth <= PHONE_MAX_WIDTH;
   }
 
-  function isAppMode() { return appMode; }
+  function isAppMode() { return phoneView; }
 
-  function applyAppMode() {
-    appMode = detectAppMode();
-    if (appMode) document.documentElement.setAttribute('data-mode', 'app');
+  function applyLayoutMode() {
+    const was = phoneView;
+    phoneView = detectPhoneView();
+    if (phoneView) document.documentElement.setAttribute('data-mode', 'phone');
     else document.documentElement.removeAttribute('data-mode');
+
+    /* The garden is only a section of its own in phone view, so leaving it
+       has to put you somewhere that still exists. */
+    if (was && !phoneView && currentView === 'garden') switchView('list');
 
     const label = document.getElementById('bnav-garden-label');
     if (label && window.Garden && Garden.shortLabel) label.textContent = Garden.shortLabel();
@@ -8423,18 +8626,32 @@ const App = (function () {
     const topRow = document.querySelector('.header-top-row');
     const tabs = document.querySelector('nav.tabs');
     const gardenBtn = document.getElementById('garden-toggle-btn');
-    if (!search || !topRow || !tabs) return;
-    if (appMode) {
-      if (search.parentElement !== topRow) topRow.appendChild(search);
-    } else if (search.parentElement !== tabs) {
-      tabs.insertBefore(search, gardenBtn);
+    if (search && topRow && tabs) {
+      if (phoneView) {
+        if (search.parentElement !== topRow) topRow.appendChild(search);
+      } else if (search.parentElement !== tabs) {
+        tabs.insertBefore(search, gardenBtn);
+      }
     }
+
+    updateAppTitle(currentView);
+    if (window.Garden && Garden.applyVisibility) Garden.applyVisibility();
   }
+
+  /* The window can be resized across the threshold at any moment. */
+  const onResize = Util.debounce(function () {
+    if (viewModePref() === 'auto') applyLayoutMode();
+  }, 150);
 
   /* In the app the heading says which section you are in; on the website it
      stays the page title it has always been. */
   function updateAppTitle(view) {
-    if (!appMode) return;
+    if (!phoneView) {
+      const h = document.getElementById('page-title');
+      const name = Store.displayName() || 'Your';
+      if (h) h.textContent = (/s$/i.test(name) ? name + "'" : name + "'s") + ' Tasks';
+      return;
+    }
     const h = document.getElementById('page-title');
     if (!h) return;
     if (view === 'calendar') h.textContent = 'Calendar';
@@ -8449,7 +8666,7 @@ const App = (function () {
 
   function switchView(view) {
     /* The garden is only a section of its own inside the app. */
-    if (view === 'garden' && !appMode) view = 'list';
+    if (view === 'garden' && !phoneView) view = 'list';
     currentView = view;
 
     document.getElementById('view-list').classList.toggle('active', view === 'list');
@@ -8473,7 +8690,7 @@ const App = (function () {
     if (view === 'garden' && window.Garden) Garden.render();
     applyCalendarWidth();
     updateAppTitle(view);
-    if (appMode) window.scrollTo(0, 0);
+    if (phoneView) window.scrollTo(0, 0);
   }
 
   /* Keeps the little clear button and the widened field in step with whether
@@ -8900,6 +9117,7 @@ const App = (function () {
         <div class="acct-sub">${isCloud ? Util.escapeHtml(Store.email()) : 'Local profile on this device'}</div>
       </div>
       <button class="acct-item" onclick="App.openInstall()">Get Tend on your phone</button>
+      <button class="acct-item" onclick="App.openUpdates()">What&#39;s new</button>
       <button class="acct-item" onclick="App.openSettings()">Settings &amp; backup</button>
       <button class="acct-item" onclick="App.exportBackup()">Export a backup</button>
       ${repoLinkHTML()}
@@ -9101,6 +9319,95 @@ const App = (function () {
     renderThemePicker();
   }
 
+  /* ---------------------------------------------------------------
+     What's new.
+
+     Plain-language, newest first. One line each - enough to recognise
+     a change you noticed, not a technical log.
+     --------------------------------------------------------------- */
+
+  const UPDATES = [
+    { date: '2026-08-30', items: [
+      'Everything now says "task" instead of "ticket".',
+      'Added Work as a starting category.',
+      'Removed the "Where did it come up?" box and the follow-up tickbox.',
+      'Choose the phone or desktop layout yourself in Settings, or leave it to pick.',
+      'Plants now arrive as seedlings and grow when watered in the ground.',
+      'This list.'
+    ]},
+    { date: '2026-08-29', items: [
+      'Added an app layout for phones, with Tasks, Calendar and Garden along the bottom.',
+      'Fixed tasks with odd dates never appearing on the calendar.',
+      'The search box is a magnifier on phones, out of the way until you need it.',
+      'Categories are coloured bubbles rather than highlighter marks.',
+      'Eight header colours to choose from; Forest is the new default.',
+      'Coins are gold and carry the Tend leaf.',
+      'The home-screen icon is drawn from the real logo instead of a rough copy.'
+    ]},
+    { date: '2026-08-28', items: [
+      'Your phone and laptop now update each other within a second or two.',
+      'Fixed the starting categories appearing three times.',
+      'Fixed the app opening zoomed in on an iPhone.',
+      'Tap a square to walk there, or swipe, when you are on a phone.',
+      'A QR code in the account menu for getting Tend onto a phone.',
+      'One food for every animal instead of one per species.',
+      'A magnifying glass in the shop names whatever you walk up to.',
+      'Hide the weekend on the calendar.',
+      'Created dates moved off the task rows - tap a task to see them.'
+    ]},
+    { date: '2026-08-27', items: [
+      'Checklists inside a task.',
+      'Tend can be installed on a phone and works with no signal.',
+      'Calendar list view, and a button for what is due today.',
+      'Weeks start on Monday.'
+    ]},
+    { date: '2026-08-26', items: [
+      'Finishing a task earns a gold coin; coins buy plants.',
+      'Pick a garden or an ocean, and a male or female character.',
+      'Tasks show on the calendar by their due date.'
+    ]}
+  ];
+
+  function renderUpdates() {
+    const host = document.getElementById('updates-list');
+    if (!host) return;
+    host.innerHTML = UPDATES.map(u => `
+      <div class="update-block">
+        <div class="update-date">${Util.formatDate(u.date)}</div>
+        <ul class="update-items">${u.items.map(i => `<li>${Util.escapeHtml(i)}</li>`).join('')}</ul>
+      </div>`).join('');
+  }
+
+  function openUpdates() {
+    document.getElementById('account-dropdown').hidden = true;
+    setSettingsTitle("What's new");
+    document.getElementById('settings-body').innerHTML = `
+      <div class="settings-section">
+        <p>The short version of what has changed, newest first.</p>
+        <div id="updates-list"></div>
+      </div>`;
+    renderUpdates();
+    document.getElementById('settings-modal-backdrop').classList.add('active');
+  }
+
+  const VIEW_MODES = [
+    { id: 'auto',    name: 'Automatic', hint: 'Phone layout on a small screen, desktop on a big one.' },
+    { id: 'phone',   name: 'Phone',     hint: 'Always the bottom bar, whatever the screen.' },
+    { id: 'desktop', name: 'Desktop',   hint: 'Always tabs at the top and the garden beside your tasks.' }
+  ];
+
+  function renderViewModePicker() {
+    const host = document.getElementById('viewmode-picker');
+    if (!host) return;
+    const current = viewModePref();
+    host.innerHTML = `<div class="mode-list">${VIEW_MODES.map(m => `
+      <button type="button" class="mode-tile ${m.id === current ? 'on' : ''}" onclick="App.setViewMode('${m.id}')">
+        <span class="mode-name">${Util.escapeHtml(m.name)}</span>
+        <span class="mode-hint">${Util.escapeHtml(m.hint)}</span>
+      </button>`).join('')}</div>
+      <div class="settings-note">Showing the <strong>${phoneView ? 'phone' : 'desktop'}</strong> layout now.</div>`;
+  }
+
   function renderThemePicker() {
     const host = document.getElementById('theme-picker');
     if (!host) return;
@@ -9125,6 +9432,12 @@ const App = (function () {
           <button class="settings-btn primary" onclick="App.saveDisplayName()">Save</button>
         </div>
         <div class="settings-note" id="settings-name-note"></div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Layout</h4>
+        <p>Tend has two layouts: a phone one with the sections along the bottom, and a desktop one with tabs at the top and the garden beside your tasks.</p>
+        <div id="viewmode-picker"></div>
       </div>
 
       <div class="settings-section">
@@ -9155,6 +9468,14 @@ const App = (function () {
       </div>
 
       <div class="settings-section">
+        <h4>What&#39;s new</h4>
+        <p>A short list of what has changed in Tend, newest first.</p>
+        <div class="settings-row">
+          <button class="settings-btn" onclick="App.openUpdates()">See the updates</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <h4>Danger zone</h4>
         <p>Deletes every task, category and garden change on this account. There is no undo, so export a backup first.</p>
         <div class="settings-row">
@@ -9163,6 +9484,7 @@ const App = (function () {
       </div>`;
     renderWorldSettings();
     renderThemePicker();
+    renderViewModePicker();
     document.getElementById('settings-modal-backdrop').classList.add('active');
   }
 
@@ -9264,7 +9586,7 @@ const App = (function () {
     if (hero) prefs.hero = hero;
     Store.savePrefs();
     Garden.reskin();
-    applyAppMode();
+    applyLayoutMode();
     renderWorldSettings();
   }
 
@@ -9417,7 +9739,7 @@ const App = (function () {
   function boot() {
     loadViewPrefs();
     applyTheme();
-    applyAppMode();
+    applyLayoutMode();
 
     const now = new Date();
     calYear = now.getFullYear();
@@ -9433,6 +9755,9 @@ const App = (function () {
       booted = true;
       Store.onStatus(renderSyncBadge);
       primeDownloadBridge();
+
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', onResize);
 
       /* Something changed on another device: take the new state and redraw,
          garden included. */
@@ -9488,8 +9813,8 @@ const App = (function () {
     toggleSubtask, toggleSubtaskList, editorAdd, editorRemove, editorRename, editorToggle,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
-    openInstall, copyInstallLink, runInstallPrompt,
-    clearSearch, toggleSearch, setTheme, isAppMode,
+    openInstall, copyInstallLink, runInstallPrompt, openUpdates,
+    clearSearch, toggleSearch, setTheme, isAppMode, setViewMode,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

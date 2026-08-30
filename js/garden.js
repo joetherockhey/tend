@@ -117,6 +117,10 @@ const Garden = (function () {
   const PLANT_COST = 1;
   const SAPLING_COST = 5;
   const SAPLING_WATERS_NEEDED = 5;
+  /* Everything you buy from the plant shop starts as a seedling and only
+     becomes its own variety once it has been planted in the ground and
+     watered. In a pot it stays a seedling however often you water it. */
+  const PLANT_WATERS_NEEDED = 5;
   const CABIN_LOGS_NEEDED = 10;
 
   const MAX_PETS = 10;
@@ -563,6 +567,8 @@ const Garden = (function () {
   let gardenRows = SECTION_ROWS;
   let gardenMaxUnlockedRow = SECTION_ROWS - 1;
   let heldPlantId = null;
+  let heldPlantGrown = true;
+  let heldPlantWaters = 0;
   let heldPlantVariety = null;
   let heldPlantPot = null;
   let heldDecoration = null;
@@ -851,8 +857,8 @@ const Garden = (function () {
     const col = document.querySelector('.garden-col');
     /* Installed as an app the garden is a tab of its own, so which of the
        three is on screen is the view's business, not this switch's. */
-    const appMode = window.App && App.isAppMode && App.isAppMode();
-    if (col) col.style.display = (appMode || gardenVisible) ? '' : 'none';
+    const phoneView = window.App && App.isAppMode && App.isAppMode();
+    if (col) col.style.display = (phoneView || gardenVisible) ? '' : 'none';
     /* The layout grid keeps a 420px track for the garden, so tell it when there
        is no garden to put there. */
     const layout = document.querySelector('.app-layout');
@@ -869,6 +875,7 @@ const Garden = (function () {
 
   function heldItemPreviewHtml() {
     if (heldPlantId != null && heldPlantVariety != null) {
+      if (!heldPlantGrown) return seedlingSVG(false);
       const variety = W().plants[heldPlantVariety] || W().plants[0];
       return W().plantSVG(variety, heldPlantPot || NEUTRAL_POT);
     }
@@ -949,6 +956,34 @@ const Garden = (function () {
     }
   }
 
+  /* Anything planted before seedlings existed has no `grown` field at all, and
+     is a full plant - so only an explicit false counts as a seedling. */
+  function isSeedling(pos) {
+    return !!pos && pos.grown === false;
+  }
+
+  /* Every seedling looks the same, whatever it will turn into. Sitting in a
+     pot it keeps the pot; in the ground the pot comes off. */
+  function seedlingSVG(planted) {
+    /* One neutral pot for every seedling: until it has grown they are all
+       meant to look identical, so the plant's own pot colour waits. */
+    const pot = planted ? '' : `
+      <rect x="2" y="15" width="10" height="1" fill="${NEUTRAL_POT}"/>
+      <rect x="3" y="16" width="8" height="3" fill="${NEUTRAL_POT}"/>
+      <rect x="4" y="18" width="6" height="1" fill="rgba(0,0,0,0.18)"/>`;
+    return `<svg width="24" height="34" viewBox="0 0 14 20" shape-rendering="crispEdges">
+      ${W().art.seedling()}
+      ${pot}
+    </svg>`;
+  }
+
+  function seedlingLabel(pos) {
+    const n = pos.waterCount || 0;
+    const onDirt = isOnDirt(pos.row, pos.col);
+    if (!onDirt) return 'Seedling - plant it in the ground';
+    return 'Seedling - watered ' + n + ' of ' + PLANT_WATERS_NEEDED;
+  }
+
   function waterCheck(row, col, knownTaskId) {
     const taskId = knownTaskId || findPlantAt(row, col);
     if (!taskId) return;
@@ -957,6 +992,25 @@ const Garden = (function () {
     wateredCooldown.set(taskId, Date.now());
     spawnSparkleAt(row, col);
     playWaterSound();
+
+    const pos = gardenLayout[taskId];
+    if (!isSeedling(pos)) return;
+
+    /* Water goes straight through a pot. Roots need the ground. */
+    if (!isOnDirt(row, col)) {
+      showThought('Needs planting in the ground');
+      return;
+    }
+
+    pos.waterCount = (pos.waterCount || 0) + 1;
+    if (pos.waterCount >= PLANT_WATERS_NEEDED) {
+      pos.grown = true;
+      const variety = W().plants[pos.variety] || W().plants[0];
+      spawnSparkleAt(row, col);
+      showThought(variety.name + '!');
+    }
+    saveGardenLayout();
+    renderGarden();
   }
 
   function findAdjacentPlant() {
@@ -1196,11 +1250,14 @@ const Garden = (function () {
     if (heldPlantId) {
       gardenLayout[heldPlantId] = {
         row: heroPos.row, col: heroPos.col,
-        variety: heldPlantVariety, potColor: heldPlantPot
+        variety: heldPlantVariety, potColor: heldPlantPot,
+        grown: heldPlantGrown, waterCount: heldPlantWaters
       };
       heldPlantId = null;
       heldPlantVariety = null;
       heldPlantPot = null;
+      heldPlantGrown = true;
+      heldPlantWaters = 0;
       saveGardenLayout();
       playDirtSound();
       renderGarden();
@@ -1313,6 +1370,8 @@ const Garden = (function () {
     if (taskId) {
       heldPlantVariety = gardenLayout[taskId].variety;
       heldPlantPot = gardenLayout[taskId].potColor || potColorFor(taskId);
+      heldPlantGrown = !isSeedling(gardenLayout[taskId]);
+      heldPlantWaters = gardenLayout[taskId].waterCount || 0;
       heldPlantId = taskId;
       delete gardenLayout[taskId];
       saveGardenLayout();
@@ -1412,6 +1471,7 @@ const Garden = (function () {
     const plantId = findPlantAt(row, col);
     if (plantId) {
       const pos = gardenLayout[plantId];
+      if (isSeedling(pos)) return seedlingLabel(pos);
       const variety = W().plants[pos.variety] || W().plants[0];
       return variety.name;
     }
@@ -1557,7 +1617,9 @@ const Garden = (function () {
   }
 
   /* A plant is now something you buy with a coin you earned by finishing a
-     task, rather than something that appears on its own. */
+     task, rather than something that appears on its own. It arrives as a
+     seedling: every one looks the same until it has grown, and which variety
+     it turns out to be is a surprise kept until then. */
   function buyPlant() {
     if (coins < PLANT_COST) return;
     coins -= PLANT_COST;
@@ -1568,7 +1630,9 @@ const Garden = (function () {
       row: cell.row,
       col: cell.col,
       variety: Math.floor(Math.random() * W().plants.length),
-      potColor: POT_COLORS[Math.floor(Math.random() * POT_COLORS.length)]
+      potColor: POT_COLORS[Math.floor(Math.random() * POT_COLORS.length)],
+      grown: false,
+      waterCount: 0
     };
     saveGardenLayout();
     playPickupSound();
@@ -1672,13 +1736,17 @@ const Garden = (function () {
 
     const plantsWrap = document.getElementById('shop-plants');
     if (plantsWrap) {
-      const owned = Object.keys(gardenLayout).length;
+      const all = Object.values(gardenLayout);
+      const growing = all.filter(isSeedling).length;
+      const grown = all.length - growing;
+      const tally = grown + ' ' + (grown === 1 ? terms().plant : terms().plants)
+        + (growing ? ', ' + growing + ' still growing' : '');
       plantsWrap.innerHTML =
-        `<div class="shop-info">Growing: ${owned} ${owned === 1 ? terms().plant : terms().plants}</div>
+        `<div class="shop-info">Growing: ${Util.escapeHtml(tally)}</div>
          <div class="shop-grid">
            <button class="shop-tile" ${coins < PLANT_COST ? 'disabled' : ''} onclick="buyPlant()">
-             <span class="shop-tile-icon">\u{1F33B}</span>
-             <span class="shop-tile-label">${Util.escapeHtml(cap(terms().plant))} (random variety)</span>
+             <span class="shop-tile-icon">\u{1F331}</span>
+             <span class="shop-tile-label">Seedling (plant it, water 5x)</span>
              <span class="shop-tile-action">${coinSVG()}${PLANT_COST}</span>
            </button>
          </div>`;
@@ -1960,9 +2028,11 @@ const Garden = (function () {
       const variety = W().plants[pos.variety] || W().plants[0];
       const potColor = pos.potColor || potColorFor(id);
       const planted = isOnDirt(pos.row, pos.col);
-      cellsHtml += `<div class="garden-cell" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${Util.escapeHtml(variety.name)}">
+      const seedling = isSeedling(pos);
+      const label = seedling ? seedlingLabel(pos) : variety.name;
+      cellsHtml += `<div class="garden-cell" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${Util.escapeHtml(label)}">
         <div class="sprite-shadow"></div>
-        ${W().plantSVG(variety, potColor, planted)}
+        ${seedling ? seedlingSVG(planted) : W().plantSVG(variety, potColor, planted)}
       </div>`;
     });
 
@@ -2029,8 +2099,8 @@ const Garden = (function () {
     const who = heroName();
     const t = terms();
     return {
-      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each, a random variety - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
-      water: { icon: '\u{1F4A7}', title: 'Watering', body: 'Move right up next to a ' + t.plant + ' to water it (once per minute each). Watering is for the pleasure of it - a sparkle and a splash - it earns no coins. ' + t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's are the exception: they need five waterings to grow.' },
+      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
+      water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
       pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool.' },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
@@ -2117,7 +2187,7 @@ const Garden = (function () {
     const coinHelp = document.querySelector('.coin-help-btn');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
-    if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
+    if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.';
     render();
     applyGardenVisibility();
     startPetTicker();
@@ -2139,7 +2209,7 @@ const Garden = (function () {
     const coinHelp = document.querySelector('.coin-help-btn');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
-    if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
+    if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.';
     currentHelpTopic = null;
     const box = document.getElementById('help-explanation');
     if (box) { box.style.display = 'none'; box.innerHTML = ''; }
@@ -2177,7 +2247,18 @@ const Garden = (function () {
     return cap(terms().place.replace(/^the\s+/i, ''));
   }
 
+  /* Used only by the test harness: water a square without the once-a-minute
+     wait, so growing five stages does not take five minutes to check. */
+  function testWater(row, col) {
+    const id = findPlantAt(row, col);
+    if (!id) return;
+    wateredCooldown.delete(id);
+    waterCheck(row, col, id);
+  }
+
   return {
+    applyVisibility: applyGardenVisibility,
+    __testWater: testWater,
     start: start,
     stop: stop,
     render: render,

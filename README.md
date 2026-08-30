@@ -295,6 +295,19 @@ needs an email provider and a domain to send from.
 Once it is scheduled, set `DAILY_EMAIL: true` in `js/config.js` and a switch
 appears in each account's settings.
 
+### Seedlings
+
+Everything bought from the plant shop arrives as a seedling, and they all look
+identical - same sprite, same neutral pot - so which variety it turns out to be is a
+surprise kept until it grows. Put one down on dug soil or a bed and water it five times
+(the usual once-a-minute limit applies) and it becomes its variety. Left in a pot it
+never grows, however often it is watered: `waterCheck` only counts a watering when
+`isOnDirt` is true, and says so in a thought bubble.
+
+A plant carries `grown` and `waterCount`. Anything planted before this existed has no
+`grown` field at all, which is why `isSeedling` tests for an explicit `false` - an
+absent field means a full-grown plant, so nobody's garden reverted.
+
 ### How the garden economy works
 
 Tasks can carry a checklist of steps. Ticking steps off shows progress on the

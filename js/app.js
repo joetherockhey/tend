@@ -624,37 +624,58 @@ const App = (function () {
   /* ========================= calendar ========================= */
 
   /* ---------------------------------------------------------------
-     App mode.
+     Phone view and desktop view.
 
-     Tend installed on a home screen is the same page as Tend in a
-     browser - there is no second build. What changes is the shell:
-     a bar of sections fixed to the bottom, the garden promoted to a
-     section of its own rather than something you scroll to, and the
-     duplicate tabs taken out of the ribbon.
+     One page, two shells. Phone view puts the three sections in a bar
+     fixed to the bottom, promotes the garden to a section of its own
+     rather than something you scroll to, and shrinks the ribbon to a
+     title bar. Desktop view is the tabs-at-the-top layout with the
+     garden as a column beside the tasks.
 
-     `?app=1` forces it on, which is how it can be looked at on a
-     desktop without installing anything.
+     Which one you get follows the width of the window, because that is
+     what actually decides whether the layout fits - a wide window is a
+     desktop whether or not Tend was opened from an installed icon. The
+     setting can pin it either way. `?app=1` / `?app=0` force it, for
+     looking at one from the other.
      --------------------------------------------------------------- */
 
-  let appMode = false;
+  const PHONE_MAX_WIDTH = 900;
+  let phoneView = false;
 
-  function detectAppMode() {
+  function viewModePref() {
+    const m = (Store.prefs() || {}).viewMode;
+    return (m === 'phone' || m === 'desktop') ? m : 'auto';
+  }
+
+  function setViewMode(mode) {
+    Store.prefs().viewMode = (mode === 'phone' || mode === 'desktop') ? mode : 'auto';
+    Store.savePrefs();
+    applyLayoutMode();
+    renderViewModePicker();
+  }
+
+  function detectPhoneView() {
     try {
       if (/[?&]app=1\b/.test(location.search)) return true;
       if (/[?&]app=0\b/.test(location.search)) return false;
-      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
-      /* Older iOS Safari predates display-mode and uses this instead. */
-      if (window.navigator.standalone === true) return true;
     } catch (e) { /* ignore */ }
-    return false;
+    const pref = viewModePref();
+    if (pref === 'phone') return true;
+    if (pref === 'desktop') return false;
+    return window.innerWidth <= PHONE_MAX_WIDTH;
   }
 
-  function isAppMode() { return appMode; }
+  function isAppMode() { return phoneView; }
 
-  function applyAppMode() {
-    appMode = detectAppMode();
-    if (appMode) document.documentElement.setAttribute('data-mode', 'app');
+  function applyLayoutMode() {
+    const was = phoneView;
+    phoneView = detectPhoneView();
+    if (phoneView) document.documentElement.setAttribute('data-mode', 'phone');
     else document.documentElement.removeAttribute('data-mode');
+
+    /* The garden is only a section of its own in phone view, so leaving it
+       has to put you somewhere that still exists. */
+    if (was && !phoneView && currentView === 'garden') switchView('list');
 
     const label = document.getElementById('bnav-garden-label');
     if (label && window.Garden && Garden.shortLabel) label.textContent = Garden.shortLabel();
@@ -667,18 +688,32 @@ const App = (function () {
     const topRow = document.querySelector('.header-top-row');
     const tabs = document.querySelector('nav.tabs');
     const gardenBtn = document.getElementById('garden-toggle-btn');
-    if (!search || !topRow || !tabs) return;
-    if (appMode) {
-      if (search.parentElement !== topRow) topRow.appendChild(search);
-    } else if (search.parentElement !== tabs) {
-      tabs.insertBefore(search, gardenBtn);
+    if (search && topRow && tabs) {
+      if (phoneView) {
+        if (search.parentElement !== topRow) topRow.appendChild(search);
+      } else if (search.parentElement !== tabs) {
+        tabs.insertBefore(search, gardenBtn);
+      }
     }
+
+    updateAppTitle(currentView);
+    if (window.Garden && Garden.applyVisibility) Garden.applyVisibility();
   }
+
+  /* The window can be resized across the threshold at any moment. */
+  const onResize = Util.debounce(function () {
+    if (viewModePref() === 'auto') applyLayoutMode();
+  }, 150);
 
   /* In the app the heading says which section you are in; on the website it
      stays the page title it has always been. */
   function updateAppTitle(view) {
-    if (!appMode) return;
+    if (!phoneView) {
+      const h = document.getElementById('page-title');
+      const name = Store.displayName() || 'Your';
+      if (h) h.textContent = (/s$/i.test(name) ? name + "'" : name + "'s") + ' Tasks';
+      return;
+    }
     const h = document.getElementById('page-title');
     if (!h) return;
     if (view === 'calendar') h.textContent = 'Calendar';
@@ -693,7 +728,7 @@ const App = (function () {
 
   function switchView(view) {
     /* The garden is only a section of its own inside the app. */
-    if (view === 'garden' && !appMode) view = 'list';
+    if (view === 'garden' && !phoneView) view = 'list';
     currentView = view;
 
     document.getElementById('view-list').classList.toggle('active', view === 'list');
@@ -717,7 +752,7 @@ const App = (function () {
     if (view === 'garden' && window.Garden) Garden.render();
     applyCalendarWidth();
     updateAppTitle(view);
-    if (appMode) window.scrollTo(0, 0);
+    if (phoneView) window.scrollTo(0, 0);
   }
 
   /* Keeps the little clear button and the widened field in step with whether
@@ -1144,6 +1179,7 @@ const App = (function () {
         <div class="acct-sub">${isCloud ? Util.escapeHtml(Store.email()) : 'Local profile on this device'}</div>
       </div>
       <button class="acct-item" onclick="App.openInstall()">Get Tend on your phone</button>
+      <button class="acct-item" onclick="App.openUpdates()">What&#39;s new</button>
       <button class="acct-item" onclick="App.openSettings()">Settings &amp; backup</button>
       <button class="acct-item" onclick="App.exportBackup()">Export a backup</button>
       ${repoLinkHTML()}
@@ -1345,6 +1381,95 @@ const App = (function () {
     renderThemePicker();
   }
 
+  /* ---------------------------------------------------------------
+     What's new.
+
+     Plain-language, newest first. One line each - enough to recognise
+     a change you noticed, not a technical log.
+     --------------------------------------------------------------- */
+
+  const UPDATES = [
+    { date: '2026-08-30', items: [
+      'Everything now says "task" instead of "ticket".',
+      'Added Work as a starting category.',
+      'Removed the "Where did it come up?" box and the follow-up tickbox.',
+      'Choose the phone or desktop layout yourself in Settings, or leave it to pick.',
+      'Plants now arrive as seedlings and grow when watered in the ground.',
+      'This list.'
+    ]},
+    { date: '2026-08-29', items: [
+      'Added an app layout for phones, with Tasks, Calendar and Garden along the bottom.',
+      'Fixed tasks with odd dates never appearing on the calendar.',
+      'The search box is a magnifier on phones, out of the way until you need it.',
+      'Categories are coloured bubbles rather than highlighter marks.',
+      'Eight header colours to choose from; Forest is the new default.',
+      'Coins are gold and carry the Tend leaf.',
+      'The home-screen icon is drawn from the real logo instead of a rough copy.'
+    ]},
+    { date: '2026-08-28', items: [
+      'Your phone and laptop now update each other within a second or two.',
+      'Fixed the starting categories appearing three times.',
+      'Fixed the app opening zoomed in on an iPhone.',
+      'Tap a square to walk there, or swipe, when you are on a phone.',
+      'A QR code in the account menu for getting Tend onto a phone.',
+      'One food for every animal instead of one per species.',
+      'A magnifying glass in the shop names whatever you walk up to.',
+      'Hide the weekend on the calendar.',
+      'Created dates moved off the task rows - tap a task to see them.'
+    ]},
+    { date: '2026-08-27', items: [
+      'Checklists inside a task.',
+      'Tend can be installed on a phone and works with no signal.',
+      'Calendar list view, and a button for what is due today.',
+      'Weeks start on Monday.'
+    ]},
+    { date: '2026-08-26', items: [
+      'Finishing a task earns a gold coin; coins buy plants.',
+      'Pick a garden or an ocean, and a male or female character.',
+      'Tasks show on the calendar by their due date.'
+    ]}
+  ];
+
+  function renderUpdates() {
+    const host = document.getElementById('updates-list');
+    if (!host) return;
+    host.innerHTML = UPDATES.map(u => `
+      <div class="update-block">
+        <div class="update-date">${Util.formatDate(u.date)}</div>
+        <ul class="update-items">${u.items.map(i => `<li>${Util.escapeHtml(i)}</li>`).join('')}</ul>
+      </div>`).join('');
+  }
+
+  function openUpdates() {
+    document.getElementById('account-dropdown').hidden = true;
+    setSettingsTitle("What's new");
+    document.getElementById('settings-body').innerHTML = `
+      <div class="settings-section">
+        <p>The short version of what has changed, newest first.</p>
+        <div id="updates-list"></div>
+      </div>`;
+    renderUpdates();
+    document.getElementById('settings-modal-backdrop').classList.add('active');
+  }
+
+  const VIEW_MODES = [
+    { id: 'auto',    name: 'Automatic', hint: 'Phone layout on a small screen, desktop on a big one.' },
+    { id: 'phone',   name: 'Phone',     hint: 'Always the bottom bar, whatever the screen.' },
+    { id: 'desktop', name: 'Desktop',   hint: 'Always tabs at the top and the garden beside your tasks.' }
+  ];
+
+  function renderViewModePicker() {
+    const host = document.getElementById('viewmode-picker');
+    if (!host) return;
+    const current = viewModePref();
+    host.innerHTML = `<div class="mode-list">${VIEW_MODES.map(m => `
+      <button type="button" class="mode-tile ${m.id === current ? 'on' : ''}" onclick="App.setViewMode('${m.id}')">
+        <span class="mode-name">${Util.escapeHtml(m.name)}</span>
+        <span class="mode-hint">${Util.escapeHtml(m.hint)}</span>
+      </button>`).join('')}</div>
+      <div class="settings-note">Showing the <strong>${phoneView ? 'phone' : 'desktop'}</strong> layout now.</div>`;
+  }
+
   function renderThemePicker() {
     const host = document.getElementById('theme-picker');
     if (!host) return;
@@ -1369,6 +1494,12 @@ const App = (function () {
           <button class="settings-btn primary" onclick="App.saveDisplayName()">Save</button>
         </div>
         <div class="settings-note" id="settings-name-note"></div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Layout</h4>
+        <p>Tend has two layouts: a phone one with the sections along the bottom, and a desktop one with tabs at the top and the garden beside your tasks.</p>
+        <div id="viewmode-picker"></div>
       </div>
 
       <div class="settings-section">
@@ -1399,6 +1530,14 @@ const App = (function () {
       </div>
 
       <div class="settings-section">
+        <h4>What&#39;s new</h4>
+        <p>A short list of what has changed in Tend, newest first.</p>
+        <div class="settings-row">
+          <button class="settings-btn" onclick="App.openUpdates()">See the updates</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <h4>Danger zone</h4>
         <p>Deletes every task, category and garden change on this account. There is no undo, so export a backup first.</p>
         <div class="settings-row">
@@ -1407,6 +1546,7 @@ const App = (function () {
       </div>`;
     renderWorldSettings();
     renderThemePicker();
+    renderViewModePicker();
     document.getElementById('settings-modal-backdrop').classList.add('active');
   }
 
@@ -1508,7 +1648,7 @@ const App = (function () {
     if (hero) prefs.hero = hero;
     Store.savePrefs();
     Garden.reskin();
-    applyAppMode();
+    applyLayoutMode();
     renderWorldSettings();
   }
 
@@ -1661,7 +1801,7 @@ const App = (function () {
   function boot() {
     loadViewPrefs();
     applyTheme();
-    applyAppMode();
+    applyLayoutMode();
 
     const now = new Date();
     calYear = now.getFullYear();
@@ -1677,6 +1817,9 @@ const App = (function () {
       booted = true;
       Store.onStatus(renderSyncBadge);
       primeDownloadBridge();
+
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', onResize);
 
       /* Something changed on another device: take the new state and redraw,
          garden included. */
@@ -1732,8 +1875,8 @@ const App = (function () {
     toggleSubtask, toggleSubtaskList, editorAdd, editorRemove, editorRename, editorToggle,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
-    openInstall, copyInstallLink, runInstallPrompt,
-    clearSearch, toggleSearch, setTheme, isAppMode,
+    openInstall, copyInstallLink, runInstallPrompt, openUpdates,
+    clearSearch, toggleSearch, setTheme, isAppMode, setViewMode,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
