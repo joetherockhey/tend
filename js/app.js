@@ -717,6 +717,7 @@ const App = (function () {
     const h = document.getElementById('page-title');
     if (!h) return;
     if (view === 'calendar') h.textContent = 'Calendar';
+    else if (view === 'overview') h.textContent = 'Overview';
     else if (view === 'garden') h.textContent = (window.Garden && Garden.shortLabel) ? Garden.shortLabel() : 'Garden';
     else {
       const name = Store.displayName() || 'Your';
@@ -727,28 +728,36 @@ const App = (function () {
   let currentView = 'list';
 
   function switchView(view) {
-    /* The garden is only a section of its own inside the app. */
+    /* The garden is only a section of its own in phone view. */
     if (view === 'garden' && !phoneView) view = 'list';
     currentView = view;
 
-    document.getElementById('view-list').classList.toggle('active', view === 'list');
-    document.getElementById('view-calendar').classList.toggle('active', view === 'calendar');
-    document.getElementById('tab-list').classList.toggle('active', view === 'list');
-    document.getElementById('tab-calendar').classList.toggle('active', view === 'calendar');
+    ['list', 'calendar', 'overview'].forEach(v => {
+      const el = document.getElementById('view-' + v);
+      if (el) el.classList.toggle('active', view === v);
+      const tab = document.getElementById('tab-' + v);
+      if (tab) tab.classList.toggle('active', view === v);
+    });
 
     const layout = document.querySelector('.app-layout');
-    if (layout) layout.classList.toggle('view-garden', view === 'garden');
+    if (layout) {
+      layout.classList.toggle('view-garden', view === 'garden');
+      /* The sidebar belongs to the task list; the other sections take the width. */
+      layout.classList.toggle('no-sidebar', view !== 'list');
+    }
 
-    [['bnav-list', 'list'], ['bnav-calendar', 'calendar'], ['bnav-garden', 'garden']].forEach(([id, v]) => {
+    [['bnav-list', 'list'], ['bnav-calendar', 'calendar'],
+     ['bnav-overview', 'overview'], ['bnav-garden', 'garden']].forEach(([id, v]) => {
       const btn = document.getElementById(id);
       if (btn) btn.classList.toggle('active', view === v);
     });
 
-    /* There is nothing to search on the calendar or in the garden. */
+    /* There is nothing to search outside the task list. */
     const search = document.getElementById('nav-search');
     if (search) search.hidden = view !== 'list';
 
     if (view === 'calendar') renderCalendar();
+    if (view === 'overview') renderOverview();
     if (view === 'garden' && window.Garden) Garden.render();
     applyCalendarWidth();
     updateAppTitle(view);
@@ -1389,6 +1398,10 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-08-31', items: [
+      'Overview and Categories moved to their own section, with every task listed under its category.',
+      'Work is now added to accounts that were made before it existed.'
+    ]},
     { date: '2026-08-30', items: [
       'Everything now says "task" instead of "ticket".',
       'Added Work as a starting category.',
@@ -1774,7 +1787,95 @@ const App = (function () {
     initDragAndDrop();
     renderCalendar();
     renderStats();
+    renderByCategory();
     Garden.render();
+  }
+
+  function renderOverview() {
+    renderStats();
+    renderCategoryKey();
+    renderByCategory();
+  }
+
+  /* ---------------------------------------------------------------
+     Tasks grouped by category.
+
+     Every category gets a row, even an empty one, so the page doubles
+     as an answer to "what have I got on for the house?" and to "which
+     of these categories am I actually using?".
+     --------------------------------------------------------------- */
+
+  function categoryScope() {
+    return Store.prefs().catScope === 'all' ? 'all' : 'open';
+  }
+
+  function setCategoryScope(scope) {
+    Store.prefs().catScope = scope === 'all' ? 'all' : 'open';
+    Store.savePrefs();
+    renderByCategory();
+  }
+
+  function renderCategoryScopeToggle() {
+    const host = document.getElementById('cat-scope-toggle');
+    if (!host) return;
+    const scope = categoryScope();
+    host.innerHTML = [['open', 'Still to do'], ['all', 'Everything']].map(([key, label]) =>
+      `<button type="button" class="${scope === key ? 'on' : ''}" onclick="App.setCategoryScope('${key}')">${label}</button>`
+    ).join('');
+  }
+
+  function renderByCategory() {
+    const host = document.getElementById('by-category');
+    if (!host) return;
+    renderCategoryScopeToggle();
+
+    const scope = categoryScope();
+    const all = tickets();
+    const names = categories().map(c => c.name);
+
+    /* Anything with no category, or one that has since been deleted, collects
+       under Other rather than quietly vanishing from the page. */
+    const known = new Set(names.map(n => n.toLowerCase()));
+    const groups = names.map(n => ({ name: n, color: categoryColor(n), list: [] }));
+    const other = { name: 'Other', color: DEFAULT_CATEGORY_COLOR, list: [] };
+    const index = {};
+    groups.forEach(g => { index[g.name.toLowerCase()] = g; });
+
+    all.forEach(t => {
+      const key = (t.category || '').trim().toLowerCase();
+      const g = (key && known.has(key)) ? index[key] : other;
+      g.list.push(t);
+    });
+    groups.push(other);
+
+    const rows = groups.map(g => {
+      const open = g.list.filter(t => !t.completedAt && !t.archived);
+      const done = g.list.filter(t => !!t.completedAt);
+      const shown = scope === 'all' ? g.list : open;
+      if (!g.list.length && g.name === 'Other') return '';
+
+      const counts = `${open.length} to do &middot; ${done.length} done`;
+      const items = shown.length
+        ? `<ul class="cat-tasks">${shown.map(t => {
+            const overdue = !t.completedAt && t.dueDate && t.dueDate < Util.todayStr();
+            const due = t.dueDate
+              ? `<span class="cat-task-due ${overdue ? 'overdue' : ''}">${Util.formatDate(t.dueDate)}</span>` : '';
+            return `<li class="cat-task ${t.completedAt ? 'done' : ''}" onclick="App.showTaskDetail('${t.id}')">
+                <span class="cat-task-title">${Util.escapeHtml(t.title)}</span>${due}
+              </li>`;
+          }).join('')}</ul>`
+        : `<p class="cat-empty">${scope === 'all' ? 'Nothing here yet.' : 'Nothing left to do.'}</p>`;
+
+      return `<section class="cat-group">
+          <div class="cat-group-head">
+            ${categoryPill(g.name, g.color)}
+            <span class="cat-group-count">${counts}</span>
+          </div>
+          ${items}
+        </section>`;
+    }).join('');
+
+    host.innerHTML = rows || '<p class="cat-empty">No categories yet.</p>';
   }
 
   /* A brief note when something arrives from another device, so the screen
@@ -1876,7 +1977,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates,
-    clearSearch, toggleSearch, setTheme, isAppMode, setViewMode,
+    clearSearch, toggleSearch, setTheme, isAppMode, setViewMode, setCategoryScope,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

@@ -3116,3 +3116,128 @@ html[data-mode="phone"] .app-layout.view-garden > .garden-col {
 }
 
 .update-items li { margin-bottom: 3px; }
+
+
+/* ---------------------------------------------------------------------------
+   Overview section: the stats, the category manager, and every task filed
+   under the category it belongs to.
+   --------------------------------------------------------------------------- */
+
+/* Outside the task list the sidebar has nothing to say, so the section takes
+   the whole width. */
+.app-layout.no-sidebar {
+  grid-template-columns: 364px minmax(0, 1fr);
+  grid-template-areas: "garden content";
+}
+
+.app-layout.no-sidebar.no-garden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "content";
+}
+
+.app-layout.no-sidebar > .sidebar { display: none; }
+
+@media (max-width: 1275px) {
+  .app-layout.no-sidebar {
+    grid-template-columns: 364px minmax(0, 1fr);
+    grid-template-areas: "garden content";
+  }
+}
+
+@media (max-width: 900px) {
+  .app-layout.no-sidebar,
+  .app-layout.no-sidebar.no-garden {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "content" "garden";
+  }
+}
+
+html[data-mode="phone"] .app-layout.no-sidebar,
+html[data-mode="phone"] .app-layout.no-sidebar.no-garden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "content";
+}
+
+.cat-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.cat-toggle button {
+  border: none;
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+
+.cat-toggle button.on { background: var(--accent-soft); color: var(--accent); }
+
+.cat-group { margin-bottom: 18px; }
+.cat-group:last-child { margin-bottom: 0; }
+
+.cat-group-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.cat-group-count {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.cat-tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cat-task {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.cat-task:hover { background: var(--bg); }
+
+.cat-task-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-task.done .cat-task-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.cat-task-due {
+  flex: none;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.cat-task-due.overdue { color: var(--danger); font-weight: 600; }
+
+.cat-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}

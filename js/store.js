@@ -575,12 +575,38 @@ const Store = (function () {
     else writeCache();
   }
 
+  /* Bumped whenever a category is added to the list above. An account that
+     has not seen this version yet gets the new ones added; after that the
+     marker stops it happening again, so deleting one makes it stay deleted. */
+  const DEFAULTS_VERSION = 2;
+
   function seedDefaultsIfEmpty() {
     if (!Array.isArray(categories) || !categories.length) {
       categories = DEFAULT_CATEGORIES.map(c => ({ id: Util.uid(), name: c.name, color: c.color }));
-      if (CLOUD) markDirty('categories');
+      prefs.categoryDefaults = DEFAULTS_VERSION;
+      if (CLOUD) { markDirty('categories'); markDirty('state'); }
       else writeCache();
+      return;
     }
+    topUpDefaultCategories();
+  }
+
+  /* An account created before a default existed never gets it, because seeding
+     only ever ran on an empty list. This adds the ones it has not been offered,
+     once. */
+  function topUpDefaultCategories() {
+    if ((prefs.categoryDefaults || 0) >= DEFAULTS_VERSION) return;
+    const have = new Set(categories.map(c => String(c.name || '').trim().toLowerCase()));
+    const missing = DEFAULT_CATEGORIES.filter(c => !have.has(c.name.toLowerCase()));
+    prefs.categoryDefaults = DEFAULTS_VERSION;
+    if (missing.length) {
+      /* Added at the front, where the newest defaults belong. */
+      categories = missing.map(c => ({ id: Util.uid(), name: c.name, color: c.color })).concat(categories);
+      console.info('[Tend] added ' + missing.map(c => c.name).join(', ') + ' to your categories');
+      if (CLOUD) markDirty('categories');
+    }
+    if (CLOUD) markDirty('state');
+    else writeCache();
   }
 
   /* ========================= public data accessors ========================= */

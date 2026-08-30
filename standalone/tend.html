@@ -3119,6 +3119,130 @@ html[data-mode="phone"] .app-layout.view-garden > .garden-col {
 
 .update-items li { margin-bottom: 3px; }
 
+/* ---------------------------------------------------------------------------
+   Overview section: the stats, the category manager, and every task filed
+   under the category it belongs to.
+   --------------------------------------------------------------------------- */
+
+/* Outside the task list the sidebar has nothing to say, so the section takes
+   the whole width. */
+.app-layout.no-sidebar {
+  grid-template-columns: 364px minmax(0, 1fr);
+  grid-template-areas: "garden content";
+}
+
+.app-layout.no-sidebar.no-garden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "content";
+}
+
+.app-layout.no-sidebar > .sidebar { display: none; }
+
+@media (max-width: 1275px) {
+  .app-layout.no-sidebar {
+    grid-template-columns: 364px minmax(0, 1fr);
+    grid-template-areas: "garden content";
+  }
+}
+
+@media (max-width: 900px) {
+  .app-layout.no-sidebar,
+  .app-layout.no-sidebar.no-garden {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "content" "garden";
+  }
+}
+
+html[data-mode="phone"] .app-layout.no-sidebar,
+html[data-mode="phone"] .app-layout.no-sidebar.no-garden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "content";
+}
+
+.cat-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.cat-toggle button {
+  border: none;
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+
+.cat-toggle button.on { background: var(--accent-soft); color: var(--accent); }
+
+.cat-group { margin-bottom: 18px; }
+.cat-group:last-child { margin-bottom: 0; }
+
+.cat-group-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.cat-group-count {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.cat-tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cat-task {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.cat-task:hover { background: var(--bg); }
+
+.cat-task-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-task.done .cat-task-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.cat-task-due {
+  flex: none;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.cat-task-due.overdue { color: var(--danger); font-weight: 600; }
+
+.cat-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
 </style>
 </head>
 <body class="gated">
@@ -3153,6 +3277,7 @@ html[data-mode="phone"] .app-layout.view-garden > .garden-col {
   <nav class="tabs">
     <button id="tab-list" class="active" onclick="App.switchView('list')">Tasks</button>
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
+    <button id="tab-overview" onclick="App.switchView('overview')">Overview</button>
     <div class="nav-search" id="nav-search">
       <button type="button" class="nav-search-icon" id="search-icon" onclick="App.toggleSearch()"
               title="Search tasks" aria-label="Search tasks">&#128269;</button>
@@ -3277,6 +3402,25 @@ html[data-mode="phone"] .app-layout.view-garden > .garden-col {
     </div>
   </div>
 
+  <div id="view-overview" class="view">
+    <div class="panel overview-panel">
+      <h2>Overview</h2>
+      <div id="stats-chart"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Categories</h2>
+      <p class="category-hint" id="category-hint">Colour-codes your tasks and the pots in your garden.</p>
+      <div class="key-list" id="category-key"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Tasks by category</h2>
+      <div class="cat-toggle" id="cat-scope-toggle"></div>
+      <div id="by-category"></div>
+    </div>
+  </div>
+
 </div>
 
 <aside class="sidebar">
@@ -3286,16 +3430,6 @@ html[data-mode="phone"] .app-layout.view-garden > .garden-col {
 
   <button class="due-today-btn" id="due-today-btn" onclick="App.showDueToday()"></button>
 
-  <div class="panel overview-panel">
-    <h2>Overview</h2>
-    <div id="stats-chart"></div>
-  </div>
-
-  <div class="panel">
-    <h2>Categories</h2>
-    <p class="category-hint" id="category-hint">Colour-codes your tasks and the pots in your garden.</p>
-    <div class="key-list" id="category-key"></div>
-  </div>
 </aside>
 
 </div>
@@ -3423,6 +3557,12 @@ html[data-mode="phone"] .app-layout.view-garden > .garden-col {
       <path d="M8 3v4"/><path d="M16 3v4"/>
     </svg>
     <span class="bnav-label">Calendar</span>
+  </button>
+  <button type="button" class="bnav-btn" id="bnav-overview" onclick="App.switchView('overview')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
+    </svg>
+    <span class="bnav-label">Overview</span>
   </button>
   <button type="button" class="bnav-btn" id="bnav-garden" onclick="App.switchView('garden')">
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -5507,12 +5647,38 @@ const Store = (function () {
     else writeCache();
   }
 
+  /* Bumped whenever a category is added to the list above. An account that
+     has not seen this version yet gets the new ones added; after that the
+     marker stops it happening again, so deleting one makes it stay deleted. */
+  const DEFAULTS_VERSION = 2;
+
   function seedDefaultsIfEmpty() {
     if (!Array.isArray(categories) || !categories.length) {
       categories = DEFAULT_CATEGORIES.map(c => ({ id: Util.uid(), name: c.name, color: c.color }));
-      if (CLOUD) markDirty('categories');
+      prefs.categoryDefaults = DEFAULTS_VERSION;
+      if (CLOUD) { markDirty('categories'); markDirty('state'); }
       else writeCache();
+      return;
     }
+    topUpDefaultCategories();
+  }
+
+  /* An account created before a default existed never gets it, because seeding
+     only ever ran on an empty list. This adds the ones it has not been offered,
+     once. */
+  function topUpDefaultCategories() {
+    if ((prefs.categoryDefaults || 0) >= DEFAULTS_VERSION) return;
+    const have = new Set(categories.map(c => String(c.name || '').trim().toLowerCase()));
+    const missing = DEFAULT_CATEGORIES.filter(c => !have.has(c.name.toLowerCase()));
+    prefs.categoryDefaults = DEFAULTS_VERSION;
+    if (missing.length) {
+      /* Added at the front, where the newest defaults belong. */
+      categories = missing.map(c => ({ id: Util.uid(), name: c.name, color: c.color })).concat(categories);
+      console.info('[Tend] added ' + missing.map(c => c.name).join(', ') + ' to your categories');
+      if (CLOUD) markDirty('categories');
+    }
+    if (CLOUD) markDirty('state');
+    else writeCache();
   }
 
   /* ========================= public data accessors ========================= */
@@ -8655,6 +8821,7 @@ const App = (function () {
     const h = document.getElementById('page-title');
     if (!h) return;
     if (view === 'calendar') h.textContent = 'Calendar';
+    else if (view === 'overview') h.textContent = 'Overview';
     else if (view === 'garden') h.textContent = (window.Garden && Garden.shortLabel) ? Garden.shortLabel() : 'Garden';
     else {
       const name = Store.displayName() || 'Your';
@@ -8665,28 +8832,36 @@ const App = (function () {
   let currentView = 'list';
 
   function switchView(view) {
-    /* The garden is only a section of its own inside the app. */
+    /* The garden is only a section of its own in phone view. */
     if (view === 'garden' && !phoneView) view = 'list';
     currentView = view;
 
-    document.getElementById('view-list').classList.toggle('active', view === 'list');
-    document.getElementById('view-calendar').classList.toggle('active', view === 'calendar');
-    document.getElementById('tab-list').classList.toggle('active', view === 'list');
-    document.getElementById('tab-calendar').classList.toggle('active', view === 'calendar');
+    ['list', 'calendar', 'overview'].forEach(v => {
+      const el = document.getElementById('view-' + v);
+      if (el) el.classList.toggle('active', view === v);
+      const tab = document.getElementById('tab-' + v);
+      if (tab) tab.classList.toggle('active', view === v);
+    });
 
     const layout = document.querySelector('.app-layout');
-    if (layout) layout.classList.toggle('view-garden', view === 'garden');
+    if (layout) {
+      layout.classList.toggle('view-garden', view === 'garden');
+      /* The sidebar belongs to the task list; the other sections take the width. */
+      layout.classList.toggle('no-sidebar', view !== 'list');
+    }
 
-    [['bnav-list', 'list'], ['bnav-calendar', 'calendar'], ['bnav-garden', 'garden']].forEach(([id, v]) => {
+    [['bnav-list', 'list'], ['bnav-calendar', 'calendar'],
+     ['bnav-overview', 'overview'], ['bnav-garden', 'garden']].forEach(([id, v]) => {
       const btn = document.getElementById(id);
       if (btn) btn.classList.toggle('active', view === v);
     });
 
-    /* There is nothing to search on the calendar or in the garden. */
+    /* There is nothing to search outside the task list. */
     const search = document.getElementById('nav-search');
     if (search) search.hidden = view !== 'list';
 
     if (view === 'calendar') renderCalendar();
+    if (view === 'overview') renderOverview();
     if (view === 'garden' && window.Garden) Garden.render();
     applyCalendarWidth();
     updateAppTitle(view);
@@ -9327,6 +9502,10 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-08-31', items: [
+      'Overview and Categories moved to their own section, with every task listed under its category.',
+      'Work is now added to accounts that were made before it existed.'
+    ]},
     { date: '2026-08-30', items: [
       'Everything now says "task" instead of "ticket".',
       'Added Work as a starting category.',
@@ -9712,7 +9891,95 @@ const App = (function () {
     initDragAndDrop();
     renderCalendar();
     renderStats();
+    renderByCategory();
     Garden.render();
+  }
+
+  function renderOverview() {
+    renderStats();
+    renderCategoryKey();
+    renderByCategory();
+  }
+
+  /* ---------------------------------------------------------------
+     Tasks grouped by category.
+
+     Every category gets a row, even an empty one, so the page doubles
+     as an answer to "what have I got on for the house?" and to "which
+     of these categories am I actually using?".
+     --------------------------------------------------------------- */
+
+  function categoryScope() {
+    return Store.prefs().catScope === 'all' ? 'all' : 'open';
+  }
+
+  function setCategoryScope(scope) {
+    Store.prefs().catScope = scope === 'all' ? 'all' : 'open';
+    Store.savePrefs();
+    renderByCategory();
+  }
+
+  function renderCategoryScopeToggle() {
+    const host = document.getElementById('cat-scope-toggle');
+    if (!host) return;
+    const scope = categoryScope();
+    host.innerHTML = [['open', 'Still to do'], ['all', 'Everything']].map(([key, label]) =>
+      `<button type="button" class="${scope === key ? 'on' : ''}" onclick="App.setCategoryScope('${key}')">${label}</button>`
+    ).join('');
+  }
+
+  function renderByCategory() {
+    const host = document.getElementById('by-category');
+    if (!host) return;
+    renderCategoryScopeToggle();
+
+    const scope = categoryScope();
+    const all = tickets();
+    const names = categories().map(c => c.name);
+
+    /* Anything with no category, or one that has since been deleted, collects
+       under Other rather than quietly vanishing from the page. */
+    const known = new Set(names.map(n => n.toLowerCase()));
+    const groups = names.map(n => ({ name: n, color: categoryColor(n), list: [] }));
+    const other = { name: 'Other', color: DEFAULT_CATEGORY_COLOR, list: [] };
+    const index = {};
+    groups.forEach(g => { index[g.name.toLowerCase()] = g; });
+
+    all.forEach(t => {
+      const key = (t.category || '').trim().toLowerCase();
+      const g = (key && known.has(key)) ? index[key] : other;
+      g.list.push(t);
+    });
+    groups.push(other);
+
+    const rows = groups.map(g => {
+      const open = g.list.filter(t => !t.completedAt && !t.archived);
+      const done = g.list.filter(t => !!t.completedAt);
+      const shown = scope === 'all' ? g.list : open;
+      if (!g.list.length && g.name === 'Other') return '';
+
+      const counts = `${open.length} to do &middot; ${done.length} done`;
+      const items = shown.length
+        ? `<ul class="cat-tasks">${shown.map(t => {
+            const overdue = !t.completedAt && t.dueDate && t.dueDate < Util.todayStr();
+            const due = t.dueDate
+              ? `<span class="cat-task-due ${overdue ? 'overdue' : ''}">${Util.formatDate(t.dueDate)}</span>` : '';
+            return `<li class="cat-task ${t.completedAt ? 'done' : ''}" onclick="App.showTaskDetail('${t.id}')">
+                <span class="cat-task-title">${Util.escapeHtml(t.title)}</span>${due}
+              </li>`;
+          }).join('')}</ul>`
+        : `<p class="cat-empty">${scope === 'all' ? 'Nothing here yet.' : 'Nothing left to do.'}</p>`;
+
+      return `<section class="cat-group">
+          <div class="cat-group-head">
+            ${categoryPill(g.name, g.color)}
+            <span class="cat-group-count">${counts}</span>
+          </div>
+          ${items}
+        </section>`;
+    }).join('');
+
+    host.innerHTML = rows || '<p class="cat-empty">No categories yet.</p>';
   }
 
   /* A brief note when something arrives from another device, so the screen
@@ -9814,7 +10081,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates,
-    clearSearch, toggleSearch, setTheme, isAppMode, setViewMode,
+    clearSearch, toggleSearch, setTheme, isAppMode, setViewMode, setCategoryScope,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
