@@ -8,7 +8,7 @@
 
   const CFG = window.TEND_CONFIG || {};
   const NAME = CFG.APP_NAME || 'Tend';
-  const TAGLINE = CFG.TAGLINE || 'Tickets that grow a garden.';
+  const TAGLINE = CFG.TAGLINE || 'Tasks that grow a garden.';
 
   function markHTML() {
     const tpl = document.getElementById('brand-mark-template');

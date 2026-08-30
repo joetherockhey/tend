@@ -39,7 +39,7 @@ const Util = (function () {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
-  /* The calendar buckets tickets by an exact 'YYYY-MM-DD' key, so anything
+  /* The calendar buckets tasks by an exact 'YYYY-MM-DD' key, so anything
      shaped even slightly differently - a timestamp, an unpadded month - lands
      in a bucket no square ever asks for and silently disappears. Everything
      that carries a date goes through here first.

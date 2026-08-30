@@ -8,7 +8,7 @@
    server, works the moment you push it to GitHub Pages.
 
    Fill both values in and Tend runs in CLOUD MODE: real accounts with email
-   and password, and every ticket, category and garden follows the user to any
+   and password, and every task, category and garden follows the user to any
    device they sign in on.
 
    To get these two values:
@@ -28,14 +28,14 @@ window.TEND_CONFIG = {
 
   /* Shown on the sign-in card and in the browser tab. */
   APP_NAME: 'Tend',
-  TAGLINE: 'Tickets that grow a garden.',
+  TAGLINE: 'Tasks that grow a garden.',
 
   /* Set false to hide the "create an account" form, so only people you invite
      from the Supabase dashboard can sign in. Ignored in local mode. */
   ALLOW_SIGNUP: true,
 
   /* Optional. Set this to "your-username/your-repo" and a "Suggest something"
-     link appears in the app that opens a pre-filled ticket on your GitHub
+     link appears in the app that opens a pre-filled issue on your GitHub
      repository's Issues tab. Issues are public and permanent, which makes them
      a good place for feedback about the app - and a poor place for anyone's
      private to-do list. Leave blank to hide the link. */

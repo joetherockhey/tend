@@ -504,12 +504,6 @@ li.task.done .task-title {
   color: var(--muted);
 }
 
-.task-meta {
-  font-size: 0.78rem;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
 /* The whole row opens the ticket, so it should look like it will. */
 .task { cursor: pointer; }
 .task input,
@@ -538,11 +532,6 @@ li.task.done .task-title {
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-}
-
-.tag.followup {
-  background: var(--green-soft);
-  color: var(--green);
 }
 
 .tag.overdue {
@@ -2054,8 +2043,10 @@ body.gated { overflow: hidden; }
   nav.tabs { flex-wrap: wrap; }
 
   .nav-search {
-    order: 0;
-    margin: 0 0 0 auto;
+    /* Last in the row, so the magnifier sits hard against the right edge
+       rather than floating between the tabs and the garden button. */
+    order: 5;
+    margin: 0 0 0 10px;
     width: auto;
     padding: 0;
     height: auto;
@@ -2086,7 +2077,7 @@ body.gated { overflow: hidden; }
     border-color: var(--series-made);
   }
 
-  .garden-toggle-btn { margin-left: 10px; }
+  .garden-toggle-btn { order: 4; margin-left: auto; }
 
   /* Open: the full row, but only while it is being used. */
   .nav-search.open {
@@ -3005,7 +2996,11 @@ html[data-mode="app"] .subtitle { display: none; }
 html[data-mode="app"] .header-inner { padding-bottom: 14px; }
 html[data-mode="app"] h1 { font-size: 1.35rem; }
 html[data-mode="app"] .header-top-row { flex-wrap: wrap; margin-bottom: 12px; }
-html[data-mode="app"] .header-top-row .nav-search { margin-left: auto; }
+
+/* The magnifier goes to the far right, past the account chip, so it is under
+   the thumb rather than stranded in the middle of the bar. */
+html[data-mode="app"] .header-top-row .account-menu { margin-left: auto; }
+html[data-mode="app"] .header-top-row .nav-search { order: 5; margin-left: 4px; }
 
 /* Opened, the box needs the width, so it drops to a line of its own. */
 html[data-mode="app"] .header-top-row .nav-search.open {

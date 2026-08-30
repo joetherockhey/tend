@@ -1,7 +1,7 @@
 /* ============================================================================
    Tend - garden.js
-   The reward garden. Every completed ticket becomes a plant; every ten
-   completed tickets unlocks another section of the garden. Watering, chopping,
+   The reward garden. Every completed task becomes a plant; every ten
+   completed tasks unlocks another section of the garden. Watering, chopping,
    building and pets all earn coins that can be spent in the shop.
 
    All persistence goes through Store.kv, which namespaces keys per account,
@@ -306,8 +306,8 @@ const Garden = (function () {
   let lensTimer = null;
   let activeThought = null;
 
-  /* One coin per completed ticket, paid once. The ledger of ticket ids that
-     have already paid out lives alongside the coin count, so ticking a ticket
+  /* One coin per completed task, paid once. The ledger of task ids that
+     have already paid out lives alongside the coin count, so ticking a task
      off and on again cannot mint coins. */
   let awardedCoins = new Set();
   let stateLoaded = false;
@@ -324,9 +324,9 @@ const Garden = (function () {
     Store.kv.setItem(COINS_AWARDED_KEY, JSON.stringify([...awardedCoins]));
   }
 
-  /* Reconciles coins against the ticket list. Idempotent, so it is safe to run
+  /* Reconciles coins against the task list. Idempotent, so it is safe to run
      on every render - which is also what makes it work across devices and after
-     an import. Un-completing a ticket takes its coin back; deleting a ticket
+     an import. Un-completing a task takes its coin back; deleting a task
      outright does not, since that work was still done. */
   function syncCompletionCoins() {
     const tickets = App.tickets();
@@ -718,7 +718,7 @@ const Garden = (function () {
 
 
 
-  /* Plants are bought, not derived from a ticket, so their pot colour is their
+  /* Plants are bought, not derived from a task, so their pot colour is their
      own. Legacy plants (grown automatically before plants were purchasable)
      have no stored colour, so one is derived from their id instead. */
   const POT_COLORS = ['#c56a4e', '#8a8f98', '#4a7fb5', '#5c9e6b', '#b58a3c', '#8e6bb0', '#c26a8a', '#4f8f8a'];
@@ -1557,7 +1557,7 @@ const Garden = (function () {
   }
 
   /* A plant is now something you buy with a coin you earned by finishing a
-     ticket, rather than something that appears on its own. */
+     task, rather than something that appears on its own. */
   function buyPlant() {
     if (coins < PLANT_COST) return;
     coins -= PLANT_COST;
@@ -1842,7 +1842,7 @@ const Garden = (function () {
        one, which is how you lose someone's garden. */
     if (!stateLoaded) return;
 
-    /* Completed tickets pay out coins; they no longer plant anything by
+    /* Completed tasks pay out coins; they no longer plant anything by
        themselves. Plants are bought from the shop and stay put until moved. */
     syncCompletionCoins();
 
@@ -2019,7 +2019,7 @@ const Garden = (function () {
     const plantWord = plantCount === 1 ? t.plant : t.plants;
     document.getElementById('garden-status').textContent = plantCount
       ? `${heroName()} is tending ${plantCount} ${plantWord} in ${t.place}.`
-      : `${heroName()} has no ${t.plants} yet - finish a ticket to earn a coin, then buy one.`;
+      : `${heroName()} has no ${t.plants} yet - finish a task to earn a coin, then buy one.`;
   }
 
 
@@ -2029,7 +2029,7 @@ const Garden = (function () {
     const who = heroName();
     const t = terms();
     return {
-      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every ticket you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each, a random variety - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a ticket and its coin goes back.' },
+      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each, a random variety - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering', body: 'Move right up next to a ' + t.plant + ' to water it (once per minute each). Watering is for the pleasure of it - a sparkle and a splash - it earns no coins. ' + t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's are the exception: they need five waterings to grow.' },
       pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool.' },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
@@ -2038,7 +2038,7 @@ const Garden = (function () {
       sapling: { icon: '\u{1F331}', title: t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's', body: 'Buy one and it appears at the top. Carry it to an empty spot and press E to plant it. Move into it to water it - five waterings, once a minute, and it grows into ' + t.sprouted + '. Press F to grow every planted one at once.' },
       cabin: { icon: '\u{1FAB5}', title: 'Building a ' + t.build, body: 'Carry ' + t.log + ' onto a tile that already has some to start a ' + t.build + ' site. Keep bringing more and watch it rise in stages - foundation, walls, roof, then doors and windows once it finishes at 10.' },
       pets: { icon: '\u{1F43E}', title: 'Companions', body: 'Buy one, or unlock a random one (10 max). One food suits every animal: buy a bowl, pick it up and walk it over to whichever one you want. Friendly ones stick close, skittish ones flee until you win them over.' },
-      unlock: { icon: '\u{1F512}', title: 'Unlocking sections', body: 'Every 10 completed tickets unlocks the next part of ' + t.place + '. The next locked section is always visible ahead, dimmed, behind a gate.' }
+      unlock: { icon: '\u{1F512}', title: 'Unlocking sections', body: 'Every 10 completed tasks unlocks the next part of ' + t.place + '. The next locked section is always visible ahead, dimmed, behind a gate.' }
     };
   }
 
@@ -2117,7 +2117,7 @@ const Garden = (function () {
     const coinHelp = document.querySelector('.coin-help-btn');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
-    if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
+    if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     render();
     applyGardenVisibility();
     startPetTicker();
@@ -2139,7 +2139,7 @@ const Garden = (function () {
     const coinHelp = document.querySelector('.coin-help-btn');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
-    if (buyHint) buyHint.textContent = 'Finish a ticket to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
+    if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a ' + terms().plant + ' in the shop below.';
     currentHelpTopic = null;
     const box = document.getElementById('help-explanation');
     if (box) { box.style.display = 'none'; box.innerHTML = ''; }

@@ -371,7 +371,7 @@ const Auth = (function () {
           <button class="profile-pick" data-id="${Util.escapeHtml(p.id)}">
             <span class="profile-avatar" style="background:${color}">${Util.escapeHtml(Util.initials(p.name))}</span>
             <span>${Util.escapeHtml(p.name)}</span>
-            <span class="profile-count">${count} ticket${count === 1 ? '' : 's'}</span>
+            <span class="profile-count">${count} task${count === 1 ? '' : 's'}</span>
           </button>
           <button class="profile-del" data-del="${Util.escapeHtml(p.id)}" title="Delete this profile and its data">&times;</button>
         </div>`;

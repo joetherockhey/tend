@@ -1,7 +1,7 @@
 /* ============================================================================
    Tend - app.js
    ----------------------------------------------------------------------------
-   The ticket tracker itself: lists, calendar, stats, categories, the new/edit
+   The task tracker itself: lists, calendar, stats, categories, the new/edit
    forms, drag-and-drop ordering, settings and backup.
 
    State lives in Store. Every mutation ends with Store.save*() so the change
@@ -88,8 +88,8 @@ const App = (function () {
     if (hint) {
       const ocean = (Store.prefs() || {}).world === 'ocean';
       hint.textContent = ocean
-        ? 'Colour-codes your tickets and the shells your corals sit in.'
-        : 'Colour-codes your tickets and the plant pots in your garden.';
+        ? 'Colour-codes your tasks and the shells your corals sit in.'
+        : 'Colour-codes your tasks and the plant pots in your garden.';
     }
 
     const items = categories().map((c, i) =>
@@ -136,7 +136,7 @@ const App = (function () {
     });
   }
 
-  /* ========================= tickets ========================= */
+  /* ========================= tasks ========================= */
 
   function onCategoryChange() {
     const select = document.getElementById('new-task-category');
@@ -151,10 +151,8 @@ const App = (function () {
   function addTask() {
     const input = document.getElementById('new-task-input');
     const notesInput = document.getElementById('new-task-notes');
-    const settingInput = document.getElementById('new-task-setting');
     const catSelect = document.getElementById('new-task-category');
     const catOtherInput = document.getElementById('new-task-category-other');
-    const followUpCheckbox = document.getElementById('new-task-followup');
     const priorityCheckbox = document.getElementById('new-task-priority');
     const dueDateInput = document.getElementById('new-task-duedate');
 
@@ -173,9 +171,7 @@ const App = (function () {
       id: Util.uid(),
       title: title,
       notes: notesInput.value.trim(),
-      setting: settingInput.value.trim(),
       category: category,
-      followUp: followUpCheckbox.checked,
       priority: priorityCheckbox.checked,
       archived: false,
       dueDate: dueDateInput.value || null,
@@ -186,10 +182,8 @@ const App = (function () {
 
     input.value = '';
     notesInput.value = '';
-    settingInput.value = '';
     catSelect.value = '';
     catOtherInput.value = '';
-    followUpCheckbox.checked = false;
     priorityCheckbox.checked = false;
     dueDateInput.value = '';
     renderSubtaskEditor('new-subtasks', []);
@@ -256,8 +250,8 @@ const App = (function () {
   }
 
   /* ---------------------------------------------------------------
-     Subtasks. A ticket carries a small checklist; ticking items off is
-     progress, but only the ticket itself pays a coin.
+     Subtasks. A task carries a small checklist; ticking items off is
+     progress, but only the task itself pays a coin.
      --------------------------------------------------------------- */
 
   function subtasksOf(t) {
@@ -441,7 +435,7 @@ const App = (function () {
 
   function matchesSearch(t, q) {
     if (!q) return true;
-    return [t.title, t.notes, t.setting, t.category].some(v => (v || '').toLowerCase().includes(q));
+    return [t.title, t.notes, t.category].some(v => (v || '').toLowerCase().includes(q));
   }
 
   function renderList() {
@@ -460,10 +454,10 @@ const App = (function () {
     const completedList = document.getElementById('completed-list');
     const archivedList = document.getElementById('archived-list');
 
-    const noActiveMsg = query ? 'No active tickets match your search.' : 'Nothing active. Add a ticket to get started.';
-    const noPriorityMsg = query ? 'No priority tickets match your search.' : 'Star a ticket to mark it as priority.';
-    const noCompletedMsg = query ? 'No completed tickets match your search.' : 'Nothing completed yet.';
-    const noArchivedMsg = query ? 'No archived tickets match your search.' : 'Archive a ticket to tuck it away here.';
+    const noActiveMsg = query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.';
+    const noPriorityMsg = query ? 'No priority tasks match your search.' : 'Star a task to mark it as priority.';
+    const noCompletedMsg = query ? 'No completed tasks match your search.' : 'Nothing completed yet.';
+    const noArchivedMsg = query ? 'No archived tasks match your search.' : 'Archive a task to tuck it away here.';
 
     activeList.innerHTML = active.length ? active.map(renderTaskItem).join('') : `<li class="empty-note">${noActiveMsg}</li>`;
     priorityList.innerHTML = priority.length ? priority.map(renderTaskItem).join('') : `<li class="empty-note">${noPriorityMsg}</li>`;
@@ -494,7 +488,7 @@ const App = (function () {
   }
 
   /* A click anywhere on the row that is not one of its own controls opens the
-     ticket's details. That is where the dates now live - the collapsed row
+     task's details. That is where the dates now live - the collapsed row
      carries only what you need to scan the list. */
   function taskRowClick(id, ev) {
     if (ev && ev.target && ev.target.closest('button, input, a, label, .task-subtasks')) return;
@@ -503,8 +497,6 @@ const App = (function () {
 
   function renderTaskItem(t) {
     const done = !!t.completedAt;
-    /* Created and completed dates live in the detail view, not here. */
-    const metaText = t.setting ? `Came up: ${Util.escapeHtml(t.setting)}` : '';
 
     const notesHtml = t.notes ? `<div class="task-notes">${Util.escapeHtml(t.notes)}</div>` : '';
     const catColor = categoryColor(t.category);
@@ -519,7 +511,6 @@ const App = (function () {
         onclick="event.stopPropagation();App.toggleSubtaskList('${t.id}')"
         title="Show the steps">&#9744; ${prog.done}/${prog.total}</button>`);
     }
-    if (t.followUp) tags.push('<span class="tag followup">Needs a follow-up</span>');
     if (t.dueDate) {
       const overdue = !done && t.dueDate < Util.todayStr();
       tags.push(`<span class="tag ${overdue ? 'overdue' : ''}">Due ${Util.formatDate(t.dueDate)}${overdue ? ' (overdue)' : ''}</span>`);
@@ -531,20 +522,19 @@ const App = (function () {
       `<button class="star-btn ${t.priority ? 'active' : ''}" title="${t.priority ? 'Unstar (move back to Active)' : 'Star as priority'}" onclick="App.togglePriority('${t.id}')">${t.priority ? '★' : '☆'}</button>`;
 
     const archiveIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"></rect><path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"></path><path d="M9.5 12h5"></path></svg>';
-    const archiveBtn = `<button class="archive-btn ${t.archived ? 'active' : ''}" title="${t.archived ? 'Unarchive (restore ticket)' : 'Archive ticket'}" onclick="App.toggleArchive('${t.id}')">${archiveIcon}</button>`;
+    const archiveBtn = `<button class="archive-btn ${t.archived ? 'active' : ''}" title="${t.archived ? 'Unarchive (restore task)' : 'Archive task'}" onclick="App.toggleArchive('${t.id}')">${archiveIcon}</button>`;
 
     const draggable = (!done || t.archived) ? 'true' : 'false';
 
     return `
       <li class="task ${done ? 'done' : ''} ${t.archived ? 'archived' : ''}"${borderStyle} data-id="${t.id}" draggable="${draggable}"
-          title="Open the ticket" onclick="App.taskRowClick('${t.id}', event)">
+          title="Open the task" onclick="App.taskRowClick('${t.id}', event)">
         <input type="checkbox" ${done ? 'checked' : ''} onchange="App.toggleTask('${t.id}', this)">
         <div class="task-body">
           <div class="task-title">${Util.escapeHtml(t.title)}</div>
           ${notesHtml}
           ${tagsHtml}
           ${renderSubtaskList(t)}
-          ${metaText ? `<div class="task-meta">${metaText}</div>` : ''}
         </div>
         <div class="task-actions">
           ${starBtn}
@@ -557,7 +547,7 @@ const App = (function () {
 
   /* ========================= stats ========================= */
 
-  /* Open tickets due today, and anything already past its date. */
+  /* Open tasks due today, and anything already past its date. */
   function dueToday() {
     const today = Util.todayStr();
     return tickets().filter(t => !t.completedAt && !t.archived && t.dueDate === today);
@@ -614,18 +604,16 @@ const App = (function () {
     const archivedCount = list.filter(t => t.archived).length;
     const openTotal = priorityCount + activeCount;
     const completedAll = list.filter(t => !!t.completedAt).length;
-    const followUps = list.filter(t => !t.completedAt && !t.archived && t.followUp).length;
 
     document.getElementById('stats-chart').innerHTML = `
       <div class="summary-headline">
         <span class="summary-num">${openTotal}</span>
-        <span class="summary-label">Open tickets</span>
+        <span class="summary-label">Open tasks</span>
       </div>
       <ul class="summary-breakdown">
         <li><span class="summary-cat priority">Priority</span><span class="summary-catnum">${priorityCount}</span></li>
         <li><span class="summary-cat active">Active</span><span class="summary-catnum">${activeCount}</span></li>
         <li><span class="summary-cat archived">Archived</span><span class="summary-catnum">${archivedCount}</span></li>
-        <li><span class="summary-cat">Follow-ups</span><span class="summary-catnum">${followUps}</span></li>
       </ul>
       <div class="summary-headline completed">
         <span class="summary-num">${completedAll}</span>
@@ -677,12 +665,11 @@ const App = (function () {
        one search box and one piece of state. */
     const search = document.getElementById('nav-search');
     const topRow = document.querySelector('.header-top-row');
-    const account = document.querySelector('.account-menu');
     const tabs = document.querySelector('nav.tabs');
     const gardenBtn = document.getElementById('garden-toggle-btn');
     if (!search || !topRow || !tabs) return;
     if (appMode) {
-      if (search.parentElement !== topRow) topRow.insertBefore(search, account);
+      if (search.parentElement !== topRow) topRow.appendChild(search);
     } else if (search.parentElement !== tabs) {
       tabs.insertBefore(search, gardenBtn);
     }
@@ -698,7 +685,7 @@ const App = (function () {
     else if (view === 'garden') h.textContent = (window.Garden && Garden.shortLabel) ? Garden.shortLabel() : 'Garden';
     else {
       const name = Store.displayName() || 'Your';
-      h.textContent = (/s$/i.test(name) ? name + "'" : name + "'s") + ' Tickets';
+      h.textContent = (/s$/i.test(name) ? name + "'" : name + "'s") + ' Tasks';
     }
   }
 
@@ -790,10 +777,10 @@ const App = (function () {
 
   let createdByDay = {}, dueByDay = {}, completedByDay = {};
 
-  /* Which dates a ticket is plotted on. "Due" is the one most people want -
+  /* Which dates a task is plotted on. "Due" is the one most people want -
      it answers "what is coming up" - so it and Completed are on by default and
      Created is off. Each person's choice is remembered with their preferences. */
-  /* How many ticket rows fit in an agenda cell before it says "+n more". */
+  /* How many task rows fit in an agenda cell before it says "+n more". */
   const AGENDA_ROWS = 3;
 
   const CAL_SERIES = [
@@ -802,7 +789,7 @@ const App = (function () {
     { key: 'completed', label: 'Complete', on: true }
   ];
 
-  /* 'numbers' = counts per day. 'agenda' = the tickets themselves, the way a
+  /* 'numbers' = counts per day. 'agenda' = the tasks themselves, the way a
      wall calendar or Google Calendar shows them. */
   function calView() {
     const prefs = Store.prefs();
@@ -892,7 +879,7 @@ const App = (function () {
     dueByDay = {};
     completedByDay = {};
     tickets().forEach(t => {
-      /* Normalised again here so a ticket with an odd date still lands on the
+      /* Normalised again here so a task with an odd date still lands on the
          right square even before the store has tidied it away. */
       const made = Util.toIsoDate(t.createdAt);
       const due = Util.toIsoDate(t.dueDate);
@@ -931,7 +918,7 @@ const App = (function () {
       const madeCount = series.created ? (createdByDay[iso] || []).length : 0;
       const doneCount = series.completed ? (completedByDay[iso] || []).length : 0;
 
-      /* Only work still outstanding counts as due - a ticket you have finished
+      /* Only work still outstanding counts as due - a task you have finished
          is not due any more, and it already shows under Completed on the day you
          did it. Clicking the day still lists the finished ones, marked done. */
       const dueList = series.due
@@ -944,7 +931,7 @@ const App = (function () {
       let countsHtml;
 
       if (agenda) {
-        /* One row per ticket, like a wall calendar. Only so many fit in a cell
+        /* One row per task, like a wall calendar. Only so many fit in a cell
            of fixed height, so the rest collapse into a "+n more". */
         const rows = [];
         dueList.forEach(t => rows.push({ cls: 'due' + (overdue ? ' overdue' : ''), title: t.title }));
@@ -1054,8 +1041,6 @@ const App = (function () {
     if (t.category) {
       rows.push(detailRow('Category', categoryPill(t.category, categoryColor(t.category))));
     }
-    if (t.setting) rows.push(detailRow('Came up', Util.escapeHtml(t.setting)));
-    if (t.followUp) rows.push(detailRow('Follow-up', 'Needed'));
     const dp = subtaskProgress(t);
     if (dp.total) {
       rows.push(detailRow('Steps', `${dp.done} of ${dp.total} done<ul class="detail-subtasks">${
@@ -1070,7 +1055,7 @@ const App = (function () {
       ${backBtn}
       <div class="task-detail">${rows.join('')}</div>
       <div class="detail-actions">
-        <button class="detail-edit-btn" onclick="App.closeModal(); App.openEditModal('${t.id}')">Edit ticket</button>
+        <button class="detail-edit-btn" onclick="App.closeModal(); App.openEditModal('${t.id}')">Edit task</button>
       </div>`;
     document.getElementById('modal-backdrop').classList.add('active');
   }
@@ -1087,8 +1072,6 @@ const App = (function () {
     document.getElementById('edit-task-id').value = t.id;
     document.getElementById('edit-task-title').value = t.title || '';
     document.getElementById('edit-task-notes').value = t.notes || '';
-    document.getElementById('edit-task-setting').value = t.setting || '';
-    document.getElementById('edit-task-followup').checked = !!t.followUp;
     document.getElementById('edit-task-priority').checked = !!t.priority;
     document.getElementById('edit-task-duedate').value = t.dueDate || '';
 
@@ -1126,9 +1109,7 @@ const App = (function () {
 
     t.title = title;
     t.notes = document.getElementById('edit-task-notes').value.trim();
-    t.setting = document.getElementById('edit-task-setting').value.trim();
     t.category = category;
-    t.followUp = document.getElementById('edit-task-followup').checked;
     t.priority = document.getElementById('edit-task-priority').checked;
     t.dueDate = document.getElementById('edit-task-duedate').value || null;
     t.subtasks = readSubtaskEditor('edit-subtasks');
@@ -1146,8 +1127,8 @@ const App = (function () {
   function renderHeader() {
     const name = Store.displayName() || 'Your';
     const possessive = /s$/i.test(name) ? name + "'" : name + "'s";
-    document.getElementById('page-title').textContent = `${possessive} Tickets`;
-    document.title = `${possessive} Tickets · ${(Store.config.APP_NAME || 'Tend')}`;
+    document.getElementById('page-title').textContent = `${possessive} Tasks`;
+    document.title = `${possessive} Tasks · ${(Store.config.APP_NAME || 'Tend')}`;
 
     const btn = document.getElementById('account-btn');
     btn.innerHTML = `
@@ -1173,7 +1154,7 @@ const App = (function () {
 
   /* Opens a pre-filled issue on the project's GitHub repo, if one is configured.
      This is feedback about Tend itself - it is public, so it is deliberately
-     separate from your own tickets. */
+     separate from your own tasks. */
   function repoLinkHTML() {
     const repo = (Store.config.GITHUB_REPO || '').trim();
     if (!repo) return '';
@@ -1407,7 +1388,7 @@ const App = (function () {
       <div class="settings-section">
         <h4>Where your data lives</h4>
         <p>${isCloud
-          ? 'Cloud mode. Your tickets and garden are stored in your account and sync to any device you sign in on. A copy is kept in this browser so the app keeps working offline.'
+          ? 'Cloud mode. Your tasks and garden are stored in your account and sync to any device you sign in on. A copy is kept in this browser so the app keeps working offline.'
           : 'Local mode. Everything is stored in this browser only. Export a backup if you want to keep it safe or move it to another device.'}</p>
         <div class="settings-row">
           <button class="settings-btn" onclick="App.exportBackup()">Export backup (.json)</button>
@@ -1419,7 +1400,7 @@ const App = (function () {
 
       <div class="settings-section">
         <h4>Danger zone</h4>
-        <p>Deletes every ticket, category and garden change on this account. There is no undo, so export a backup first.</p>
+        <p>Deletes every task, category and garden change on this account. There is no undo, so export a backup first.</p>
         <div class="settings-row">
           <button class="settings-btn danger" onclick="App.eraseEverything()">Erase all my data</button>
         </div>
@@ -1601,13 +1582,13 @@ const App = (function () {
         const data = JSON.parse(reader.result);
         const list = Array.isArray(data) ? data : (data.tickets || data.tasks || []);
         const count = Array.isArray(list) ? list.length : 0;
-        if (!confirm(`Import ${count} ticket${count === 1 ? '' : 's'}? This replaces everything currently in "${Store.displayName()}".`)) return;
+        if (!confirm(`Import ${count} task${count === 1 ? '' : 's'}? This replaces everything currently in "${Store.displayName()}".`)) return;
         Store.importData(data);
         loadViewPrefs();
         renderAll();
         Garden.loadAll();
         Garden.render();
-        if (note) { note.className = 'settings-note ok'; note.textContent = `Imported ${count} tickets.`; }
+        if (note) { note.className = 'settings-note ok'; note.textContent = `Imported ${count} tasks.`; }
       } catch (err) {
         if (note) { note.className = 'settings-note bad'; note.textContent = err.message || 'Could not read that file.'; }
       } finally {
@@ -1633,7 +1614,7 @@ const App = (function () {
   }
 
   function eraseEverything() {
-    if (!confirm('Erase every ticket, category and garden change on this account?')) return;
+    if (!confirm('Erase every task, category and garden change on this account?')) return;
     if (!confirm('Really erase everything? This cannot be undone.')) return;
     Store.eraseAccountData();
     loadViewPrefs();

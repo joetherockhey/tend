@@ -1,8 +1,8 @@
 # Tend
 
-A personal ticket tracker where finishing things grows a garden. Every ticket you
+A personal task tracker where finishing things grows a garden. Every task you
 complete earns a gold coin; coins buy plants, tools, saplings and pets from the
-shop; and every ten completed tickets unlocks another section of the garden,
+shop; and every ten completed tasks unlocks another section of the garden,
 which you walk around with the arrow keys. Watering a plant costs nothing and
 earns nothing - it is just a sparkle and a splash.
 
@@ -35,7 +35,7 @@ two values in `js/config.js` switches the whole app to cloud mode.
 3. Wait a minute, then open `https://<your-username>.github.io/<your-repo>/`.
 
 That is the whole deployment. Anyone you send the link to creates their own
-profile in their own browser; nobody can see anyone else's tickets, because
+profile in their own browser; nobody can see anyone else's tasks, because
 nothing ever leaves their device.
 
 You can also just open `standalone/tend.html` directly off your desktop — it is
@@ -66,7 +66,7 @@ site: the key in the page grants nothing by itself.
 Open **SQL Editor → New query** again and run
 [`supabase/realtime.sql`](supabase/realtime.sql).
 
-That lets Postgres broadcast changes on those three tables, so a ticket added on
+That lets Postgres broadcast changes on those three tables, so a task added on
 your laptop appears on your phone a second later without either device being
 touched. Without it Tend still keeps devices in step — it checks for changes
 whenever a device wakes, comes back online, or every 25 seconds while you are
@@ -112,20 +112,20 @@ If you would rather invite people yourself than let anyone sign up, set
 
 ### 5. Try it
 
-Open the site, create an account, add a ticket, then open the same URL on your
-phone and sign in. The ticket is there. So is the garden, down to where the
+Open the site, create an account, add a task, then open the same URL on your
+phone and sign in. The task is there. So is the garden, down to where the
 gardener is standing.
 
 ---
 
-## "Can people create tickets from GitHub itself?"
+## "Can people create tasks from GitHub itself?"
 
 Yes, in two quite different senses — worth separating, because one is a good idea
 and the other usually is not.
 
 **Feedback about the app: use GitHub Issues.** Set `GITHUB_REPO` in
 `js/config.js` to `your-username/your-repo` and a *Suggest something on GitHub*
-link appears in the account menu, opening a pre-filled ticket form
+link appears in the account menu, opening a pre-filled task form
 (`.github/ISSUE_TEMPLATE/ticket.yml`). Anything filed there is stored in the
 repository permanently, is searchable, threads into a conversation, and costs you
 nothing to host. This is the right home for "the calendar is wrong in Safari".
@@ -155,7 +155,7 @@ js/util.js              dates, escaping, colours, debounce
 js/worlds.js            the two skins: sprites, plants, creatures, names
 js/store.js             storage: local and Supabase backends, offline queue
 js/auth.js              the sign-in gate and the local profile picker
-js/app.js               tickets, lists, calendar, stats, categories, settings
+js/app.js               tasks, lists, calendar, stats, categories, settings
 js/garden.js            the garden: sprites, movement, shop, pets, sections
 js/boot.js              wires branding in and starts the gate
 js/qr.js                a small QR encoder, for the install code
@@ -205,7 +205,7 @@ laptop would drag the phone's character around.
 - **Colours** — the CSS custom properties at the top of `css/styles.css`.
   `--header-bg` and `--header-bg-2` are the header gradient; `--accent` is the
   purple used for buttons and the active tab.
-- **How many tickets fit in a list-view cell** before it says "+n more" —
+- **How many tasks fit in a list-view cell** before it says "+n more" —
   `AGENDA_ROWS` in `js/app.js`.
 - **What the calendar plots** — the three chips above the calendar toggle
   Created, Due and Completed dates on and off. Due and Completed are on by
@@ -214,10 +214,10 @@ laptop would drag the phone's character around.
   outstanding on that date, not everything that was ever due then.
 - **Categories** — the starting five (Home, Health, Money, Errands, Fun) are in
   `DEFAULT_CATEGORIES` in `js/store.js`. Users can add and remove their own from
-  the Categories panel, and each one colour-codes both its tickets and its plant
+  the Categories panel, and each one colour-codes both its tasks and its plant
   pots in the garden.
 - **Garden sections** — `SECTIONS` at the top of `js/garden.js`. Add entries and
-  every ten completed tickets keeps unlocking new ground.
+  every ten completed tasks keeps unlocking new ground.
 - **The unlock rate** — `TICKETS_PER_SECTION` in `js/garden.js`.
 - **What a plant costs** — `PLANT_COST` in `js/garden.js`, alongside
   `SAPLING_COST` and the pet and item prices.
@@ -255,9 +255,9 @@ involved and no cost. On **iPhone**: open the site in Safari, Share, *Add to Hom
 Screen*. On **Android**: Chrome offers *Install app*, or Menu → *Add to Home
 screen*. It then opens full screen with its own icon.
 
-Installed, Tend switches to an app shell: the three sections (Tickets, Calendar and
+Installed, Tend switches to an app shell: the three sections (Tasks, Calendar and
 the garden) move to a bar fixed at the bottom of the screen, the garden becomes a
-section of its own rather than something you scroll past the tickets to reach, and the
+section of its own rather than something you scroll past the tasks to reach, and the
 ribbon shrinks to a title bar. None of that appears on the website. The switch is
 `(display-mode: standalone)`, read once at boot in `applyAppMode()` and stamped on
 `<html>` as `data-mode="app"`; every app-only rule in `styles.css` hangs off that
@@ -297,32 +297,32 @@ appears in each account's settings.
 
 ### How the garden economy works
 
-Tickets can carry a checklist of steps. Ticking steps off shows progress on the
-ticket row, but only completing the ticket itself pays a coin - otherwise a
-ten-step ticket would be worth ten times a one-step one.
+Tasks can carry a checklist of steps. Ticking steps off shows progress on the
+task row, but only completing the task itself pays a coin - otherwise a
+ten-step task would be worth ten times a one-step one.
 
-Completing a ticket pays one coin, once. The ledger of which tickets have already
-paid sits in `coins-awarded-v1`, so un-ticking a ticket takes its coin back and
-re-ticking it does not mint a second one. Deleting a completed ticket leaves the
+Completing a task pays one coin, once. The ledger of which tasks have already
+paid sits in `coins-awarded-v1`, so un-ticking a task takes its coin back and
+re-ticking it does not mint a second one. Deleting a completed task leaves the
 coin alone - the work was still done.
 
 Plants are bought, not granted: one coin each, a random variety and pot colour,
 placed next to the gardener. They are objects in their own right, so they stay
-where you put them and survive the ticket that paid for them being edited or
+where you put them and survive the task that paid for them being edited or
 deleted.
 
 ---
 
 ## Known limits
 
-- Cloud mode resolves conflicts last-write-wins. Edit the same ticket on two
+- Cloud mode resolves conflicts last-write-wins. Edit the same task on two
   devices while one of them is offline and the later write survives. For one
   person on a few devices this is nearly never noticeable; for shared lists it
   would need real merge logic.
 - There is no sharing or assigning between accounts yet. The schema is per-row
   rather than one blob per user partly to leave that door open.
 - The garden expects a keyboard, so it is best on a laptop. On a phone the
-  tickets come first and the garden sits at the bottom.
+  tasks come first and the garden sits at the bottom.
 
 ## Licence
 

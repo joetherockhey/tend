@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="description" content="Tend - a personal ticket tracker where every task you finish grows a garden.">
+<meta name="description" content="Tend - a personal task tracker where every task you finish grows a garden.">
 <meta name="theme-color" content="#10281d">
 <title>Tend</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='1'%20x2='1'%20y2='0'%3E%3Cstop%20offset='0'%20stop-color='%2300d68f'/%3E%3Cstop%20offset='1'%20stop-color='%238c52ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M32%2050%20V31'%20stroke='white'%20stroke-width='4.5'%20stroke-linecap='round'/%3E%3Cpath%20d='M32%2032%20C32%2022%2025%2016.5%2016%2016.5%20C16%2026%2023%2032%2032%2032%20Z'%20fill='white'/%3E%3Cpath%20d='M32%2036%20C32%2027%2039%2021.5%2048%2021.5%20C48%2031%2041%2036%2032%2036%20Z'%20fill='white'%20opacity='0.72'/%3E%3C/svg%3E">
@@ -44,16 +44,16 @@
       <div class="account-dropdown" id="account-dropdown" hidden></div>
     </div>
   </div>
-  <h1 id="page-title">Tickets</h1>
-  <p class="subtitle" id="page-subtitle">Every ticket you finish earns a coin. Coins buy plants for the garden.</p>
+  <h1 id="page-title">Tasks</h1>
+  <p class="subtitle" id="page-subtitle">Every task you finish earns a coin. Coins buy plants for the garden.</p>
   <nav class="tabs">
-    <button id="tab-list" class="active" onclick="App.switchView('list')">Tickets</button>
+    <button id="tab-list" class="active" onclick="App.switchView('list')">Tasks</button>
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
     <div class="nav-search" id="nav-search">
       <button type="button" class="nav-search-icon" id="search-icon" onclick="App.toggleSearch()"
-              title="Search tickets" aria-label="Search tickets">&#128269;</button>
-      <input type="search" class="search-input" id="search-input" placeholder="Search tickets"
-             aria-label="Search tickets by title, notes, category or where it came up">
+              title="Search tasks" aria-label="Search tasks">&#128269;</button>
+      <input type="search" class="search-input" id="search-input" placeholder="Search tasks"
+             aria-label="Search tasks by title, notes or category">
       <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
     </div>
     <button id="garden-toggle-btn" class="garden-toggle-btn" onclick="toggleGardenVisibility()">Hide Garden</button>
@@ -81,7 +81,7 @@
     <ul class="garden-hint">
       <li id="garden-move-hint">Click the garden, then move with WASD or the arrow keys.</li>
       <li id="garden-use-hint">Press E to pick up, plant, or use whatever you are next to.</li>
-      <li id="garden-buy-hint">Finish a ticket to earn a coin, then buy a plant in the shop below.</li>
+      <li id="garden-buy-hint">Finish a task to earn a coin, then buy a plant in the shop below.</li>
     </ul>
     <div class="garden-help-icons">
       <button class="help-icon-btn coin-help-btn" onclick="showHelpTopic('coins')" title="Coins and plants"></button>
@@ -177,7 +177,7 @@
 
 <aside class="sidebar">
   <div class="new-task-btn-row">
-    <button class="new-task-btn" onclick="App.openNewTaskModal()">+ New Ticket</button>
+    <button class="new-task-btn" onclick="App.openNewTaskModal()">+ New Task</button>
   </div>
 
   <button class="due-today-btn" id="due-today-btn" onclick="App.showDueToday()"></button>
@@ -189,7 +189,7 @@
 
   <div class="panel">
     <h2>Categories</h2>
-    <p class="category-hint" id="category-hint">Colour-codes your tickets and the pots in your garden.</p>
+    <p class="category-hint" id="category-hint">Colour-codes your tasks and the pots in your garden.</p>
     <div class="key-list" id="category-key"></div>
   </div>
 </aside>
@@ -210,15 +210,10 @@
 <div class="modal-backdrop" id="edit-modal-backdrop" onclick="App.closeEditModalOnBackdrop(event)">
   <div class="modal">
     <button class="modal-close" onclick="App.closeEditModal()">&times;</button>
-    <h3>Edit ticket</h3>
+    <h3>Edit task</h3>
     <input type="hidden" id="edit-task-id">
     <div class="modal-form">
       <input type="text" id="edit-task-title" placeholder="What needs to be done?" maxlength="200">
-
-      <div class="field-row">
-        <label class="field-label" for="edit-task-setting">Where did it come up?</label>
-        <input type="text" id="edit-task-setting" placeholder="e.g. phone call, letter in the post, sitting in traffic..." maxlength="200">
-      </div>
 
       <div class="field-row-inline">
         <div class="field-row">
@@ -230,11 +225,6 @@
           <input type="text" id="edit-task-category-other" placeholder="Name it" maxlength="100">
         </div>
       </div>
-
-      <label class="checkbox-row">
-        <input type="checkbox" id="edit-task-followup">
-        Needs a follow-up?
-      </label>
 
       <label class="checkbox-row">
         <input type="checkbox" id="edit-task-priority">
@@ -264,14 +254,9 @@
 <div class="modal-backdrop" id="new-task-modal-backdrop" onclick="App.closeNewTaskModalOnBackdrop(event)">
   <div class="modal">
     <button class="modal-close" onclick="App.closeNewTaskModal()">&times;</button>
-    <h3>New ticket</h3>
+    <h3>New task</h3>
     <div class="modal-form">
       <input type="text" id="new-task-input" placeholder="What needs to be done?" maxlength="200">
-
-      <div class="field-row">
-        <label class="field-label" for="new-task-setting">Where did it come up?</label>
-        <input type="text" id="new-task-setting" placeholder="e.g. phone call, letter in the post, sitting in traffic..." maxlength="200">
-      </div>
 
       <div class="field-row-inline">
         <div class="field-row">
@@ -283,11 +268,6 @@
           <input type="text" id="new-task-category-other" placeholder="Name it" maxlength="100">
         </div>
       </div>
-
-      <label class="checkbox-row">
-        <input type="checkbox" id="new-task-followup">
-        Needs a follow-up?
-      </label>
 
       <label class="checkbox-row">
         <input type="checkbox" id="new-task-priority">
@@ -331,7 +311,7 @@
       <path d="M4 6.5 5.6 8 8.5 5"/><path d="M4 12.5 5.6 14 8.5 11"/><path d="M4 18.5 5.6 20 8.5 17"/>
       <path d="M12 6.5h8"/><path d="M12 12.5h8"/><path d="M12 18.5h8"/>
     </svg>
-    <span class="bnav-label">Tickets</span>
+    <span class="bnav-label">Tasks</span>
   </button>
   <button type="button" class="bnav-btn" id="bnav-calendar" onclick="App.switchView('calendar')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

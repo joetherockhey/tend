@@ -527,6 +527,7 @@ const Store = (function () {
   }
 
   const DEFAULT_CATEGORIES = [
+    { name: 'Work', color: '#4a5bd4' },
     { name: 'Home', color: '#2a78d6' },
     { name: 'Health', color: '#0f9d6a' },
     { name: 'Money', color: '#eda100' },
@@ -667,14 +668,14 @@ const Store = (function () {
   }
 
   /* Replaces everything for the open account.
-     Accepts a Tend export, a bare array of tickets, or the { tasks: [...] }
+     Accepts a Tend export, a bare array of tasks, or the { tasks: [...] }
      shape used by the older single-file tracker this app grew out of. */
   function importData(data) {
     let list = null;
     if (Array.isArray(data)) list = data;
     else if (data && Array.isArray(data.tickets)) list = data.tickets;
     else if (data && Array.isArray(data.tasks)) list = data.tasks;
-    if (!list) throw new Error('No tickets found in that file.');
+    if (!list) throw new Error('No tasks found in that file.');
     if (Array.isArray(data)) data = { tickets: list };
 
     tickets = list.map(t => ({
@@ -700,7 +701,7 @@ const Store = (function () {
         color: c.color || Util.colorFor(c.name)
       }));
     }
-    /* Any category names the tickets mention but the file did not define get
+    /* Any category names the tasks mention but the file did not define get
        created, so nothing lands colourless. */
     const known = new Set(categories.map(c => c.name.toLowerCase()));
     tickets.forEach(t => {
