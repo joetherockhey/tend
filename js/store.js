@@ -71,6 +71,109 @@ const Store = (function () {
     return out;
   }
 
+  /* ===================== merging the garden bag =====================
+     app_state.garden is one JSON blob, pushed and pulled whole, so the last
+     device to write wins the lot. That is right for where things are standing.
+     It is wrong for what has been bought: a tab that had not yet seen a
+     purchase - or a push that quietly failed and was followed by a pull - took
+     the purchase back. Joe lost his coins that way once and his magnifying
+     glass a second time.
+
+     So the keys that record something owned are merged rather than replaced:
+     owned on either side means owned. Everything else is still
+     last-write-wins.
+
+     Buying the garden reset clears purchases deliberately, so it bumps
+     RESET_GEN_KEY; the side with the higher generation is taken whole and
+     merging starts again from there. */
+
+  const RESET_GEN_KEY = 'garden-reset-v1';
+
+  function parseJson(v, fallback) {
+    try { const p = JSON.parse(v); return p === null ? fallback : p; } catch (e) { return fallback; }
+  }
+
+  /* Once true, always true. */
+  function keepFlag(a, b) { return (a === '1' || b === '1') ? '1' : (a !== undefined ? a : b); }
+
+  /* Only ever counts up. Two devices spending at once undercounts the spend,
+     which leaves the user with coins rather than short of them. */
+  function keepMax(a, b) {
+    const x = Number(a), y = Number(b);
+    return String(Math.max(isFinite(x) ? x : 0, isFinite(y) ? y : 0));
+  }
+
+  function unionOfList(a, b) {
+    const out = [];
+    [parseJson(a, []), parseJson(b, [])].forEach(list => {
+      if (Array.isArray(list)) list.forEach(v => { if (out.indexOf(v) === -1) out.push(v); });
+    });
+    return JSON.stringify(out);
+  }
+
+  /* Union by id, and the fresher copy's own entry wins - so a pet keeps the
+     position and friendship the newer side gave it. */
+  function unionById(a, b) {
+    const out = [];
+    const seen = {};
+    [parseJson(a, []), parseJson(b, [])].forEach(list => {
+      if (!Array.isArray(list)) return;
+      list.forEach(item => {
+        if (!item || item.id === undefined || seen[item.id]) return;
+        seen[item.id] = true;
+        out.push(item);
+      });
+    });
+    return JSON.stringify(out);
+  }
+
+  function unionOfOutfits(a, b) {
+    const x = parseJson(a, {}) || {}, y = parseJson(b, {}) || {};
+    const owned = [];
+    [].concat(x.owned || [], y.owned || []).forEach(o => { if (owned.indexOf(o) === -1) owned.push(o); });
+    if (!owned.length) owned.push('classic');
+    return JSON.stringify({ owned: owned, equipped: x.equipped || y.equipped || 'classic' });
+  }
+
+  const OWNED_KEYS = {
+    'garden-lens-v1': keepFlag,
+    'garden-sections-v1': keepMax,
+    'coins-spent-v1': keepMax,
+    'coins-bonus-v1': keepMax,
+    'garden-items-v1': unionById,
+    'garden-pets-v1': unionById,
+    'garden-chopped-v1': unionOfList,
+    'garden-dug-v1': unionOfList,
+    'garden-outfits-v1': unionOfOutfits
+  };
+
+  function resetGen(bag) {
+    const n = Number(bag && bag[RESET_GEN_KEY]);
+    return isFinite(n) ? n : 0;
+  }
+
+  /* 'fresh' wins on everything except what is owned, which is merged. */
+  function mergeGardenBags(fresh, other) {
+    fresh = fresh || {};
+    other = other || {};
+    const gf = resetGen(fresh), go = resetGen(other);
+
+    /* A reset on one side is a deliberate clear-out; the newer one is taken as
+       it stands, purchases and all. */
+    if (go > gf) return Object.assign({}, other);
+    if (gf > go) return Object.assign({}, fresh);
+
+    const out = Object.assign({}, fresh);
+    Object.keys(OWNED_KEYS).forEach(k => {
+      const a = fresh[k], b = other[k];
+      if (a === undefined && b === undefined) return;
+      if (a === undefined) { out[k] = b; return; }
+      if (b === undefined) { out[k] = a; return; }
+      out[k] = OWNED_KEYS[k](a, b);
+    });
+    return out;
+  }
+
   /* ========================= status plumbing ========================= */
 
   function setStatus(s) {
@@ -300,11 +403,32 @@ const Store = (function () {
   }
 
   async function pushState() {
+    /* Read what is up there and fold its purchases in before overwriting it.
+       The blob is last-write-wins, so a device that has not pulled lately would
+       otherwise push somebody's magnifying glass away. */
+    let garden = syncableBag();
+    try {
+      const { data } = await client.from('app_state').select('garden')
+        .eq('user_id', account.id).maybeSingle();
+      if (data && data.garden) {
+        const merged = mergeGardenBags(garden, data.garden);
+        if (JSON.stringify(merged) !== JSON.stringify(garden)) {
+          garden = merged;
+          /* Keep this device's own copy in step with what is being sent. */
+          Object.keys(merged).forEach(k => { gardenBag[k] = merged[k]; });
+          Object.keys(gardenBag).forEach(k => {
+            if (!isDeviceLocal(k) && merged[k] === undefined) delete gardenBag[k];
+          });
+          mirrorGardenBag();
+        }
+      }
+    } catch (e) { /* if we cannot read it, push what we have */ }
+
     const row = {
       user_id: account.id,
       display_name: account.name || '',
       prefs: prefs,
-      garden: syncableBag(),
+      garden: garden,
       updated_at: new Date().toISOString()
     };
     const json = JSON.stringify({ display_name: row.display_name, prefs: row.prefs, garden: row.garden });
@@ -340,7 +464,21 @@ const Store = (function () {
     /* Keep this device's own keys - the server never had them. */
     const keepLocal = {};
     DEVICE_LOCAL_KEYS.forEach(k => { if (gardenBag[k] !== undefined) keepLocal[k] = gardenBag[k]; });
-    gardenBag = Object.assign({}, (st && st.garden) || {}, keepLocal);
+
+    const serverGarden = (st && st.garden) || {};
+    const mineGarden = syncableBag();
+    /* A flush that failed leaves changes here the server has never seen, so
+       this copy is the fresher one; otherwise the server's is. Either way the
+       purchases from both sides survive. */
+    const unsent = dirty.state;
+    const mergedGarden = unsent
+      ? mergeGardenBags(mineGarden, serverGarden)
+      : mergeGardenBags(serverGarden, mineGarden);
+    /* If merging brought anything back that the server does not hold, it has to
+       go up again - otherwise the repair only ever lives on this device. */
+    const owesAPush = JSON.stringify(mergedGarden) !== JSON.stringify(serverGarden);
+
+    gardenBag = Object.assign({}, mergedGarden, keepLocal);
     if (st && st.display_name) account.name = st.display_name;
 
     /* Rebuild the snapshot so the next flush only sends real changes. */
@@ -349,9 +487,12 @@ const Store = (function () {
     categories.forEach((c, i) => {
       snapshot.categories[c.id] = JSON.stringify({ id: c.id, user_id: account.id, name: c.name, color: c.color, sort_index: i });
     });
-    snapshot.state = JSON.stringify({ display_name: account.name || '', prefs: prefs, garden: syncableBag() });
+    /* The snapshot is what the server actually holds, so a merge that changed
+       anything still reads as a difference and gets pushed. */
+    snapshot.state = JSON.stringify({ display_name: account.name || '', prefs: prefs, garden: serverGarden });
 
-    dirty = { tickets: false, categories: false, state: false };
+    dirty = { tickets: false, categories: false, state: owesAPush };
+    if (owesAPush && CLOUD && account) scheduleFlush();
 
     /* Mirror the pulled garden bag into localStorage for offline use. */
     mirrorGardenBag();

@@ -1433,7 +1433,11 @@ const App = (function () {
       'Walking a long route no longer waters every plant it squeezes past - only the one you walked up to.',
       'Seedlings are much smaller now: a stem and two leaves, so they no longer look like a grown plant.',
       'Fewer butterflies - one to three - and they stay around the flowers instead of crossing the whole garden.',
-      'The shop now says what each tool is for. The hose and the bucket are ornaments; watering needs no tool at all.'
+      'The shop now says what each tool is for. The hose and the bucket are ornaments; watering needs no tool at all.',
+      'Twice as many plants to find - 44 varieties instead of 22, in both the garden and the reef. Everything already planted stays exactly what it was.',
+      'The sapling has moved into the Plants part of the shop, where it belongs.',
+      'The butterflies fly a good deal more slowly.',
+      'Purchases can no longer be forgotten. Anything you have bought - the magnifying glass, your tools, your land - now survives an update, a second device, and a save that did not get through.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'

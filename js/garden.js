@@ -2052,6 +2052,9 @@ const Garden = (function () {
     saveChoppedTrees();
     saveMovableLayout();
     saveOutfits();
+    /* Purchases are merged rather than replaced when two devices disagree, so a
+       deliberate clear-out has to say it is one. See store.js. */
+    Store.kv.setItem('garden-reset-v1', String((Number(Store.kv.getItem('garden-reset-v1')) || 0) + 1));
 
     renderCoins();
     document.getElementById('garden-gardener').innerHTML = heroSVG('down', getEquippedOutfit());
@@ -2117,6 +2120,11 @@ const Garden = (function () {
              <span class="shop-tile-label">Seedling</span>
              <span class="shop-tile-action">${coinSVG()}${PLANT_COST}</span>
            </button>
+           <button class="shop-tile" ${(coins < SAPLING_COST || !findFreeCellAtTop()) ? 'disabled' : ''} onclick="buySapling()">
+             <span class="shop-tile-icon">\u{1F331}</span>
+             <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))}<span class="shop-tile-desc">Plant it and water it five times and it grows into a tree.</span></span>
+             <span class="shop-tile-action">${coinSVG()}${SAPLING_COST}</span>
+           </button>
            <button class="shop-tile ${holding ? 'sell' : ''}" ${holding ? '' : 'disabled'} onclick="sellHeldPlant()"
              title="${holding ? 'Cash in what you are carrying' : 'Pick a ' + terms().plant + ' up first, then cash it in here'}">
              <span class="shop-tile-icon">\u{1F4B0}</span>
@@ -2136,11 +2144,6 @@ const Garden = (function () {
             def.desc ? `<span class="shop-tile-desc">${Util.escapeHtml(def.desc)}</span>` : ''}</span>
           <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
         </button>`).join('') +
-        `<button class="shop-tile" ${(coins < SAPLING_COST || !findFreeCellAtTop()) ? 'disabled' : ''} onclick="buySapling()">
-          <span class="shop-tile-icon">\u{1F331}</span>
-          <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))} (water 5x to grow)</span>
-          <span class="shop-tile-action">${coinSVG()}${SAPLING_COST}</span>
-        </button>` +
         (hasLens
           ? `<button class="shop-tile owned" onclick="toggleLens()"
                title="${lensOn ? 'Tap to stop naming things' : 'Tap to name things again'}">
@@ -2392,7 +2395,9 @@ const Garden = (function () {
       age: 0,
       flower: null,
       dir: Math.random() < 0.5 ? -1 : 1,
-      speed: 0.75 + Math.random() * 0.5,
+      /* Deliberately unhurried - a butterfly that crosses a bed in a second
+         reads as a bug, not a butterfly. */
+      speed: 0.34 + Math.random() * 0.26,
       phase: Math.random() * Math.PI * 2,
       life: 40000 + Math.random() * 50000
     };
@@ -2415,7 +2420,7 @@ const Garden = (function () {
       f.life -= dt;
       f.hover -= dt;
       f.age += dt;
-      f.phase += 0.13 * k;
+      f.phase += 0.085 * k;
 
       let dx = f.tx - f.x;
       let dy = f.ty - f.y;
@@ -2425,13 +2430,13 @@ const Garden = (function () {
          re-pick if a target has somehow stayed out of reach. */
       if ((dist < 9 && f.hover <= 0) || f.age > 9000) ambientPickTarget(f);
 
-      const pull = dist < 14 ? 0.035 : 0.1;
-      f.vx += ((dx / dist) * pull * f.speed + Math.cos(f.phase * 1.7) * 0.09) * k;
-      f.vy += ((dy / dist) * pull * f.speed + Math.sin(f.phase) * 0.11) * k;
-      f.vx *= 0.93;
-      f.vy *= 0.93;
+      const pull = dist < 14 ? 0.02 : 0.055;
+      f.vx += ((dx / dist) * pull * f.speed + Math.cos(f.phase * 1.7) * 0.05) * k;
+      f.vy += ((dy / dist) * pull * f.speed + Math.sin(f.phase) * 0.06) * k;
+      f.vx *= 0.94;
+      f.vy *= 0.94;
 
-      const max = 1.5 * f.speed;
+      const max = 1.1 * f.speed;
       const sp = Math.hypot(f.vx, f.vy);
       if (sp > max) { f.vx = f.vx / sp * max; f.vy = f.vy / sp * max; }
 
