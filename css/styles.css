@@ -647,8 +647,6 @@ li.task.done .task-title {
   font-size: 0.72rem;
   line-height: 1;
   flex-shrink: 0;
-  align-self: flex-start;
-  margin-top: 1px;
 }
 
 .shop-tile-label {
@@ -657,17 +655,6 @@ li.task.done .task-title {
   line-height: 1.15;
   flex: 1;
   min-width: 0;
-}
-
-/* Under a tool's name: what it actually does, in plain words - so nobody has
-   to buy a bucket to find out it is only an ornament. */
-.shop-tile-desc {
-  display: block;
-  margin-top: 1px;
-  font-size: 0.5rem;
-  font-weight: 400;
-  line-height: 1.25;
-  color: var(--muted);
 }
 
 .shop-tile-action {

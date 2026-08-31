@@ -257,19 +257,15 @@ const Worlds = (function () {
        so the shop and the help buttons use a drawn one instead. */
     const SHOVEL_GLYPH =
       '<svg class="glyph-icon" viewBox="0 0 16 20" shape-rendering="crispEdges" role="img" aria-label="shovel"><rect x="5" y="1" width="6" height="2" fill="#9a6636"/><rect x="7" y="3" width="2" height="9" fill="#8a5a2e"/><rect x="4" y="11" width="8" height="1" fill="#7b818a"/><rect x="4" y="12" width="8" height="4" fill="#b9bec6"/><rect x="5" y="16" width="6" height="2" fill="#b9bec6"/><rect x="6" y="18" width="4" height="1" fill="#a4aab3"/><rect x="9" y="12" width="3" height="4" fill="#a4aab3"/><rect x="9" y="16" width="2" height="2" fill="#a4aab3"/></svg>';
-    /* 'desc' is shown under the name in the shop. Say plainly what the thing
-       does - including when the honest answer is that it only looks nice. */
+    /* 'retired' keeps a definition alive so anything already bought still draws
+       in the garden, while taking it off the shop shelf. The hose and the
+       bucket never did anything - they were ornaments - so they are gone. */
     const SHOP_ITEMS = {
-      hoe: { label: 'Hoe', icon: '\u{26CF}\u{FE0F}', cost: 3, svg: hoeSVG,
-             desc: 'Carry it and press E to turn any square into a bed you can plant in.' },
-      hose: { label: 'Hose', icon: '\u{1F6BF}', cost: 4, svg: hoseSVG,
-              desc: 'Garden ornament. Watering is done by walking into a plant - you need no tool for it.' },
-      bucket: { label: 'Bucket', icon: '\u{1FAA3}', cost: 2, svg: bucketSVG,
-                desc: 'Garden ornament. Carry it and press E to stand it wherever you like.' },
-      axe: { label: 'Axe', icon: '\u{1FA93}', cost: 6, svg: axeSVG,
-             desc: 'Carry it and press E facing a tree or a grown sapling to fell it. Leaves a log to build with.' },
-      shovel: { label: 'Shovel', icon: SHOVEL_GLYPH, cost: 6, svg: shovelSVG,
-                desc: 'Carry it and press E facing a bush to dig it up, then put it down somewhere better.' }
+      hoe: { label: 'Hoe', icon: '\u{26CF}\u{FE0F}', cost: 3, svg: hoeSVG },
+      hose: { label: 'Hose', icon: '\u{1F6BF}', cost: 4, svg: hoseSVG, retired: true },
+      bucket: { label: 'Bucket', icon: '\u{1FAA3}', cost: 2, svg: bucketSVG, retired: true },
+      axe: { label: 'Axe', icon: '\u{1FA93}', cost: 6, svg: axeSVG },
+      shovel: { label: 'Shovel', icon: SHOVEL_GLYPH, cost: 6, svg: shovelSVG }
     };
     const OUTFITS = {
       classic: { label: 'Classic', icon: '\u{1F455}', cost: 0, hat: '#6b4423', shirt: '#3f9142', pants: '#2c3e8f' },
@@ -783,16 +779,11 @@ const Worlds = (function () {
   const OCEAN_FOOD = { label: 'Fish food', icon: '\u{1F990}', cost: 1, gain: 18 };
 
   const OCEAN_ITEMS = {
-    hoe: { label: 'Sand rake', icon: '\u{1F3D6}\u{FE0F}', cost: 3, svg: sandRakeSVG,
-           desc: 'Carry it and press E to turn any square into a seabed you can plant in.' },
-    hose: { label: 'Current jet', icon: '\u{1F30A}', cost: 4, svg: currentJetSVG,
-            desc: 'Reef ornament. Watering is done by swimming into a plant - you need no tool for it.' },
-    bucket: { label: 'Shell pail', icon: '\u{1F41A}', cost: 2, svg: shellPailSVG,
-              desc: 'Reef ornament. Carry it and press E to stand it wherever you like.' },
-    axe: { label: 'Coral saw', icon: '\u{1FA9A}', cost: 6, svg: coralSawSVG,
-           desc: 'Carry it and press E facing a kelp tower or a grown shoot to cut it down. Leaves driftwood to build with.' },
-    shovel: { label: 'Sand scoop', icon: '\u{1F944}', cost: 6, svg: sandScoopSVG,
-              desc: 'Carry it and press E facing a coral clump to dig it up, then put it down somewhere better.' }
+    hoe: { label: 'Sand rake', icon: '\u{1F3D6}\u{FE0F}', cost: 3, svg: sandRakeSVG },
+    hose: { label: 'Current jet', icon: '\u{1F30A}', cost: 4, svg: currentJetSVG, retired: true },
+    bucket: { label: 'Shell pail', icon: '\u{1F41A}', cost: 2, svg: shellPailSVG, retired: true },
+    axe: { label: 'Coral saw', icon: '\u{1FA9A}', cost: 6, svg: coralSawSVG },
+    shovel: { label: 'Sand scoop', icon: '\u{1F944}', cost: 6, svg: sandScoopSVG }
   };
 
   const OCEAN_OUTFITS = {

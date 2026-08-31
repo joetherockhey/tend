@@ -1931,7 +1931,7 @@ const Garden = (function () {
 
   function buyItem(kind) {
     const def = W().items[kind];
-    if (!def || coins < def.cost) return;
+    if (!def || def.retired || coins < def.cost) return;
     spendCoins(def.cost);
     const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
     purchasedItems.push({
@@ -2122,7 +2122,7 @@ const Garden = (function () {
            </button>
            <button class="shop-tile" ${(coins < SAPLING_COST || !findFreeCellAtTop()) ? 'disabled' : ''} onclick="buySapling()">
              <span class="shop-tile-icon">\u{1F331}</span>
-             <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))}<span class="shop-tile-desc">Plant it and water it five times and it grows into a tree.</span></span>
+             <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))} (water 5x to grow)</span>
              <span class="shop-tile-action">${coinSVG()}${SAPLING_COST}</span>
            </button>
            <button class="shop-tile ${holding ? 'sell' : ''}" ${holding ? '' : 'disabled'} onclick="sellHeldPlant()"
@@ -2136,12 +2136,10 @@ const Garden = (function () {
 
     const itemsWrap = document.getElementById('shop-items');
     if (itemsWrap) {
-      const tiles = Object.entries(W().items).map(([kind, def]) => `
-        <button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyItem('${kind}')"
-          title="${def.desc ? Util.escapeHtml(def.desc) : ''}">
+      const tiles = Object.entries(W().items).filter(([, def]) => !def.retired).map(([kind, def]) => `
+        <button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyItem('${kind}')">
           <span class="shop-tile-icon">${def.icon}</span>
-          <span class="shop-tile-label">${Util.escapeHtml(def.label)}${
-            def.desc ? `<span class="shop-tile-desc">${Util.escapeHtml(def.desc)}</span>` : ''}</span>
+          <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
           <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
         </button>`).join('') +
         (hasLens
