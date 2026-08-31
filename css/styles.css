@@ -931,6 +931,7 @@ li.task.done .task-title {
   border-radius: 1px;
 }
 
+/* The gate's sign is the button that opens it. */
 .garden-gate-count {
   position: absolute;
   top: 50%;
@@ -939,11 +940,34 @@ li.task.done .task-title {
   background: #a97a45;
   border: 1px solid #5a3a1e;
   color: #2b1a08;
-  font-size: 0.58rem;
+  font: inherit;
+  font-size: 0.62rem;
   font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 3px 8px;
+  border-radius: 4px;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  z-index: 6;
+  pointer-events: auto;
+}
+
+.garden-gate-count .coin-icon { width: 0.95em; height: 0.95em; }
+
+.garden-gate-count.can-buy {
+  cursor: pointer;
+  background: #d3a05c;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.garden-gate-count.can-buy:hover {
+  background: #e8b673;
+}
+
+.garden-gate-count:disabled {
+  cursor: default;
+  opacity: 0.85;
 }
 
 .garden-cell, .garden-decor, .garden-surface {

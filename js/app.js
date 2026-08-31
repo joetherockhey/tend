@@ -1426,7 +1426,9 @@ const App = (function () {
       'Work is now added to accounts that were made before it existed.',
       'The calendar shows whole weeks - the days either side of the month are there, greyed out.',
       'Fixed the garden sitting off to the right on a phone.',
-      'The app now notices a new version when you open it, and updates itself.'
+      'The app now notices a new version when you open it, and updates itself.',
+      'New seedlings always arrive in a pot - you choose where to plant them.',
+      'More garden is bought with 10 coins at the gate, instead of unlocking every 10 tasks.'
     ]},
     { date: '2026-08-30', items: [
       'Everything now says "task" instead of "ticket".',

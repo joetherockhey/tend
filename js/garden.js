@@ -45,7 +45,10 @@ const Garden = (function () {
   const GARDEN_COLS = 8;
   const CELL_SIZE = Worlds.TILE;
   const SECTION_ROWS = 8;
-  const TICKETS_PER_SECTION = 10;
+  /* New ground is bought, not earned. It used to unlock every ten completed
+     tasks, which meant the only way to get more room was to do more work -
+     coins are the currency for everything else, so they buy this too. */
+  const SECTION_COST = 10;
   const WATER_COOLDOWN_MS = 60000;
   const SECTIONS_SHOWN_AHEAD = 1;
 
@@ -57,7 +60,12 @@ const Garden = (function () {
 
   function sectionInfo(i) {
     if (W().sections[i]) return W().sections[i];
-    return { name: `Garden Plot ${i + 1}`, icon: '\u{1FAB4}', theme: W().themeOrder[i % THEME_ORDER.length] };
+    /* Past the named sections the themes repeat. THEME_ORDER itself lives in
+       worlds.js, so the length has to come from the world, not from a name
+       this file cannot see - which used to throw the moment anyone unlocked a
+       ninth section. */
+    const order = W().themeOrder;
+    return { name: `Garden Plot ${i + 1}`, icon: '\u{1FAB4}', theme: order[i % order.length] };
   }
 
   function checkerBackground(theme) {
@@ -68,8 +76,38 @@ const Garden = (function () {
 
 
 
-  function unlockedSectionCount(completedCount) {
-    return Math.floor(completedCount / TICKETS_PER_SECTION) + 1;
+  /* Null until the first render, which is where an older garden is given the
+     sections it had already earned so nothing it contains is walled off. */
+  let sectionsBought = null;
+
+  function loadSections(completedCount) {
+    const raw = Store.kv.getItem(SECTIONS_KEY);
+    if (raw === null || raw === undefined || raw === '') {
+      sectionsBought = Math.floor((completedCount || 0) / 10);
+      Store.kv.setItem(SECTIONS_KEY, String(sectionsBought));
+      return;
+    }
+    const n = parseInt(raw, 10);
+    sectionsBought = Number.isFinite(n) && n > 0 ? n : 0;
+  }
+
+  function saveSections() {
+    Store.kv.setItem(SECTIONS_KEY, String(sectionsBought || 0));
+  }
+
+  function unlockedSectionCount() {
+    return (sectionsBought || 0) + 1;
+  }
+
+  function buySection() {
+    if (coins < SECTION_COST) return;
+    coins -= SECTION_COST;
+    sectionsBought = (sectionsBought || 0) + 1;
+    saveCoins();
+    saveSections();
+    renderCoins();
+    renderGarden();
+    showThought('More room to plant');
   }
 
 
@@ -286,6 +324,7 @@ const Garden = (function () {
   const GROUND_LOGS_KEY = 'garden-logs-v1';
   const CABIN_SITES_KEY = 'garden-cabins-v1';
   const SAPLINGS_KEY = 'garden-saplings-v1';
+  const SECTIONS_KEY = 'garden-sections-v1';
   const DUG_TILES_KEY = 'garden-dug-v1';
   const COINS_AWARDED_KEY = 'coins-awarded-v1';
   const LENS_KEY = 'garden-lens-v1';
@@ -472,7 +511,9 @@ const Garden = (function () {
     try {
       purchasedItems = JSON.parse(Store.kv.getItem(PURCHASED_ITEMS_KEY)) || [];
     } catch (e) {
-      purchasedItems = [];
+      sectionsBought = 0;
+    saveSections();
+    purchasedItems = [];
     }
   }
   function savePurchasedItems() {
@@ -1546,7 +1587,7 @@ const Garden = (function () {
     }, 1500);
   }
 
-  function findFreeCellNearHero() {
+  function findFreeCellNearHero(avoidDirt) {
     for (let radius = 0; radius < GARDEN_COLS + SECTION_ROWS; radius++) {
       for (let dr = -radius; dr <= radius; dr++) {
         for (let dc = -radius; dc <= radius; dc++) {
@@ -1555,11 +1596,33 @@ const Garden = (function () {
           if (findPlantAt(r, c) || findDecorationAt(r, c)) continue;
           if (ownedPets.some(p => p.row === r && p.col === c)) continue;
           if (r === heroPos.row && c === heroPos.col) continue;
+          if (avoidDirt && isOnDirt(r, c)) continue;
           return { row: r, col: c };
         }
       }
     }
-    return { row: heroPos.row, col: heroPos.col };
+    return null;
+  }
+
+  /* Somewhere a new seedling can stand in its pot: never a bed or dug soil,
+     because arriving already planted would skip the part where you carry it
+     over and choose where it goes. Near you if there is room, otherwise the
+     first free spot from the top. */
+  function findPottingSpot() {
+    const near = findFreeCellNearHero(true);
+    if (near) return near;
+    for (let r = 0; r <= gardenMaxUnlockedRow; r++) {
+      for (let c = 0; c < GARDEN_COLS; c++) {
+        if (isOnDirt(r, c)) continue;
+        if (findPlantAt(r, c) || findDecorationAt(r, c)) continue;
+        if (findGroundLogAt(r, c)) continue;
+        if (saplings.some(s => s.row === r && s.col === c)) continue;
+        if (ownedPets.some(p => p.row === r && p.col === c)) continue;
+        return { row: r, col: c };
+      }
+    }
+    /* A garden with no bare ground left at all - the top row will have to do. */
+    return findFreeCellAtTop();
   }
 
   function buyPet(type) {
@@ -1567,7 +1630,7 @@ const Garden = (function () {
     if (!def || coins < def.cost || ownedPets.length >= MAX_PETS) return;
     coins -= def.cost;
     saveCoins();
-    const cell = findFreeCellNearHero();
+    const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
     ownedPets.push({
       id: 'pet-' + hashStr(type + Object.keys(ownedPets).length + Math.random()),
       type,
@@ -1586,7 +1649,7 @@ const Garden = (function () {
     saveCoins();
     const types = Object.keys(W().pets);
     const type = types[Math.floor(Math.random() * types.length)];
-    const cell = findFreeCellNearHero();
+    const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
     ownedPets.push({
       id: 'pet-' + hashStr(type + Object.keys(ownedPets).length + Math.random()),
       type,
@@ -1604,7 +1667,7 @@ const Garden = (function () {
     if (!def || coins < def.cost) return;
     coins -= def.cost;
     saveCoins();
-    const cell = findFreeCellNearHero();
+    const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
     purchasedItems.push({
       id: 'item-' + hashStr(kind + purchasedItems.length + Math.random()),
       kind,
@@ -1624,7 +1687,7 @@ const Garden = (function () {
     if (coins < PLANT_COST) return;
     coins -= PLANT_COST;
     saveCoins();
-    const cell = findFreeCellNearHero();
+    const cell = findPottingSpot();
     const id = 'plant-' + hashStr('plant' + Object.keys(gardenLayout).length + Date.now() + Math.random());
     gardenLayout[id] = {
       row: cell.row,
@@ -1706,7 +1769,7 @@ const Garden = (function () {
     if (!ownedPets.length || !def || coins < def.cost) return;
     coins -= def.cost;
     saveCoins();
-    const cell = findFreeCellNearHero();
+    const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
     pendingTreats.push({
       id: 'food-' + hashStr(pendingTreats.length + '' + Math.random()),
       row: cell.row,
@@ -1915,8 +1978,9 @@ const Garden = (function () {
     syncCompletionCoins();
 
     const completedCount = App.tickets().filter(t => t.completedAt).length;
+    if (sectionsBought === null) loadSections(completedCount);
 
-    const unlockedCount = unlockedSectionCount(completedCount);
+    const unlockedCount = unlockedSectionCount();
     const bandsToRender = unlockedCount + SECTIONS_SHOWN_AHEAD;
     const maxUnlockedRow = unlockedCount * SECTION_ROWS - 1;
 
@@ -2008,12 +2072,17 @@ const Garden = (function () {
       </div>`;
 
       if (i === unlockedCount) {
-        const remaining = i * TICKETS_PER_SECTION - completedCount;
+        const affordable = coins >= SECTION_COST;
         gateHtml = `<div class="garden-gate" style="top:${top - 8}px;">
           <div class="garden-gate-post left"></div>
           <div class="garden-gate-bar"></div>
           <div class="garden-gate-post right"></div>
-          <div class="garden-gate-count">${remaining} to unlock</div>
+          <button type="button" class="garden-gate-count ${affordable ? 'can-buy' : ''}"
+                  onclick="event.stopPropagation();buySection()"
+                  ${affordable ? '' : 'disabled'}
+                  title="${affordable ? 'Open up the next part of the garden' : 'You need ' + SECTION_COST + ' coins'}">
+            Unlock ${coinSVG()}${SECTION_COST}
+          </button>
         </div>`;
       }
     }
@@ -2108,7 +2177,7 @@ const Garden = (function () {
       sapling: { icon: '\u{1F331}', title: t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's', body: 'Buy one and it appears at the top. Carry it to an empty spot and press E to plant it. Move into it to water it - five waterings, once a minute, and it grows into ' + t.sprouted + '. Press F to grow every planted one at once.' },
       cabin: { icon: '\u{1FAB5}', title: 'Building a ' + t.build, body: 'Carry ' + t.log + ' onto a tile that already has some to start a ' + t.build + ' site. Keep bringing more and watch it rise in stages - foundation, walls, roof, then doors and windows once it finishes at 10.' },
       pets: { icon: '\u{1F43E}', title: 'Companions', body: 'Buy one, or unlock a random one (10 max). One food suits every animal: buy a bowl, pick it up and walk it over to whichever one you want. Friendly ones stick close, skittish ones flee until you win them over.' },
-      unlock: { icon: '\u{1F512}', title: 'Unlocking sections', body: 'Every 10 completed tasks unlocks the next part of ' + t.place + '. The next locked section is always visible ahead, dimmed, behind a gate.' }
+      unlock: { icon: '\u{1F512}', title: 'More room', body: 'The next part of ' + t.place + ' is always visible ahead, dimmed, behind a gate. Tap the gate to open it for ' + SECTION_COST + ' coins. There is no limit - keep buying and ' + t.place + ' keeps going.' }
     };
   }
 
@@ -2148,6 +2217,7 @@ const Garden = (function () {
     placedDecorations = [];
     wateredCooldown.clear();
     currentHelpTopic = null;
+    sectionsBought = null;    /* re-read, and migrate, on the next render */
     activeThought = null;
     lensLastKey = '';
 
@@ -2232,6 +2302,7 @@ const Garden = (function () {
   window.buySapling = buySapling;
   window.buyFood = buyFood;
   window.buyLens = buyLens;
+  window.buySection = buySection;
   window.toggleLens = toggleLens;
   window.unlockRandomPet = unlockRandomPet;
   window.resetGarden = resetGarden;

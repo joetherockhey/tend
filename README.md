@@ -308,6 +308,17 @@ A plant carries `grown` and `waterCount`. Anything planted before this existed h
 `grown` field at all, which is why `isSeedling` tests for an explicit `false` - an
 absent field means a full-grown plant, so nobody's garden reverted.
 
+### More ground
+
+The garden starts as one section and grows by purchase: 10 coins at the gate, no limit.
+It used to unlock a section for every ten completed tasks, which made room something you
+had to earn twice over. A garden from before the change is given the sections it had
+already earned the first time it loads (`loadSections` reads the completed count when
+`garden-sections-v1` is absent), so nothing anyone had planted ends up walled off.
+
+A new seedling never lands on a bed or dug soil - `findPottingSpot` skips anything that
+counts as ground - so it always arrives in its pot for you to carry and plant.
+
 ### How the garden economy works
 
 Tasks can carry a checklist of steps. Ticking steps off shows progress on the
