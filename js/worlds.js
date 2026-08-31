@@ -252,12 +252,16 @@ const Worlds = (function () {
     /* One food for every animal - buy it, carry it over, give it to whichever
        companion you reach first. */
     const PET_FOOD = { label: 'Animal feed', icon: '\u{1F96A}', cost: 1, gain: 18 };
+    /* Emoji has no shovel - the character that looks closest is a donkey -
+       so the shop and the help buttons use a drawn one instead. */
+    const SHOVEL_GLYPH =
+      '<svg class="glyph-icon" viewBox="0 0 16 20" shape-rendering="crispEdges" role="img" aria-label="shovel"><rect x="5" y="1" width="6" height="2" fill="#9a6636"/><rect x="7" y="3" width="2" height="9" fill="#8a5a2e"/><rect x="4" y="11" width="8" height="1" fill="#7b818a"/><rect x="4" y="12" width="8" height="4" fill="#b9bec6"/><rect x="5" y="16" width="6" height="2" fill="#b9bec6"/><rect x="6" y="18" width="4" height="1" fill="#a4aab3"/><rect x="9" y="12" width="3" height="4" fill="#a4aab3"/><rect x="9" y="16" width="2" height="2" fill="#a4aab3"/></svg>';
     const SHOP_ITEMS = {
       hoe: { label: 'Hoe', icon: '\u{26CF}\u{FE0F}', cost: 3, svg: hoeSVG },
       hose: { label: 'Hose', icon: '\u{1F6BF}', cost: 4, svg: hoseSVG },
       bucket: { label: 'Bucket', icon: '\u{1FAA3}', cost: 2, svg: bucketSVG },
       axe: { label: 'Axe', icon: '\u{1FA93}', cost: 6, svg: axeSVG },
-      shovel: { label: 'Shovel', icon: '\u{1FACF}', cost: 6, svg: shovelSVG }
+      shovel: { label: 'Shovel', icon: SHOVEL_GLYPH, cost: 6, svg: shovelSVG }
     };
     const OUTFITS = {
       classic: { label: 'Classic', icon: '\u{1F455}', cost: 0, hat: '#6b4423', shirt: '#3f9142', pants: '#2c3e8f' },

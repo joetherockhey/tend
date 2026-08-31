@@ -2861,6 +2861,11 @@ body {
 .shop-coins .coin-icon { width: 1.15em; height: 1.15em; }
 .shop-tile-action .coin-icon { margin-right: 2px; }
 .coin-help-btn .coin-icon { width: 1.15em; height: 1.15em; vertical-align: -0.2em; }
+
+/* There is no shovel in the emoji set - the nearest character is a donkey -
+   so where a shovel is called for we draw the same little pixel spade the
+   gardener carries, sized to sit in a line of text like any other glyph. */
+.glyph-icon { width: 1em; height: 1.25em; display: inline-block; vertical-align: -0.15em; }
 .garden-coins .coin-count { margin-left: 2px; }
 
 
@@ -3344,21 +3349,6 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
    Ground dressing. Nothing here reacts to anything - it is scenery, sitting
    under the plants and above the checker.
    --------------------------------------------------------------------------- */
-
-.ground-path {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  opacity: 0.34;
-  background-image: repeating-linear-gradient(
-    18deg,
-    rgba(255, 255, 255, 0.16) 0 3px,
-    rgba(0, 0, 0, 0.05) 3px 7px);
-  z-index: 0;
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);
-  mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);
-}
 
 .ground-patch {
   position: absolute;

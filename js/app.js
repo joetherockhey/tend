@@ -1421,10 +1421,16 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-09-02', items: [
+      'Coins are now worked out from your finished tasks and what you have spent, so an update can no longer lose them.',
+      'The worn path through the garden has been taken out.',
+      'The shovel is a shovel again, not a donkey.',
+      'Only the magnifying glass names things - nothing else pops a thought bubble.'
+    ]},
     { date: '2026-09-01', items: [
       'Fixed the watering sparkle not appearing.',
       'Drag from the gardener on a phone and they walk to where you let go.',
-      'The garden has grass tufts, pebbles, a path and proper edging between sections.',
+      'The garden has grass tufts, pebbles and proper edging between sections.',
       'Plants sway, and two of the same kind no longer look identical.',
       'A seedling starts to look like its plant halfway through watering.',
       'Butterflies drift across, more of them the fuller the garden.',

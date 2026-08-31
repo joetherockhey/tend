@@ -108,11 +108,9 @@ const Garden = (function () {
     /* Ten coins is ten finished tasks, so it is worth being sure. */
     const t = terms();
     if (!window.confirm('Open up the next part of ' + t.place + ' for ' + SECTION_COST + ' coins?')) return;
-    coins -= SECTION_COST;
+    spendCoins(SECTION_COST);
     sectionsBought = (sectionsBought || 0) + 1;
-    saveCoins();
     saveSections();
-    renderCoins();
     renderGarden();
     showThought('More room to plant');
   }
@@ -200,8 +198,7 @@ const Garden = (function () {
   function buyOutfit(id) {
     const def = W().outfits[id];
     if (!def || ownedOutfits.includes(id) || coins < def.cost) return;
-    coins -= def.cost;
-    saveCoins();
+    spendCoins(def.cost);
     ownedOutfits.push(id);
     equippedOutfit = id;
     saveOutfits();
@@ -334,6 +331,8 @@ const Garden = (function () {
   const SECTIONS_KEY = 'garden-sections-v1';
   const DUG_TILES_KEY = 'garden-dug-v1';
   const COINS_AWARDED_KEY = 'coins-awarded-v1';
+  const COINS_SPENT_KEY = 'coins-spent-v1';
+  const COINS_BONUS_KEY = 'coins-bonus-v1';
   const LENS_KEY = 'garden-lens-v1';
   const LENS_ON_KEY = 'garden-lens-on-v1';
   const LENS_COST = 4;
@@ -360,6 +359,13 @@ const Garden = (function () {
      have already paid out lives alongside the coin count, so ticking a task
      off and on again cannot mint coins. */
   let awardedCoins = new Set();
+  /* Everything ever spent, and everything earned other than by finishing a
+     task (cashing a plant in). With those two numbers and the ledger of paid
+     tasks the balance can always be worked out again from scratch, which is
+     what stops an update, a new device or a half-finished sync from quietly
+     leaving you poorer than your finished work says you should be. */
+  let coinsSpent = 0;
+  let coinsBonus = 0;
   let stateLoaded = false;
 
   function loadAwardedCoins() {
@@ -380,29 +386,33 @@ const Garden = (function () {
      outright does not, since that work was still done. */
   function syncCompletionCoins() {
     const tickets = App.tickets();
+    /* An empty task list part way through a sign-in is not the same as having
+       no tasks. Rebuilding the ledger from it would throw away every coin you
+       have earned, so nothing is touched until there is something to read. */
+    if (!tickets.length && awardedCoins.size) { recomputeCoins(); return; }
+
     const completedIds = new Set(tickets.filter(t => t.completedAt).map(t => t.id));
     const existingIds = new Set(tickets.map(t => t.id));
 
-    let delta = 0;
     let changed = false;
 
     completedIds.forEach(id => {
-      if (!awardedCoins.has(id)) {
-        awardedCoins.add(id);
-        delta += 1;
-        changed = true;
-      }
+      if (awardedCoins.has(id)) return;
+      awardedCoins.add(id);
+      changed = true;
     });
 
     [...awardedCoins].forEach(id => {
       if (completedIds.has(id)) return;
       awardedCoins.delete(id);
       changed = true;
-      if (existingIds.has(id)) delta -= 1;
+      /* Un-ticking a task takes its coin back. Deleting one does not - that
+         work was still done - so its coin moves across to the kept pile. */
+      if (!existingIds.has(id)) coinsBonus += 1;
     });
 
-    if (changed) saveAwardedCoins();
-    if (delta !== 0) addCoins(delta);
+    if (changed) { saveAwardedCoins(); saveCoinLedger(); }
+    if (recomputeCoins()) renderCoins();
   }
 
   function loadDugTiles() {
@@ -538,21 +548,62 @@ const Garden = (function () {
     Store.kv.setItem(PETS_KEY, JSON.stringify(ownedPets));
   }
 
-  function loadCoins() {
-    const n = parseInt(Store.kv.getItem(COINS_KEY), 10);
-    coins = Number.isFinite(n) && n > 0 ? n : 0;
+  function num(v) {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
   }
-  function saveCoins() {
-    Store.kv.setItem(COINS_KEY, String(coins));
-  }
-  function addCoins(n) {
-    coins = Math.max(0, coins + n);
-    saveCoins();
-    renderCoins();
-    if (n > 0) {
-      bumpCoinDisplay(n);
+
+  /* Read the two ledgers. The first time this runs on a garden that predates
+     them, they are worked backwards out of whatever balance was stored, so
+     nobody's coins change on the update. */
+  function loadCoinLedger() {
+    const stored = Store.kv.getItem(COINS_SPENT_KEY);
+    if (stored === null) {
+      const balance = num(Store.kv.getItem(COINS_KEY));
+      coinsSpent = Math.max(0, awardedCoins.size - balance);
+      coinsBonus = Math.max(0, balance - awardedCoins.size);
+      saveCoinLedger();
+    } else {
+      coinsSpent = num(stored);
+      coinsBonus = num(Store.kv.getItem(COINS_BONUS_KEY));
     }
+    recomputeCoins();
   }
+
+  function saveCoinLedger() {
+    Store.kv.setItem(COINS_SPENT_KEY, String(coinsSpent));
+    Store.kv.setItem(COINS_BONUS_KEY, String(coinsBonus));
+  }
+
+  /* The balance is never stored as a fact - it is this sum, every time.
+     Returns whether it moved, so callers can skip a pointless redraw. */
+  function recomputeCoins() {
+    const next = Math.max(0, awardedCoins.size + coinsBonus - coinsSpent);
+    if (next === coins) return false;
+    coins = next;
+    /* Still written down, so an older copy of the app (or a glance at the
+       stored data) sees the right number. Nothing here reads it back. */
+    Store.kv.setItem(COINS_KEY, String(coins));
+    return true;
+  }
+
+  function spendCoins(n) {
+    if (!(n > 0)) return;
+    coinsSpent += n;
+    saveCoinLedger();
+    recomputeCoins();
+    renderCoins();
+  }
+
+  function earnCoins(n) {
+    if (!(n > 0)) return;
+    coinsBonus += n;
+    saveCoinLedger();
+    recomputeCoins();
+    renderCoins();
+    bumpCoinDisplay(n);
+  }
+
   /* Gold, with Tend's own sprout struck into it, rather than the platform's
      silver coin emoji. One definition, used by the counter, the shop prices
      and the little float when you earn one. */
@@ -1111,10 +1162,15 @@ const Garden = (function () {
     /* After the redraw, never before it. */
     spawnSparkleAt(row, col);
     if (justGrew) {
-      const variety = W().plants[pos.variety] || W().plants[0];
       spawnSparkleAt(row, col - 1);
       spawnSparkleAt(row, col + 1);
-      showThought(variety.name + '!');
+      /* Naming the thing that just grew is the magnifying glass's job, and
+         only the magnifying glass's. Without one you get the sparkle and see
+         for yourself what came up. */
+      if (hasLens && lensOn) {
+        const variety = W().plants[pos.variety] || W().plants[0];
+        showThought(variety.name + '!');
+      }
     }
   }
 
@@ -1242,14 +1298,6 @@ const Garden = (function () {
     if (key === 'e') {
       event.preventDefault();
       togglePickup();
-      return;
-    }
-
-    if (key === 'y') {
-      event.preventDefault();
-      coins = 0;
-      saveCoins();
-      renderCoins();
       return;
     }
 
@@ -1542,12 +1590,10 @@ const Garden = (function () {
 
   function buyLens() {
     if (hasLens || coins < LENS_COST) return;
-    coins -= LENS_COST;
+    spendCoins(LENS_COST);
     hasLens = true;
     lensOn = true;
-    saveCoins();
     saveLens();
-    renderCoins();
     renderShop();
     showThought('You can name things now');
   }
@@ -1694,13 +1740,6 @@ const Garden = (function () {
 
   /* A worn track down the middle, so the eye has somewhere to walk. Two tiles
      wide, between the beds, and it lines up from one section to the next. */
-  function pathHtml(theme) {
-    const d = detail(theme);
-    return `<div class="ground-path" style="left:${3 * CELL_SIZE}px;width:${CELL_SIZE * 2}px;background:${d.path};"></div>`;
-  }
-
-  /* A line of edging stones where one section meets the next, so the join
-     reads as a border rather than a seam. */
   function edgingHtml(theme) {
     const d = detail(theme);
     let stones = '';
@@ -1753,8 +1792,7 @@ const Garden = (function () {
   function buyPet(type) {
     const def = W().pets[type];
     if (!def || coins < def.cost || ownedPets.length >= MAX_PETS) return;
-    coins -= def.cost;
-    saveCoins();
+    spendCoins(def.cost);
     const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
     ownedPets.push({
       id: 'pet-' + hashStr(type + Object.keys(ownedPets).length + Math.random()),
@@ -1770,8 +1808,7 @@ const Garden = (function () {
 
   function unlockRandomPet() {
     if (coins < UNLOCK_PET_COST || ownedPets.length >= MAX_PETS) return;
-    coins -= UNLOCK_PET_COST;
-    saveCoins();
+    spendCoins(UNLOCK_PET_COST);
     const types = Object.keys(W().pets);
     const type = types[Math.floor(Math.random() * types.length)];
     const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
@@ -1790,8 +1827,7 @@ const Garden = (function () {
   function buyItem(kind) {
     const def = W().items[kind];
     if (!def || coins < def.cost) return;
-    coins -= def.cost;
-    saveCoins();
+    spendCoins(def.cost);
     const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
     purchasedItems.push({
       id: 'item-' + hashStr(kind + purchasedItems.length + Math.random()),
@@ -1813,15 +1849,13 @@ const Garden = (function () {
   function sellHeldPlant() {
     if (heldPlantId == null) return;
     const value = heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE;
-    coins += value;
+    earnCoins(value);
     heldPlantId = null;
     heldPlantVariety = null;
     heldPlantPot = null;
     heldPlantGrown = true;
     heldPlantWaters = 0;
-    saveCoins();
     saveGardenLayout();
-    renderCoins();
     renderGarden();
     positionHero();
     showThought('+' + value + (value === 1 ? ' coin' : ' coins'));
@@ -1829,8 +1863,7 @@ const Garden = (function () {
 
   function buyPlant() {
     if (coins < PLANT_COST) return;
-    coins -= PLANT_COST;
-    saveCoins();
+    spendCoins(PLANT_COST);
     const cell = findPottingSpot();
     const id = 'plant-' + hashStr('plant' + Object.keys(gardenLayout).length + Date.now() + Math.random());
     gardenLayout[id] = {
@@ -1849,8 +1882,7 @@ const Garden = (function () {
 
   function buySapling() {
     if (coins < SAPLING_COST) return;
-    coins -= SAPLING_COST;
-    saveCoins();
+    spendCoins(SAPLING_COST);
     const cell = findFreeCellAtTop();
     saplings.push({
       id: 'sap-' + hashStr('sap' + saplings.length + Date.now() + Math.random()),
@@ -1867,8 +1899,7 @@ const Garden = (function () {
 
   function resetGarden() {
     if (coins < RESET_PURCHASES_COST) return;
-    coins -= RESET_PURCHASES_COST;
-    saveCoins();
+    spendCoins(RESET_PURCHASES_COST);
 
     heldDecoration = null;
     heldTreat = null;
@@ -1911,8 +1942,7 @@ const Garden = (function () {
   function buyFood() {
     const def = W().food;
     if (!ownedPets.length || !def || coins < def.cost) return;
-    coins -= def.cost;
-    saveCoins();
+    spendCoins(def.cost);
     const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
     pendingTreats.push({
       id: 'food-' + hashStr(pendingTreats.length + '' + Math.random()),
@@ -2282,7 +2312,6 @@ const Garden = (function () {
         }).join('');
 
       bandsHtml += `<div class="garden-section-band${dimClass}" style="top:${top}px;height:${height}px;${checkerBackground(info.theme)}">
-        ${pathHtml(info.theme)}
         ${scatterHtml(i, info.theme)}
         ${i > 0 ? edgingHtml(info.theme) : ''}
         ${decorHtml}
@@ -2418,7 +2447,7 @@ const Garden = (function () {
       pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool.' },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
-      shovel: { icon: '\u{1FACF}', title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
+      shovel: { icon: W().items.shovel.icon, title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
       sapling: { icon: '\u{1F331}', title: t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's', body: 'Buy one and it appears at the top. Carry it to an empty spot and press E to plant it. Move into it to water it - five waterings, once a minute, and it grows into ' + t.sprouted + '. Press F to grow every planted one at once.' },
       cabin: { icon: '\u{1FAB5}', title: 'Building a ' + t.build, body: 'Carry ' + t.log + ' onto a tile that already has some to start a ' + t.build + ' site. Keep bringing more and watch it rise in stages - foundation, walls, roof, then doors and windows once it finishes at 10.' },
       pets: { icon: '\u{1F43E}', title: 'Companions', body: 'Buy one, or unlock a random one (10 max). One food suits every animal: buy a bowl, pick it up and walk it over to whichever one you want. Friendly ones stick close, skittish ones flee until you win them over.' },
@@ -2471,7 +2500,6 @@ const Garden = (function () {
     loadMovableLayout();
     loadPurchasedItems();
     loadPets();
-    loadCoins();
     loadLens();
     loadOutfits();
     loadChoppedTrees();
@@ -2481,6 +2509,7 @@ const Garden = (function () {
     loadGardenVisibility();
     loadDugTiles();
     loadAwardedCoins();
+    loadCoinLedger();
     stateLoaded = true;
   }
 
