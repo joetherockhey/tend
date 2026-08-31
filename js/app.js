@@ -1425,7 +1425,10 @@ const App = (function () {
       'Butterflies now wander the garden in every direction and hang about over the flowers, instead of crossing in a straight line from the left.',
       'There are more of them the more you have planted, and none at all on an empty plot.',
       'Picking a plant up no longer sends the butterflies back to the edge and starts them over.',
-      'Words in the thought bubble now read left to right whichever way the gardener is facing.'
+      'Words in the thought bubble now read left to right whichever way the gardener is facing.',
+      'The first garden now has four beds running down it - X Y X Y Y X Y X across. Your plants stay exactly where they are.',
+      'Buying a seedling with no room left no longer takes the coin and loses the plant: the shop says there is no room and the button switches off.',
+      'A new seedling can no longer arrive on top of a log, a sapling, a bowl of food or you.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'

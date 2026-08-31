@@ -254,8 +254,13 @@ const Garden = (function () {
       { row: 2, col: 3, width: 2, height: 1, blocking: true, art: 'washingLine' },
       { row: 6, col: 3, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'shovel', id: 'bush1', art: 'bush' },
       { row: 7, col: 5, width: 1, height: 1, blocking: true, choppable: true, toolRequired: 'shovel', id: 'bush2', art: 'bush' },
-      { row: 1, col: 0, width: 2, height: 5, blocking: false, kind: 'bed' },
-      { row: 1, col: 6, width: 2, height: 5, blocking: false, kind: 'bed' },
+      /* The first garden reads X Y X Y Y X Y X across - beds down columns 0,
+         2, 5 and 7 with grass between them. Rows 1-5 only, so the trees, the
+         washing line, the mower and the wheelbarrow keep their squares. */
+      { row: 1, col: 0, width: 1, height: 5, blocking: false, kind: 'bed' },
+      { row: 1, col: 2, width: 1, height: 5, blocking: false, kind: 'bed' },
+      { row: 1, col: 5, width: 1, height: 5, blocking: false, kind: 'bed' },
+      { row: 1, col: 7, width: 1, height: 5, blocking: false, kind: 'bed' },
       { row: 6, col: 5, width: 1, height: 1, blocking: true, movable: true, id: 'mower', art: 'mower' },
       { row: 7, col: 2, width: 1, height: 1, blocking: true, movable: true, id: 'wheelbarrow', art: 'wheelbarrow' }
     ],
@@ -500,17 +505,32 @@ const Garden = (function () {
     return null;
   }
 
+  /* One answer to "is anything already standing here?". Every placement helper
+     goes through this, so a bought seedling can no longer land on top of a log,
+     a sapling, a bowl of food or the gardener. */
+  function cellOccupied(row, col) {
+    if (findPlantAt(row, col)) return true;
+    if (findDecorationAt(row, col)) return true;
+    if (findGroundLogAt(row, col)) return true;
+    if (saplings.some(s => s.row === row && s.col === col)) return true;
+    if (cabinSites.some(s => s.row === row && s.col === col)) return true;
+    if (pendingTreats.some(t => t.row === row && t.col === col)) return true;
+    if (ownedPets.some(p => p.row === row && p.col === col)) return true;
+    if (row === heroPos.row && col === heroPos.col) return true;
+    return false;
+  }
+
+  /* The first free square reading down from the top, or null when the garden is
+     genuinely full. It used to answer 0:0 when full, which silently stacked
+     every further purchase on that one square with only the first ever drawn -
+     buy ten seedlings with no room and nine of them disappeared, coins and all. */
   function findFreeCellAtTop() {
     for (let r = 0; r <= gardenMaxUnlockedRow; r++) {
       for (let c = 0; c < GARDEN_COLS; c++) {
-        if (findPlantAt(r, c) || findDecorationAt(r, c)) continue;
-        if (findGroundLogAt(r, c)) continue;
-        if (saplings.some(s => s.row === r && s.col === c)) continue;
-        if (ownedPets.some(p => p.row === r && p.col === c)) continue;
-        return { row: r, col: c };
+        if (!cellOccupied(r, c)) return { row: r, col: c };
       }
     }
-    return { row: 0, col: 0 };
+    return null;
   }
 
   function loadMovableLayout() {
@@ -1789,9 +1809,7 @@ const Garden = (function () {
         for (let dc = -radius; dc <= radius; dc++) {
           const r = heroPos.row + dr, c = heroPos.col + dc;
           if (r < 0 || r > gardenMaxUnlockedRow || c < 0 || c >= GARDEN_COLS) continue;
-          if (findPlantAt(r, c) || findDecorationAt(r, c)) continue;
-          if (ownedPets.some(p => p.row === r && p.col === c)) continue;
-          if (r === heroPos.row && c === heroPos.col) continue;
+          if (cellOccupied(r, c)) continue;
           if (avoidDirt && isOnDirt(r, c)) continue;
           return { row: r, col: c };
         }
@@ -1810,14 +1828,12 @@ const Garden = (function () {
     for (let r = 0; r <= gardenMaxUnlockedRow; r++) {
       for (let c = 0; c < GARDEN_COLS; c++) {
         if (isOnDirt(r, c)) continue;
-        if (findPlantAt(r, c) || findDecorationAt(r, c)) continue;
-        if (findGroundLogAt(r, c)) continue;
-        if (saplings.some(s => s.row === r && s.col === c)) continue;
-        if (ownedPets.some(p => p.row === r && p.col === c)) continue;
+        if (cellOccupied(r, c)) continue;
         return { row: r, col: c };
       }
     }
-    /* A garden with no bare ground left at all - the top row will have to do. */
+    /* No bare ground left at all - a bed will do, rather than lose the
+       purchase. Null only when there is not one free square anywhere. */
     return findFreeCellAtTop();
   }
 
@@ -1893,10 +1909,22 @@ const Garden = (function () {
     showThought('+' + value + (value === 1 ? ' coin' : ' coins'));
   }
 
+  /* Said when there is nowhere left to stand anything. */
+  function noRoomMessage() {
+    return 'No room left - plant or cash one in first';
+  }
+
   function buyPlant() {
     if (coins < PLANT_COST) return;
-    spendCoins(PLANT_COST);
+    /* Find the room before taking the coin. Buying with nowhere to stand used
+       to spend the coin and lose the seedling. */
     const cell = findPottingSpot();
+    if (!cell) {
+      showThought(noRoomMessage());
+      renderShop();
+      return;
+    }
+    spendCoins(PLANT_COST);
     const id = 'plant-' + hashStr('plant' + Object.keys(gardenLayout).length + Date.now() + Math.random());
     gardenLayout[id] = {
       row: cell.row,
@@ -1914,8 +1942,13 @@ const Garden = (function () {
 
   function buySapling() {
     if (coins < SAPLING_COST) return;
-    spendCoins(SAPLING_COST);
     const cell = findFreeCellAtTop();
+    if (!cell) {
+      showThought(noRoomMessage());
+      renderShop();
+      return;
+    }
+    spendCoins(SAPLING_COST);
     saplings.push({
       id: 'sap-' + hashStr('sap' + saplings.length + Date.now() + Math.random()),
       row: cell.row,
@@ -1974,8 +2007,13 @@ const Garden = (function () {
   function buyFood() {
     const def = W().food;
     if (!ownedPets.length || !def || coins < def.cost) return;
+    const cell = findFreeCellNearHero() || findFreeCellAtTop();
+    if (!cell) {
+      showThought(noRoomMessage());
+      renderShop();
+      return;
+    }
     spendCoins(def.cost);
-    const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
     pendingTreats.push({
       id: 'food-' + hashStr(pendingTreats.length + '' + Math.random()),
       row: cell.row,
@@ -2012,10 +2050,12 @@ const Garden = (function () {
         + (growing ? ', ' + growing + ' still growing' : '');
       const holding = heldPlantId != null;
       const value = heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE;
+      const noRoom = !findPottingSpot();
       plantsWrap.innerHTML =
-        `<div class="shop-info">Growing: ${Util.escapeHtml(tally)}</div>
+        `<div class="shop-info">Growing: ${Util.escapeHtml(tally)}${noRoom ? ' - no room for another' : ''}</div>
          <div class="shop-grid">
-           <button class="shop-tile" ${coins < PLANT_COST ? 'disabled' : ''} onclick="buyPlant()">
+           <button class="shop-tile" ${(coins < PLANT_COST || noRoom) ? 'disabled' : ''} onclick="buyPlant()"
+             title="${noRoom ? 'The garden is full - plant or cash one in to make room' : ''}">
              <span class="shop-tile-icon">\u{1F331}</span>
              <span class="shop-tile-label">Seedling</span>
              <span class="shop-tile-action">${coinSVG()}${PLANT_COST}</span>
@@ -2037,7 +2077,7 @@ const Garden = (function () {
           <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
           <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
         </button>`).join('') +
-        `<button class="shop-tile" ${coins < SAPLING_COST ? 'disabled' : ''} onclick="buySapling()">
+        `<button class="shop-tile" ${(coins < SAPLING_COST || !findFreeCellAtTop()) ? 'disabled' : ''} onclick="buySapling()">
           <span class="shop-tile-icon">\u{1F331}</span>
           <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))} (water 5x to grow)</span>
           <span class="shop-tile-action">${coinSVG()}${SAPLING_COST}</span>
