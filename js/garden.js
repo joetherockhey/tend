@@ -824,6 +824,37 @@ const Garden = (function () {
     } catch (e) {
       gardenLayout = {};
     }
+    migrateVarieties();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Thirteen varieties came out of both worlds (Sep 2026).             */
+  /* `variety` is a stored index into the list, so without this every    */
+  /* plant after a gap would silently become a different species: a rose */
+  /* would come back as a tulip. This renumbers what survived, and gives */
+  /* a plant whose variety is gone a new one worked out from its own id  */
+  /* - so a bed of bonsais turns into a mixed bed rather than a row of   */
+  /* identical roses. It runs once per garden and then leaves a marker.  */
+  /* ------------------------------------------------------------------ */
+
+  const VARIETY_MIGRATION_KEY = 'garden-varieties-v2';
+  const VARIETY_REMAP = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 10: 7, 12: 8, 14: 9, 15: 10, 19: 11, 20: 12, 22: 13, 23: 14, 24: 15, 25: 16, 26: 17, 27: 18, 28: 19, 29: 20, 30: 21, 31: 22, 32: 23, 33: 24, 34: 25, 35: 26, 36: 27, 37: 28, 38: 29, 40: 30 };
+
+  function migrateVarieties() {
+    if (Store.kv.getItem(VARIETY_MIGRATION_KEY) === '1') return;
+
+    const count = W().plants.length;
+    let changed = false;
+    Object.keys(gardenLayout).forEach(id => {
+      const pos = gardenLayout[id];
+      if (!pos || typeof pos.variety !== 'number') return;
+      const moved = VARIETY_REMAP[pos.variety];
+      const next = moved === undefined ? hashStr(id + ':variety') % count : moved;
+      if (next !== pos.variety) { pos.variety = next; changed = true; }
+    });
+
+    Store.kv.setItem(VARIETY_MIGRATION_KEY, '1');
+    if (changed) saveGardenLayout();
   }
 
   function saveGardenLayout() {
