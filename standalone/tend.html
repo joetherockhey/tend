@@ -3277,7 +3277,22 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
   margin-bottom: 10px;
 }
 
-#category-sections .list-section + .list-section { margin-top: 22px; }
+/* Side by side, the same way Priority and Active sit - and for the same
+   reason: as the window widens, or the garden is hidden, another column fits
+   rather than the list running further down the page. */
+#category-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px 24px;
+  align-items: start;
+}
+
+/* One column on a phone. This has to sit after the rule above, not up with the
+   other small-screen rules, or the later declaration wins and a 390px screen
+   gets two columns. */
+@media (max-width: 900px) {
+  #category-sections { grid-template-columns: 1fr; }
+}
 
 /* Inside a category's own group every row would repeat that category's name,
    which is the noise this view exists to remove. The coloured edge of the row
@@ -10729,7 +10744,8 @@ const App = (function () {
       'Butterflies now arrive as the garden fills: one past five plants, two past ten, three past fifteen.',
       'The garden reset has been taken out of the shop.',
       'The task list has a By category button now, next to By status. It remembers which you last used.',
-      'Tasks by category on the Overview page is tidier: categories you have nothing in are no longer listed, starred tasks come first, and due dates sit on the right.'
+      'Tasks by category on the Overview page is tidier: categories you have nothing in are no longer listed, starred tasks come first, and due dates sit on the right.',
+      'By category lays the groups out side by side on a wide screen, the way Priority and Active do - three columns across with the garden hidden.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'

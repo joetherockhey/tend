@@ -1520,7 +1520,8 @@ const App = (function () {
       'Butterflies now arrive as the garden fills: one past five plants, two past ten, three past fifteen.',
       'The garden reset has been taken out of the shop.',
       'The task list has a By category button now, next to By status. It remembers which you last used.',
-      'Tasks by category on the Overview page is tidier: categories you have nothing in are no longer listed, starred tasks come first, and due dates sit on the right.'
+      'Tasks by category on the Overview page is tidier: categories you have nothing in are no longer listed, starred tasks come first, and due dates sit on the right.',
+      'By category lays the groups out side by side on a wide screen, the way Priority and Active do - three columns across with the garden hidden.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
