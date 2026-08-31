@@ -557,10 +557,7 @@ const App = (function () {
     host.innerHTML = groups.map(g => {
       const sorted = g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
       return `<section class="list-section">
-        <div class="cat-section-head">
-          ${categoryPill(g.name, g.color)}
-          <span class="cat-group-count">${sorted.length} to do</span>
-        </div>
+        <div class="cat-section-head">${categoryPill(g.name, g.color)}</div>
         <ul class="task-list">${sorted.map(renderTaskItem).join('')}</ul>
       </section>`;
     }).join('');
@@ -2025,14 +2022,6 @@ const App = (function () {
     }
 
     host.innerHTML = groups.map(g => {
-      const done = g.list.filter(t => t.completedAt).length;
-      const todo = g.list.length - done;
-      /* Under "Still to do" every one of them is still to do, so saying
-         "0 done" beside it was noise. */
-      const counts = scope === 'all'
-        ? `${todo} to do &middot; ${done} done`
-        : `${todo} to do`;
-
       const sorted = g.list.slice().sort((a, b) => {
         if (!!a.completedAt !== !!b.completedAt) return a.completedAt ? 1 : -1;
         if (!!a.priority !== !!b.priority) return a.priority ? -1 : 1;
@@ -2050,10 +2039,7 @@ const App = (function () {
       }).join('');
 
       return `<section class="cat-group" style="--cat-color:${g.color}">
-          <div class="cat-group-head">
-            ${categoryPill(g.name, g.color)}
-            <span class="cat-group-count">${counts}</span>
-          </div>
+          <div class="cat-group-head">${categoryPill(g.name, g.color)}</div>
           <ul class="cat-tasks">${items}</ul>
         </section>`;
     }).join('');

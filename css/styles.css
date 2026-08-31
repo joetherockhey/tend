@@ -3304,11 +3304,6 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
   margin-bottom: 4px;
 }
 
-.cat-group-count {
-  font-size: 0.76rem;
-  color: var(--muted);
-}
-
 .cat-tasks {
   list-style: none;
   margin: 0;
