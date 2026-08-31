@@ -814,8 +814,12 @@ li.task.done .task-title {
 .garden-plot-wrap {
   display: flex;
   align-items: flex-start;
-  /* Nothing sits beside the plot any more, so it takes the middle. */
+  /* Nothing sits beside the plot any more, so it takes the middle. `safe`
+     matters: on a narrow screen the plot is wider than its panel, and a plain
+     centre overflows equally both ways, putting the left edge somewhere no
+     scrollbar can reach. Safe centring falls back to the left edge instead. */
   justify-content: center;
+  justify-content: safe center;
   gap: 8px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -3024,9 +3028,9 @@ html[data-mode="phone"] .header-top-row .nav-search.open {
 /* One column, whatever the window is doing. Without this a wide window in
    phone view keeps the three-column grid and leaves an empty track where the
    garden column used to be, pushing everything to the right. */
-html[data-mode="phone"] .app-layout,
-html[data-mode="phone"] .app-layout.no-garden,
-html[data-mode="phone"] .app-layout.cal-wide {
+html[data-mode="phone"] .app-layout:not(.view-garden),
+html[data-mode="phone"] .app-layout.no-garden:not(.view-garden),
+html[data-mode="phone"] .app-layout.cal-wide:not(.view-garden) {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "content" "sidebar";
 }
@@ -3050,6 +3054,15 @@ html[data-mode="phone"] .app-layout.view-garden > .garden-col {
   max-width: 560px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* The plot is a fixed 272px of pixel art plus its fences, and a phone has
+   little enough width as it is - so the panel around it gives up half its
+   padding, which is the difference between the plot fitting and having to be
+   scrolled sideways on a 360px screen. */
+html[data-mode="phone"] .garden-col .panel {
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 
@@ -3124,13 +3137,19 @@ html[data-mode="phone"] .app-layout.view-garden > .garden-col {
    --------------------------------------------------------------------------- */
 
 /* Outside the task list the sidebar has nothing to say, so the section takes
-   the whole width. */
-.app-layout.no-sidebar {
+   the whole width.
+
+   Every rule here excludes the garden section. The garden is laid out by its
+   own rules further up, and because these came later in the file with equal
+   specificity they were overriding its `grid-template-areas` while leaving its
+   columns alone - which left the garden placed in a phantom third column and
+   pushed to the right. */
+.app-layout.no-sidebar:not(.view-garden) {
   grid-template-columns: 364px minmax(0, 1fr);
   grid-template-areas: "garden content";
 }
 
-.app-layout.no-sidebar.no-garden {
+.app-layout.no-sidebar.no-garden:not(.view-garden) {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "content";
 }
@@ -3138,22 +3157,22 @@ html[data-mode="phone"] .app-layout.view-garden > .garden-col {
 .app-layout.no-sidebar > .sidebar { display: none; }
 
 @media (max-width: 1275px) {
-  .app-layout.no-sidebar {
+  .app-layout.no-sidebar:not(.view-garden) {
     grid-template-columns: 364px minmax(0, 1fr);
     grid-template-areas: "garden content";
   }
 }
 
 @media (max-width: 900px) {
-  .app-layout.no-sidebar,
-  .app-layout.no-sidebar.no-garden {
+  .app-layout.no-sidebar:not(.view-garden),
+  .app-layout.no-sidebar.no-garden:not(.view-garden) {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "content" "garden";
   }
 }
 
-html[data-mode="phone"] .app-layout.no-sidebar,
-html[data-mode="phone"] .app-layout.no-sidebar.no-garden {
+html[data-mode="phone"] .app-layout.no-sidebar:not(.view-garden),
+html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "content";
 }
