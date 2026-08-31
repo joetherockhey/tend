@@ -3241,3 +3241,15 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden {
   font-size: 0.82rem;
   color: var(--muted);
 }
+
+
+/* Days borrowed from the month either side, so every row is a whole week.
+   Present and clickable, but clearly not this month. */
+.cal-cell.outside {
+  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 65%, transparent);
+  border-style: dashed;
+}
+
+.cal-cell.outside .cal-daynum { opacity: 0.45; }
+.cal-cell.outside .cal-events { opacity: 0.6; }

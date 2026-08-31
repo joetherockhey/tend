@@ -939,9 +939,6 @@ const App = (function () {
     const agenda = calView() === 'agenda';
     const weekends = showWeekends();
 
-    const firstOfMonth = new Date(calYear, calMonth, 1);
-    /* Weeks run Monday to Sunday, so shift getDay()'s Sunday-first numbering. */
-    const startWeekday = (firstOfMonth.getDay() + 6) % 7;
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
     const today = Util.todayStr();
 
@@ -949,15 +946,41 @@ const App = (function () {
     const dows = weekends ? allDows : allDows.slice(0, 5);
     let html = dows.map(d => `<div class="dow">${d}</div>`).join('');
 
-    /* A month that opens on a Saturday or Sunday starts its first visible week
-       on the Monday, so with the weekend columns gone it needs no padding. */
-    const leading = weekends ? startWeekday : (startWeekday >= 5 ? 0 : startWeekday);
-    for (let i = 0; i < leading; i++) html += '<div class="cal-cell empty"></div>';
+    /* Weeks run Monday to Sunday, so shift getDay()'s Sunday-first numbering. */
+    const weekdayOf = d => (d.getDay() + 6) % 7;
+    const visible = d => weekends || weekdayOf(d) < 5;
+    /* One step forward or back, landing on the next day the grid actually
+       shows - which skips the weekend when the weekend columns are off. */
+    const step = (d, delta) => {
+      const next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + delta);
+      return visible(next) ? next : step(next, delta);
+    };
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const weekday = (new Date(calYear, calMonth, day).getDay() + 6) % 7;
-      if (!weekends && weekday > 4) continue;
-      const iso = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    /* Every row is a whole week. A month that starts mid-week borrows the days
+       before it from the month before, and the same at the end, so you never
+       get a half-empty row with no idea what belongs in the gap. */
+    const days = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(calYear, calMonth, d);
+      if (visible(date)) days.push({ date: date, outside: false });
+    }
+    if (days.length) {
+      let cursor = days[0].date;
+      for (let i = weekdayOf(cursor); i > 0; i--) {
+        cursor = step(cursor, -1);
+        days.unshift({ date: cursor, outside: true });
+      }
+      cursor = days[days.length - 1].date;
+      for (let i = weekdayOf(cursor); i < dows.length - 1; i++) {
+        cursor = step(cursor, 1);
+        days.push({ date: cursor, outside: true });
+      }
+    }
+
+    for (const cell of days) {
+      const date = cell.date;
+      const day = date.getDate();
+      const iso = Util.dateToStr(date);
       const isToday = iso === today;
       const madeCount = series.created ? (createdByDay[iso] || []).length : 0;
       const doneCount = series.completed ? (completedByDay[iso] || []).length : 0;
@@ -1008,7 +1031,7 @@ const App = (function () {
         }
       }
 
-      html += `<div class="cal-cell ${isToday ? 'today' : ''}" onclick="App.showDayModal('${iso}')">
+      html += `<div class="cal-cell ${isToday ? 'today' : ''} ${cell.outside ? 'outside' : ''}" onclick="App.showDayModal('${iso}')">
                  <div class="cal-daynum">${day}</div>
                  <div class="cal-events">${countsHtml}</div>
                </div>`;
@@ -1400,7 +1423,8 @@ const App = (function () {
   const UPDATES = [
     { date: '2026-08-31', items: [
       'Overview and Categories moved to their own section, with every task listed under its category.',
-      'Work is now added to accounts that were made before it existed.'
+      'Work is now added to accounts that were made before it existed.',
+      'The calendar shows whole weeks - the days either side of the month are there, greyed out.'
     ]},
     { date: '2026-08-30', items: [
       'Everything now says "task" instead of "ticket".',

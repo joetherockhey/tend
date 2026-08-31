@@ -1746,7 +1746,7 @@ const Garden = (function () {
          <div class="shop-grid">
            <button class="shop-tile" ${coins < PLANT_COST ? 'disabled' : ''} onclick="buyPlant()">
              <span class="shop-tile-icon">\u{1F331}</span>
-             <span class="shop-tile-label">Seedling (plant it, water 5x)</span>
+             <span class="shop-tile-label">Seedling</span>
              <span class="shop-tile-action">${coinSVG()}${PLANT_COST}</span>
            </button>
          </div>`;
