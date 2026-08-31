@@ -1421,6 +1421,15 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-09-04', items: [
+      'Butterflies now wander the garden in every direction and hang about over the flowers, instead of crossing in a straight line from the left.',
+      'There are more of them the more you have planted, and none at all on an empty plot.',
+      'Picking a plant up no longer sends the butterflies back to the edge and starts them over.',
+      'Words in the thought bubble now read left to right whichever way the gardener is facing.'
+    ]},
+    { date: '2026-09-03', items: [
+      'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
+    ]},
     { date: '2026-09-02', items: [
       'Coins are now worked out from your finished tasks and what you have spent, so an update can no longer lose them.',
       'The worn path through the garden has been taken out.',

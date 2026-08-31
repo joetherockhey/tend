@@ -2732,6 +2732,16 @@ body {
   animation: thought-pop 0.18s ease-out;
 }
 
+/* Facing left, the hero is drawn mirrored - so the words inside the bubble are
+   flipped back, and read left to right whichever way the gardener is looking. */
+.garden-thought > span {
+  display: block;
+}
+
+.garden-thought.mirrored > span {
+  transform: scaleX(-1);
+}
+
 .garden-thought::after {
   content: '';
   position: absolute;
@@ -3443,27 +3453,18 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
    Ambient life drifting across the plot.
    --------------------------------------------------------------------------- */
 
+/* Position and wing-flap both come from JavaScript, one frame at a time. A CSS
+   animation restarts whenever its element is moved in the DOM, and the effects
+   layer is re-appended on every render - which is why picking a plant up used
+   to fling every butterfly back to the edge of the plot. */
 .garden-ambient {
   position: absolute;
   left: 0;
-  animation-timing-function: linear;
-  animation-iteration-count: 1;
+  top: 0;
   opacity: 0.9;
   z-index: 25;
   pointer-events: none;
   will-change: transform;
-}
-
-@keyframes ambient-across {
-  0%   { transform: translate(-24px, 0) scaleX(1); }
-  50%  { transform: translate(50%, var(--drift, 0px)) scaleX(1); }
-  100% { transform: translate(300px, 0) scaleX(1); }
-}
-
-@keyframes ambient-back {
-  0%   { transform: translate(300px, 0) scaleX(-1); }
-  50%  { transform: translate(50%, var(--drift, 0px)) scaleX(-1); }
-  100% { transform: translate(-24px, 0) scaleX(-1); }
 }
 
 @media (prefers-reduced-motion: reduce) {

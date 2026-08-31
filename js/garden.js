@@ -883,11 +883,20 @@ const Garden = (function () {
     if (walkTimer) { clearInterval(walkTimer); walkTimer = null; }
   }
 
-  /* Walk towards a square one step at a time, closing the bigger gap first.
-     If a step is blocked it tries the other axis; if both are blocked it
-     stops, having already watered or bumped whatever was in the way. */
-  function walkTo(row, col) {
+  /* Walk to a square along two straight legs rather than a diagonal
+     staircase: finish one axis, then the other, so the path reads as
+     "up, then across". Which axis goes first is decided once and kept for
+     the whole walk - from the way the finger dragged when there is one,
+     otherwise the longer leg first. A blocked step falls back to the other
+     axis for that tick so it can still round an obstacle. */
+  function walkTo(row, col, firstAxis) {
     stopWalking();
+
+    let axis = firstAxis;
+    if (axis !== 'row' && axis !== 'col') {
+      axis = Math.abs(row - heroPos.row) >= Math.abs(col - heroPos.col) ? 'row' : 'col';
+    }
+
     let steps = 0;
     walkTimer = setInterval(() => {
       steps++;
@@ -895,13 +904,18 @@ const Garden = (function () {
       const dCol = col - heroPos.col;
       if ((dRow === 0 && dCol === 0) || steps > WALK_MAX_STEPS) { stopWalking(); return; }
 
-      const rowFirst = Math.abs(dRow) >= Math.abs(dCol);
-      const primary = rowFirst ? [Math.sign(dRow), 0] : [0, Math.sign(dCol)];
-      const secondary = rowFirst ? [0, Math.sign(dCol)] : [Math.sign(dRow), 0];
+      const rowStep = [Math.sign(dRow), 0];
+      const colStep = [0, Math.sign(dCol)];
+      /* Keep spending the first axis until it is used up, then the other. */
+      const order = axis === 'row'
+        ? [dRow ? rowStep : colStep, dCol ? colStep : rowStep]
+        : [dCol ? colStep : rowStep, dRow ? rowStep : colStep];
 
       let moved = false;
-      if (primary[0] || primary[1]) moved = stepHero(primary[0], primary[1]);
-      if (!moved && (secondary[0] || secondary[1])) moved = stepHero(secondary[0], secondary[1]);
+      for (const [dr, dc] of order) {
+        if (!dr && !dc) continue;
+        if (stepHero(dr, dc)) { moved = true; break; }
+      }
       if (!moved) stopWalking();
     }, WALK_STEP_MS);
   }
@@ -923,10 +937,25 @@ const Garden = (function () {
     const cell = cellFromPoint(t.clientX, t.clientY);
     touchStart = {
       x: t.clientX, y: t.clientY, at: Date.now(),
+      firstAxis: null,
       /* A drag that begins on the gardener is a "walk over there" - the most
          natural way to move a character with a finger. */
       onHero: !!cell && cell.row === heroPos.row && cell.col === heroPos.col
     };
+  }
+
+  /* The way the line was drawn decides which leg is walked first. The first
+     direction the finger clearly commits to - up/down or left/right - is
+     remembered, so dragging up and then across walks up first, then across. */
+  function handleGardenTouchMove(event) {
+    if (!touchStart || touchStart.firstAxis) return;
+    const t = event.changedTouches && event.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    if (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP) {
+      touchStart.firstAxis = Math.abs(dy) >= Math.abs(dx) ? 'row' : 'col';
+    }
   }
 
   function handleGardenTouchEnd(event) {
@@ -943,7 +972,8 @@ const Garden = (function () {
     if (start.onHero && moved) {
       event.preventDefault();
       const target = cellFromPoint(t.clientX, t.clientY);
-      if (target) walkTo(target.row, target.col);
+      const firstAxis = start.firstAxis || (Math.abs(dy) >= Math.abs(dx) ? 'row' : 'col');
+      if (target) walkTo(target.row, target.col, firstAxis);
       return;
     }
 
@@ -1028,8 +1058,10 @@ const Garden = (function () {
       const heldWrap = heldHtml ? `<div class="garden-held-indicator">${heldHtml}</div>` : '';
       /* The bubble lives inside the hero so it travels with them, which means
          it has to be redrawn whenever the hero is. */
+      /* The hero is mirrored with scaleX when facing left, which would print
+         the bubble's words backwards - so the text is flipped back inside it. */
       const thought = activeThought
-        ? `<div class="garden-thought">${Util.escapeHtml(activeThought)}</div>` : '';
+        ? `<div class="garden-thought${heroFacing < 0 ? ' mirrored' : ''}"><span>${Util.escapeHtml(activeThought)}</span></div>` : '';
       heroEl.innerHTML = `${thought}${heldWrap}<div class="sprite-shadow"></div>${heroSVG(heroDirection, getEquippedOutfit())}`;
     }
   }
@@ -2146,11 +2178,16 @@ const Garden = (function () {
   let petTickTimer = null;
   /* ------------------------------------------------------------------ */
   /* Ambient life                                                         */
-  /* A butterfly or two drifting across, more of them the fuller the      */
-  /* garden. Lives in the effects layer, so a redraw never interrupts it. */
+  /* Butterflies (fish in the ocean) that wander the plot and hang about over  */
+  /* the flowers. How many there are follows how much is planted - an empty    */
+  /* plot gets none. Driven frame by frame from JavaScript so a redraw, or     */
+  /* picking a plant up, never interrupts them.                               */
   /* ------------------------------------------------------------------ */
 
   let ambientTimer = null;
+  let ambientFrame = null;
+  let ambientLast = 0;
+  let ambientFlyers = [];
 
   function ambientArt() {
     const ocean = W().id === 'ocean';
@@ -2173,39 +2210,194 @@ const Garden = (function () {
       <rect x="5" y="2" width="2" height="4" fill="#5a4a35"/></svg>`;
   }
 
+  /* How many the garden deserves. An empty plot gets none at all; the fuller
+     it is the more there are, capped so it never becomes a swarm. */
+  function ambientTarget() {
+    const plants = Object.keys(gardenLayout).length;
+    if (!plants) return 0;
+    return Math.min(6, 1 + Math.floor(plants / 2));
+  }
+
+  /* Every plant's middle, in pixels. Grown ones are the real draw - a seedling
+     is worth a passing look but not a long hover. */
+  function ambientFlowers() {
+    const out = [];
+    Object.keys(gardenLayout).forEach(id => {
+      const p = gardenLayout[id];
+      if (!p || p.row == null || p.row > gardenMaxUnlockedRow) return;
+      out.push({
+        x: p.col * CELL_SIZE + CELL_SIZE / 2,
+        y: p.row * CELL_SIZE + CELL_SIZE * 0.35,
+        grown: !isSeedling(p)
+      });
+    });
+    return out;
+  }
+
+  function ambientBounds() {
+    return {
+      w: GARDEN_COLS * CELL_SIZE,
+      h: (gardenMaxUnlockedRow + 1) * CELL_SIZE
+    };
+  }
+
+  /* Somewhere to head next: usually a flower to hang about over, now and then
+     a random spot, so they wander instead of commuting. */
+  function ambientPickTarget(f) {
+    const b = ambientBounds();
+    const flowers = ambientFlowers();
+    const grown = flowers.filter(p => p.grown);
+    const pool = grown.length ? grown : flowers;
+
+    if (pool.length && Math.random() < 0.78) {
+      const flower = pool[Math.floor(Math.random() * pool.length)];
+      f.tx = flower.x + (Math.random() * 18 - 9);
+      f.ty = flower.y + (Math.random() * 14 - 11);
+      f.hover = 1400 + Math.random() * 3000;
+    } else {
+      f.tx = 8 + Math.random() * Math.max(8, b.w - 16);
+      f.ty = 6 + Math.random() * Math.max(8, b.h - 12);
+      f.hover = 200 + Math.random() * 800;
+    }
+    f.age = 0;
+  }
+
   function spawnAmbient() {
     const layer = effects();
-    const plot = document.getElementById('garden-plot');
-    if (!layer || !plot) return;
-    if (layer.querySelectorAll('.garden-ambient').length >= 3) return;
-
-    const height = (gardenMaxUnlockedRow + 1) * CELL_SIZE;
+    if (!layer) return null;
+    const b = ambientBounds();
     const el = document.createElement('div');
     el.className = 'garden-ambient';
-    const fromLeft = Math.random() < 0.5;
-    const y = 10 + Math.random() * Math.max(20, height - 40);
-    const drift = (Math.random() * 40 - 20);
-    const seconds = 7 + Math.random() * 6;
-    el.style.top = y + 'px';
-    el.style.setProperty('--drift', drift + 'px');
-    el.style.animationDuration = seconds + 's';
-    el.style.animationName = fromLeft ? 'ambient-across' : 'ambient-back';
     el.innerHTML = ambientArt();
     layer.appendChild(el);
-    setTimeout(() => el.remove(), seconds * 1000 + 400);
+
+    /* In from whichever edge the dice pick, rather than always the left. */
+    const side = Math.floor(Math.random() * 4);
+    const f = {
+      el: el,
+      x: side === 0 ? -18 : side === 1 ? b.w + 18 : Math.random() * b.w,
+      y: side === 2 ? -16 : side === 3 ? b.h + 16 : Math.random() * b.h,
+      vx: 0,
+      vy: 0,
+      tx: 0,
+      ty: 0,
+      hover: 0,
+      age: 0,
+      dir: Math.random() < 0.5 ? -1 : 1,
+      speed: 0.75 + Math.random() * 0.5,
+      phase: Math.random() * Math.PI * 2,
+      life: 40000 + Math.random() * 50000
+    };
+    ambientPickTarget(f);
+    ambientFlyers.push(f);
+    return f;
+  }
+
+  /* One frame of drifting. Positions live in JavaScript rather than in a CSS
+     animation, which is the whole point: renderGarden re-appends the effects
+     layer, and a running CSS animation restarts when its element moves in the
+     DOM - so picking a plant up used to send every butterfly back to the edge. */
+  function ambientStep(dt) {
+    const b = ambientBounds();
+    const ocean = W().id === 'ocean';
+    const k = Math.min(3, dt / 16);
+
+    for (let i = ambientFlyers.length - 1; i >= 0; i--) {
+      const f = ambientFlyers[i];
+      f.life -= dt;
+      f.hover -= dt;
+      f.age += dt;
+      f.phase += 0.13 * k;
+
+      let dx = f.tx - f.x;
+      let dy = f.ty - f.y;
+      const dist = Math.hypot(dx, dy) || 0.001;
+
+      /* Close enough, and done hanging about - find the next flower. Also
+         re-pick if a target has somehow stayed out of reach. */
+      if ((dist < 9 && f.hover <= 0) || f.age > 9000) ambientPickTarget(f);
+
+      const pull = dist < 14 ? 0.035 : 0.1;
+      f.vx += ((dx / dist) * pull * f.speed + Math.cos(f.phase * 1.7) * 0.09) * k;
+      f.vy += ((dy / dist) * pull * f.speed + Math.sin(f.phase) * 0.11) * k;
+      f.vx *= 0.93;
+      f.vy *= 0.93;
+
+      const max = 1.5 * f.speed;
+      const sp = Math.hypot(f.vx, f.vy);
+      if (sp > max) { f.vx = f.vx / sp * max; f.vy = f.vy / sp * max; }
+
+      f.x += f.vx * k;
+      f.y += f.vy * k;
+
+      /* Never let one wander off and never come back. */
+      f.x = Math.max(-30, Math.min(b.w + 30, f.x));
+      f.y = Math.max(-26, Math.min(b.h + 26, f.y));
+
+      if (Math.abs(f.vx) > 0.06) f.dir = f.vx < 0 ? -1 : 1;
+
+      if (f.life <= 0) {
+        if (f.el.parentElement) f.el.remove();
+        ambientFlyers.splice(i, 1);
+        continue;
+      }
+
+      /* The layer is rebuilt from time to time; put strays back in it. */
+      if (!f.el.parentElement) {
+        const layer = effects();
+        if (layer) layer.appendChild(f.el); else continue;
+      }
+
+      const flap = ocean ? 1 : (0.62 + 0.38 * Math.abs(Math.sin(f.phase * 1.9)));
+      f.el.style.opacity = f.life < 900 ? (f.life / 900).toFixed(2) : '0.9';
+      f.el.style.transform =
+        'translate(' + f.x.toFixed(1) + 'px, ' + f.y.toFixed(1) + 'px) ' +
+        'scaleX(' + (f.dir * flap).toFixed(2) + ')';
+    }
+  }
+
+  function ambientLoop(ts) {
+    ambientFrame = requestAnimationFrame(ambientLoop);
+    const dt = ambientLast ? Math.min(80, ts - ambientLast) : 16;
+    ambientLast = ts;
+    if (document.hidden || !ambientFlyers.length) return;
+    ambientStep(dt);
+  }
+
+  function ambientReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function clearAmbient() {
+    ambientFlyers.forEach(f => { if (f.el.parentElement) f.el.remove(); });
+    ambientFlyers = [];
+  }
+
+  /* Keeps the population honest: tops up towards the target a few at a time,
+     and quietly retires the extras when plants are sold off. */
+  function ambientTick() {
+    if (document.hidden) return;
+    const plot = document.getElementById('garden-plot');
+    if (!plot || !plot.offsetParent) return;      /* not on screen */
+    if (ambientReducedMotion()) { clearAmbient(); return; }
+
+    const target = ambientTarget();
+    if (ambientFlyers.length > target) {
+      for (let i = 0; i < ambientFlyers.length - target; i++) {
+        if (ambientFlyers[i].life > 1200) ambientFlyers[i].life = 900;
+      }
+    } else if (ambientFlyers.length < target && Math.random() < 0.6) {
+      spawnAmbient();
+    }
   }
 
   function startAmbient() {
     if (ambientTimer) clearInterval(ambientTimer);
-    ambientTimer = setInterval(function () {
-      if (document.hidden) return;
-      const plot = document.getElementById('garden-plot');
-      if (!plot || !plot.offsetParent) return;      /* not on screen */
-      /* The busier the garden, the more there is flying about. */
-      const plants = Object.keys(gardenLayout).length;
-      const chance = Math.min(0.65, 0.12 + plants * 0.05);
-      if (Math.random() < chance) spawnAmbient();
-    }, 3200);
+    ambientTimer = setInterval(ambientTick, 1600);
+    if (ambientFrame == null) {
+      ambientLast = 0;
+      ambientFrame = requestAnimationFrame(ambientLoop);
+    }
   }
 
   function startPetTicker() {
@@ -2569,6 +2761,9 @@ const Garden = (function () {
     petTickTimer = null;
     if (ambientTimer) clearInterval(ambientTimer);
     ambientTimer = null;
+    if (ambientFrame != null) cancelAnimationFrame(ambientFrame);
+    ambientFrame = null;
+    clearAmbient();
     stopWalking();
   }
 
@@ -2587,6 +2782,7 @@ const Garden = (function () {
   window.showHelpTopic = showHelpTopic;
   window.handleGardenKeydown = handleGardenKeydown;
   window.handleGardenTouchStart = handleGardenTouchStart;
+  window.handleGardenTouchMove = handleGardenTouchMove;
   window.handleGardenTouchEnd = handleGardenTouchEnd;
   window.focusGarden = focusGarden;
   window.toggleGardenVisibility = toggleGardenVisibility;
@@ -2608,6 +2804,9 @@ const Garden = (function () {
   return {
     applyVisibility: applyGardenVisibility,
     __testWater: testWater,
+    __walkTo: (r, c, axis) => walkTo(r, c, axis),
+    __heroPos: () => ({ row: heroPos.row, col: heroPos.col }),
+    __setHero: (r, c) => { heroPos.row = r; heroPos.col = c; positionHero(); },
     __spawnAmbient: spawnAmbient,
     start: start,
     stop: stop,
