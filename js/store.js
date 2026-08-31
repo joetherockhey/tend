@@ -83,9 +83,10 @@ const Store = (function () {
      owned on either side means owned. Everything else is still
      last-write-wins.
 
-     Buying the garden reset clears purchases deliberately, so it bumps
-     RESET_GEN_KEY; the side with the higher generation is taken whole and
-     merging starts again from there. */
+     A deliberate clear-out bumps RESET_GEN_KEY, and the side with the higher
+     generation is then taken whole, merging starting again from there. Nothing
+     bumps it today - the "reset the garden" purchase was taken out of the shop
+     - but the guard stays, so any future clear-out is not quietly undone. */
 
   const RESET_GEN_KEY = 'garden-reset-v1';
 

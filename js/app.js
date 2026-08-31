@@ -1440,7 +1440,9 @@ const App = (function () {
       'Purchases can no longer be forgotten. Anything you have bought - the magnifying glass, your tools, your land - now survives an update, a second device, and a save that did not get through.',
       'The hose and the bucket have left the shop. They never did anything. Any you already own stay where they are.',
       'The shop is back to plain names and prices - the help buttons still explain everything.',
-      'Thirteen plants have been retired from both worlds, leaving 31 in each. Everything already growing keeps the plant it was; the few that were one of the retired kinds have become something else.'
+      'Thirteen plants have been retired from both worlds, leaving 31 in each. Everything already growing keeps the plant it was; the few that were one of the retired kinds have become something else.',
+      'Butterflies now arrive as the garden fills: one past five plants, two past ten, three past fifteen.',
+      'The garden reset has been taken out of the shop.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'

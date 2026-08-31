@@ -168,7 +168,6 @@ const Garden = (function () {
 
   const MAX_PETS = 10;
   const UNLOCK_PET_COST = 50;
-  const RESET_PURCHASES_COST = 100;
 
 
 
@@ -2050,49 +2049,6 @@ const Garden = (function () {
     renderGarden();
   }
 
-  function resetGarden() {
-    if (coins < RESET_PURCHASES_COST) return;
-    spendCoins(RESET_PURCHASES_COST);
-
-    heldDecoration = null;
-    heldTreat = null;
-    heldLog = null;
-    heldSapling = null;
-    heldPlantId = null;
-    heldPlantVariety = null;
-    heldPlantPot = null;
-
-    purchasedItems = [];
-    ownedPets = [];
-    pendingTreats = [];
-    saplings = [];
-    cabinSites = [];
-    groundLogs = [];
-    dugTiles = new Set();
-    choppedTrees = new Set();
-    movableLayout = {};
-    ownedOutfits = ['classic'];
-    equippedOutfit = 'classic';
-
-    savePurchasedItems();
-    savePets();
-    saveSaplings();
-    saveCabinSites();
-    saveGroundLogs();
-    saveDugTiles();
-    saveChoppedTrees();
-    saveMovableLayout();
-    saveOutfits();
-    /* Purchases are merged rather than replaced when two devices disagree, so a
-       deliberate clear-out has to say it is one. See store.js. */
-    Store.kv.setItem('garden-reset-v1', String((Number(Store.kv.getItem('garden-reset-v1')) || 0) + 1));
-
-    renderCoins();
-    document.getElementById('garden-gardener').innerHTML = heroSVG('down', getEquippedOutfit());
-    positionHero();
-    renderGarden();
-  }
-
   /* One bowl of food, good for any companion. It lands beside you; pick it up
      and walk it over to whichever animal you want to win over. */
   function buyFood() {
@@ -2185,12 +2141,7 @@ const Garden = (function () {
               <span class="shop-tile-icon">\u{1F50D}</span>
               <span class="shop-tile-label">Magnifying glass (names things)</span>
               <span class="shop-tile-action">${coinSVG()}${LENS_COST}</span>
-            </button>`) +
-        `<button class="shop-tile" ${coins < RESET_PURCHASES_COST ? 'disabled' : ''} onclick="resetGarden()">
-          <span class="shop-tile-icon">\u{267B}</span>
-          <span class="shop-tile-label">Reset ${Util.escapeHtml(terms().place)}</span>
-          <span class="shop-tile-action">${coinSVG()}${RESET_PURCHASES_COST}</span>
-        </button>`;
+            </button>`);
       itemsWrap.innerHTML = `<div class="shop-grid">${tiles}</div>`;
     }
 
@@ -2345,8 +2296,10 @@ const Garden = (function () {
      it is the more there are, capped so it never becomes a swarm. */
   function ambientTarget() {
     const plants = Object.keys(gardenLayout).length;
-    if (!plants) return 0;
-    return Math.min(3, Math.ceil(plants / 3));
+    if (plants > 15) return 3;
+    if (plants > 10) return 2;
+    if (plants > 5) return 1;
+    return 0;
   }
 
   /* Every plant's middle, in pixels. Grown ones are the real draw - a seedling
@@ -2920,7 +2873,6 @@ const Garden = (function () {
   window.sellHeldPlant = sellHeldPlant;
   window.toggleLens = toggleLens;
   window.unlockRandomPet = unlockRandomPet;
-  window.resetGarden = resetGarden;
   window.showHelpTopic = showHelpTopic;
   window.handleGardenKeydown = handleGardenKeydown;
   window.handleGardenTouchStart = handleGardenTouchStart;
