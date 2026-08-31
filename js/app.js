@@ -1424,7 +1424,9 @@ const App = (function () {
     { date: '2026-08-31', items: [
       'Overview and Categories moved to their own section, with every task listed under its category.',
       'Work is now added to accounts that were made before it existed.',
-      'The calendar shows whole weeks - the days either side of the month are there, greyed out.'
+      'The calendar shows whole weeks - the days either side of the month are there, greyed out.',
+      'Fixed the garden sitting off to the right on a phone.',
+      'The app now notices a new version when you open it, and updates itself.'
     ]},
     { date: '2026-08-30', items: [
       'Everything now says "task" instead of "ticket".',
@@ -1483,10 +1485,42 @@ const App = (function () {
     document.getElementById('settings-body').innerHTML = `
       <div class="settings-section">
         <p>The short version of what has changed, newest first.</p>
+        <div class="settings-row">
+          <button class="settings-btn" onclick="App.checkForUpdate()">Check for an update</button>
+        </div>
+        <div class="settings-note" id="update-check-note"></div>
+      </div>
+
+      <div class="settings-section">
         <div id="updates-list"></div>
       </div>`;
     renderUpdates();
     document.getElementById('settings-modal-backdrop').classList.add('active');
+  }
+
+  /* Installed on a home screen, Tend is resumed rather than reloaded, so it can
+     sit on an old version. This asks outright. */
+  async function checkForUpdate() {
+    const note = document.getElementById('update-check-note');
+    const say = t => { if (note) note.textContent = t; };
+    say('Checking\u2026');
+    try {
+      if (window.TEND_SW && typeof window.TEND_SW.update === 'function') {
+        await window.TEND_SW.update();
+        /* If there was one, the new worker takes over and boot.js reloads the
+           page from under us. If we are still here a moment later, there was
+           not - but a plain reload costs nothing and settles any doubt. */
+        setTimeout(function () {
+          say('Up to date. Reloading to be sure\u2026');
+          setTimeout(function () { location.reload(); }, 600);
+        }, 1200);
+      } else {
+        say('Reloading\u2026');
+        setTimeout(function () { location.reload(); }, 500);
+      }
+    } catch (e) {
+      say('Could not check just now - are you online?');
+    }
   }
 
   const VIEW_MODES = [
@@ -2000,7 +2034,7 @@ const App = (function () {
     toggleSubtask, toggleSubtaskList, editorAdd, editorRemove, editorRename, editorToggle,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
-    openInstall, copyInstallLink, runInstallPrompt, openUpdates,
+    openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
     clearSearch, toggleSearch, setTheme, isAppMode, setViewMode, setCategoryScope,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,

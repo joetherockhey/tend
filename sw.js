@@ -15,13 +15,14 @@
    through, so your data is never served from a stale cache.
    ============================================================================ */
 
-const VERSION = 'tend-v13';
+const VERSION = 'tend-v14';
 const APP_SHELL = [
   './',
   './index.html',
   './css/styles.css',
   './js/config.js',
   './js/util.js',
+  './js/qr.js',
   './js/worlds.js',
   './js/store.js',
   './js/garden.js',

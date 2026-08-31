@@ -43,10 +43,42 @@
      origin to scope a worker to, and the single-file build has no sw.js beside
      it anyway. */
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    /* Whether this page was already under a worker's control tells us, later,
+       whether a change of controller is a first install or a genuine update. */
+    const hadController = !!navigator.serviceWorker.controller;
+
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').catch(function (err) {
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        /* Registration can resolve with nothing when workers are unavailable
+           or blocked, and there is then nothing to keep up to date. */
+        if (!reg || typeof reg.update !== 'function') return;
+
+        /* An app kept on a home screen is resumed rather than reloaded, so left
+           to itself it can sit on an old version for days. Every time it comes
+           back to the front it asks whether there is a newer one. */
+        const check = function () {
+          if (document.visibilityState !== 'visible') return;
+          try {
+            const r = reg.update();
+            if (r && r.catch) r.catch(function () { /* offline: try again next time */ });
+          } catch (e) { /* ignore */ }
+        };
+        document.addEventListener('visibilitychange', check);
+        window.addEventListener('focus', check);
+        window.addEventListener('pageshow', check);
+        window.TEND_SW = reg;
+      }).catch(function (err) {
         console.warn('[Tend] offline support unavailable:', err && err.message);
       });
+    });
+
+    /* A new worker has taken over, which means what is on screen came from the
+       old one. Reload once so the code and the page agree. */
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController || reloading) return;   /* first install: nothing stale to replace */
+      reloading = true;
+      location.reload();
     });
   }
 
