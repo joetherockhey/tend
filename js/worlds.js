@@ -229,6 +229,20 @@ const Worlds = (function () {
       orchard: ['#d3ecc8', '#e6f5df']
     };
     const THEME_ORDER = ['grass', 'glass', 'wood', 'patio', 'maze', 'water', 'soil', 'orchard'];
+
+    /* Colours for the scenery scattered over each theme: blades of grass,
+       pebbles, worn earth. Picked per theme rather than shaded from the
+       background, which only ever produced grey. */
+    const THEME_DETAIL = {
+      grass:   { tuft: '#7cb86f', tuft2: '#57964e', pebble: '#c4cbbd', path: '#cdb68c', patch: '#cbe4c3', edge: '#b9a179' },
+      glass:   { tuft: '#84c6a4', tuft2: '#5da586', pebble: '#d6e5ea', path: '#b7c7ce', patch: '#c3e0e9', edge: '#a9bcc4' },
+      wood:    { tuft: '#a9854f', tuft2: '#856232', pebble: '#e2cfae', path: '#a87f4b', patch: '#c69c66', edge: '#8a6537' },
+      patio:   { tuft: '#a3b088', tuft2: '#7f8d64', pebble: '#eeecdf', path: '#c6c7b4', patch: '#dcdcc9', edge: '#b2b39f' },
+      maze:    { tuft: '#6faa63', tuft2: '#4d8a45', pebble: '#c4cbbd', path: '#cdb68c', patch: '#c6e2be', edge: '#b9a179' },
+      water:   { tuft: '#6fbccd', tuft2: '#4a9cb2', pebble: '#e2f1f6', path: '#96c9da', patch: '#b6e1ec', edge: '#87b7c8' },
+      soil:    { tuft: '#8b9850', tuft2: '#697537', pebble: '#dcc9a6', path: '#a67c49', patch: '#c0905c', edge: '#8b6a3e' },
+      orchard: { tuft: '#74b665', tuft2: '#529548', pebble: '#d0dbc6', path: '#c8b083', patch: '#c7e7be', edge: '#b39c76' }
+    };
     const PET_TYPES = {
       dog: { label: 'Dog', icon: '\u{1F415}', cost: 10, temperament: 'friendly', svg: dogSVG },
       cat: { label: 'Cat', icon: '\u{1F408}', cost: 8, temperament: 'neutral', svg: catSVG },
@@ -602,6 +616,18 @@ const Worlds = (function () {
     { name: 'Anemone Field', icon: '\u{1F420}', theme: 'orchard' }
   ];
 
+  /* The same idea below the water: seagrass, shell grit, a sandy channel. */
+  const OCEAN_THEME_DETAIL = {
+    grass:   { tuft: '#4fae8f', tuft2: '#2f8c70', pebble: '#dcecec', path: '#cfc3a0', patch: '#a9dcd0', edge: '#b5a887' },
+    glass:   { tuft: '#5cc0c6', tuft2: '#3a9ba4', pebble: '#e0f0f4', path: '#bcd2d8', patch: '#b8e4ea', edge: '#a4bfc7' },
+    wood:    { tuft: '#8a9f6a', tuft2: '#6b8050', pebble: '#e3d6b8', path: '#a89264', patch: '#c2ab7c', edge: '#8d7a52' },
+    patio:   { tuft: '#8fb9a2', tuft2: '#6c9880', pebble: '#efeade', path: '#c9c4ae', patch: '#dcd8c6', edge: '#b3af9a' },
+    maze:    { tuft: '#43a184', tuft2: '#2b8068', pebble: '#d6e8e6', path: '#c6bb9a', patch: '#a2d6c9', edge: '#ab9f80' },
+    water:   { tuft: '#5cb6cf', tuft2: '#3a94b0', pebble: '#e4f2f8', path: '#96c6dc', patch: '#b2dfee', edge: '#84b3c8' },
+    soil:    { tuft: '#93a367', tuft2: '#70804a', pebble: '#ded0ad', path: '#a4874f', patch: '#bd9b66', edge: '#8a7245' },
+    orchard: { tuft: '#4bab7a', tuft2: '#2d8a5d', pebble: '#d5e4d6', path: '#c7b68e', patch: '#b3ddc4', edge: '#b09a75' }
+  };
+
   const OCEAN_THEME_COLORS = {
     grass: ['#bfe6ea', '#d9f2f4'],
     glass: ['#a9d6c8', '#c6e6db'],
@@ -741,6 +767,7 @@ const Worlds = (function () {
     },
     sections: SECTIONS,
     themeColors: THEME_COLORS,
+    themeDetail: THEME_DETAIL,
     themeOrder: THEME_ORDER,
     wallPattern: wallPattern,
     surfaceBackground: surfaceBackground,
@@ -792,6 +819,7 @@ const Worlds = (function () {
     },
     sections: OCEAN_SECTIONS,
     themeColors: OCEAN_THEME_COLORS,
+    themeDetail: OCEAN_THEME_DETAIL,
     themeOrder: THEME_ORDER,
     wallPattern: oceanWallPattern,
     surfaceBackground: oceanSurfaceBackground,

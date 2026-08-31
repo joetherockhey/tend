@@ -883,12 +883,33 @@ li.task.done .task-title {
   overflow: hidden;
 }
 
-.garden-section-band.dim-1 {
-  filter: grayscale(0.5) brightness(0.88) opacity(0.6);
+/* Ground you have not bought yet: drained of colour and under a haze, with a
+   dashed edge, so it reads as somewhere you could go rather than a rendering
+   fault. */
+.garden-section-band.dim-1,
+.garden-section-band.dim-2 {
+  filter: grayscale(0.85) brightness(1.04) contrast(0.82);
 }
 
-.garden-section-band.dim-2 {
-  filter: grayscale(0.9) brightness(0.75) opacity(0.35);
+.garden-section-band.dim-1::after,
+.garden-section-band.dim-2::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.55) 0 6px,
+    rgba(255, 255, 255, 0.38) 6px 12px);
+  border-top: 2px dashed rgba(90, 58, 30, 0.35);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.garden-section-band.dim-2::after {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.72) 0 6px,
+    rgba(255, 255, 255, 0.6) 6px 12px);
 }
 
 .garden-section-roof {
@@ -1008,16 +1029,17 @@ li.task.done .task-title {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12), inset 0 2px 4px rgba(0, 0, 0, 0.12);
 }
 
+/* One light source, up and to the left, so every shadow falls the same way and
+   things sit on the ground rather than hovering over it. */
 .sprite-shadow {
   position: absolute;
-  bottom: 2px;
+  bottom: 3px;
   left: 50%;
-  transform: translateX(-50%);
-  width: 60%;
-  height: 4px;
-  background: rgba(0, 0, 0, 0.25);
+  transform: translateX(-46%);
+  width: 62%;
+  height: 5px;
+  background: radial-gradient(ellipse at 45% 50%, rgba(24, 32, 22, 0.32), rgba(24, 32, 22, 0.14) 65%, transparent 72%);
   border-radius: 50%;
-  filter: blur(0.5px);
   z-index: 0;
 }
 
@@ -3297,6 +3319,163 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
 .cal-cell.outside .cal-daynum { opacity: 0.45; }
 .cal-cell.outside .cal-events { opacity: 0.6; }
 
+/* Cashing a plant in: green while you are actually holding one. */
+.shop-tile.sell {
+  border-color: var(--green);
+}
+
+.shop-tile.sell .shop-tile-action {
+  color: var(--green);
+  font-weight: 700;
+}
+
+/* Transient effects sit above the scene and are never rebuilt with it. */
+.garden-effects {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+
+/* ---------------------------------------------------------------------------
+   Ground dressing. Nothing here reacts to anything - it is scenery, sitting
+   under the plants and above the checker.
+   --------------------------------------------------------------------------- */
+
+.ground-path {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  opacity: 0.34;
+  background-image: repeating-linear-gradient(
+    18deg,
+    rgba(255, 255, 255, 0.16) 0 3px,
+    rgba(0, 0, 0, 0.05) 3px 7px);
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent);
+}
+
+.ground-patch {
+  position: absolute;
+  opacity: 0.45;
+  border-radius: 42% 58% 46% 54%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.ground-tuft {
+  position: absolute;
+  width: 7px;
+  height: 8px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ground-tuft i {
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  border-radius: 1px 1px 0 0;
+}
+
+.ground-pebble {
+  position: absolute;
+  width: 3px;
+  height: 2px;
+  border-radius: 50%;
+  opacity: 0.85;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ground-edging {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ground-edging i {
+  position: absolute;
+  bottom: 0;
+  border-radius: 2px 2px 0 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Plants: a slight sway, a half-grown stage, and enough variation between two
+   of the same variety that a bed reads as a clump rather than a repeated
+   stamp.
+   --------------------------------------------------------------------------- */
+
+.plant-art {
+  display: block;
+  position: relative;
+  z-index: 1;
+  transform-origin: 50% 100%;
+}
+
+/* Only what is in the ground moves - a plant in a pot has nothing to sway in. */
+.garden-cell.sways .plant-art {
+  animation: plant-sway 4.6s ease-in-out infinite;
+  animation-delay: var(--sway-delay, 0s);
+}
+
+/* The plant's own nudge and size come through as custom properties so the
+   animation can keep them - a keyframe that set only a rotation would throw
+   both away and make every plant jump on the first frame. */
+@keyframes plant-sway {
+  0%, 100% { transform: translateX(var(--nudge, 0px)) scale(var(--scale, 1)) rotate(-1.1deg); }
+  50%      { transform: translateX(var(--nudge, 0px)) scale(var(--scale, 1)) rotate(1.1deg); }
+}
+
+/* Halfway to grown: the real plant, smaller and not yet in full colour. */
+.half-grown {
+  display: block;
+  transform: scale(0.72);
+  transform-origin: 50% 92%;
+  filter: saturate(0.7) brightness(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-cell.sways .plant-art { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   Ambient life drifting across the plot.
+   --------------------------------------------------------------------------- */
+
+.garden-ambient {
+  position: absolute;
+  left: 0;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  opacity: 0.9;
+  z-index: 25;
+  pointer-events: none;
+  will-change: transform;
+}
+
+@keyframes ambient-across {
+  0%   { transform: translate(-24px, 0) scaleX(1); }
+  50%  { transform: translate(50%, var(--drift, 0px)) scaleX(1); }
+  100% { transform: translate(300px, 0) scaleX(1); }
+}
+
+@keyframes ambient-back {
+  0%   { transform: translate(300px, 0) scaleX(-1); }
+  50%  { transform: translate(50%, var(--drift, 0px)) scaleX(-1); }
+  100% { transform: translate(-24px, 0) scaleX(-1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-ambient { display: none; }
+}
+
 </style>
 </head>
 <body class="gated">
@@ -3369,6 +3548,7 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
     <div class="garden-help-icons">
       <button class="help-icon-btn coin-help-btn" onclick="showHelpTopic('coins')" title="Coins and plants"></button>
       <button class="help-icon-btn" onclick="showHelpTopic('water')" title="Watering">&#x1F4A7;</button>
+      <button class="help-icon-btn" onclick="showHelpTopic('cashin')" title="Cashing plants in">&#x1F4B0;</button>
       <button class="help-icon-btn" onclick="showHelpTopic('pickup')" title="Picking things up">&#x270B;</button>
       <button class="help-icon-btn" onclick="showHelpTopic('axe')" title="Axe">&#x1FA93;</button>
       <button class="help-icon-btn" onclick="showHelpTopic('hoe')" title="Hoe">&#x26CF;&#xFE0F;</button>
@@ -4482,6 +4662,20 @@ const Worlds = (function () {
       orchard: ['#d3ecc8', '#e6f5df']
     };
     const THEME_ORDER = ['grass', 'glass', 'wood', 'patio', 'maze', 'water', 'soil', 'orchard'];
+
+    /* Colours for the scenery scattered over each theme: blades of grass,
+       pebbles, worn earth. Picked per theme rather than shaded from the
+       background, which only ever produced grey. */
+    const THEME_DETAIL = {
+      grass:   { tuft: '#7cb86f', tuft2: '#57964e', pebble: '#c4cbbd', path: '#cdb68c', patch: '#cbe4c3', edge: '#b9a179' },
+      glass:   { tuft: '#84c6a4', tuft2: '#5da586', pebble: '#d6e5ea', path: '#b7c7ce', patch: '#c3e0e9', edge: '#a9bcc4' },
+      wood:    { tuft: '#a9854f', tuft2: '#856232', pebble: '#e2cfae', path: '#a87f4b', patch: '#c69c66', edge: '#8a6537' },
+      patio:   { tuft: '#a3b088', tuft2: '#7f8d64', pebble: '#eeecdf', path: '#c6c7b4', patch: '#dcdcc9', edge: '#b2b39f' },
+      maze:    { tuft: '#6faa63', tuft2: '#4d8a45', pebble: '#c4cbbd', path: '#cdb68c', patch: '#c6e2be', edge: '#b9a179' },
+      water:   { tuft: '#6fbccd', tuft2: '#4a9cb2', pebble: '#e2f1f6', path: '#96c9da', patch: '#b6e1ec', edge: '#87b7c8' },
+      soil:    { tuft: '#8b9850', tuft2: '#697537', pebble: '#dcc9a6', path: '#a67c49', patch: '#c0905c', edge: '#8b6a3e' },
+      orchard: { tuft: '#74b665', tuft2: '#529548', pebble: '#d0dbc6', path: '#c8b083', patch: '#c7e7be', edge: '#b39c76' }
+    };
     const PET_TYPES = {
       dog: { label: 'Dog', icon: '\u{1F415}', cost: 10, temperament: 'friendly', svg: dogSVG },
       cat: { label: 'Cat', icon: '\u{1F408}', cost: 8, temperament: 'neutral', svg: catSVG },
@@ -4855,6 +5049,18 @@ const Worlds = (function () {
     { name: 'Anemone Field', icon: '\u{1F420}', theme: 'orchard' }
   ];
 
+  /* The same idea below the water: seagrass, shell grit, a sandy channel. */
+  const OCEAN_THEME_DETAIL = {
+    grass:   { tuft: '#4fae8f', tuft2: '#2f8c70', pebble: '#dcecec', path: '#cfc3a0', patch: '#a9dcd0', edge: '#b5a887' },
+    glass:   { tuft: '#5cc0c6', tuft2: '#3a9ba4', pebble: '#e0f0f4', path: '#bcd2d8', patch: '#b8e4ea', edge: '#a4bfc7' },
+    wood:    { tuft: '#8a9f6a', tuft2: '#6b8050', pebble: '#e3d6b8', path: '#a89264', patch: '#c2ab7c', edge: '#8d7a52' },
+    patio:   { tuft: '#8fb9a2', tuft2: '#6c9880', pebble: '#efeade', path: '#c9c4ae', patch: '#dcd8c6', edge: '#b3af9a' },
+    maze:    { tuft: '#43a184', tuft2: '#2b8068', pebble: '#d6e8e6', path: '#c6bb9a', patch: '#a2d6c9', edge: '#ab9f80' },
+    water:   { tuft: '#5cb6cf', tuft2: '#3a94b0', pebble: '#e4f2f8', path: '#96c6dc', patch: '#b2dfee', edge: '#84b3c8' },
+    soil:    { tuft: '#93a367', tuft2: '#70804a', pebble: '#ded0ad', path: '#a4874f', patch: '#bd9b66', edge: '#8a7245' },
+    orchard: { tuft: '#4bab7a', tuft2: '#2d8a5d', pebble: '#d5e4d6', path: '#c7b68e', patch: '#b3ddc4', edge: '#b09a75' }
+  };
+
   const OCEAN_THEME_COLORS = {
     grass: ['#bfe6ea', '#d9f2f4'],
     glass: ['#a9d6c8', '#c6e6db'],
@@ -4994,6 +5200,7 @@ const Worlds = (function () {
     },
     sections: SECTIONS,
     themeColors: THEME_COLORS,
+    themeDetail: THEME_DETAIL,
     themeOrder: THEME_ORDER,
     wallPattern: wallPattern,
     surfaceBackground: surfaceBackground,
@@ -5045,6 +5252,7 @@ const Worlds = (function () {
     },
     sections: OCEAN_SECTIONS,
     themeColors: OCEAN_THEME_COLORS,
+    themeDetail: OCEAN_THEME_DETAIL,
     themeOrder: THEME_ORDER,
     wallPattern: oceanWallPattern,
     surfaceBackground: oceanSurfaceBackground,
@@ -6010,6 +6218,10 @@ const Garden = (function () {
      tasks, which meant the only way to get more room was to do more work -
      coins are the currency for everything else, so they buy this too. */
   const SECTION_COST = 10;
+  /* What a plant is worth if you cash it in: a seedling gives back what it
+     cost, a grown one is worth the waiting. */
+  const SEEDLING_VALUE = 1;
+  const PLANT_VALUE = 2;
   const WATER_COOLDOWN_MS = 60000;
   const SECTIONS_SHOWN_AHEAD = 1;
 
@@ -6054,6 +6266,9 @@ const Garden = (function () {
 
   function buySection() {
     if (coins < SECTION_COST) return;
+    /* Ten coins is ten finished tasks, so it is worth being sure. */
+    const t = terms();
+    if (!window.confirm('Open up the next part of ' + t.place + ' for ' + SECTION_COST + ' coins?')) return;
     coins -= SECTION_COST;
     sectionsBought = (sectionsBought || 0) + 1;
     saveCoins();
@@ -6516,6 +6731,21 @@ const Garden = (function () {
   let heldTreat = null;
   const wateredCooldown = new Map();
 
+  /* A stable number for a square, so its scatter never moves between renders. */
+  function tileHash(row, col, salt) {
+    let h = (row * 73856093) ^ (col * 19349663) ^ ((salt || 0) * 83492791);
+    h = (h ^ (h >>> 13)) * 1274126177;
+    return Math.abs(h ^ (h >>> 16));
+  }
+
+  function shade(hex, amount) {
+    const h = String(hex || '#888888').replace('#', '');
+    const to = amount < 0 ? 0 : 255;
+    const a = Math.abs(amount);
+    const mix = c => Math.round(c + (to - c) * a);
+    return `rgb(${mix(parseInt(h.slice(0,2),16))}, ${mix(parseInt(h.slice(2,4),16))}, ${mix(parseInt(h.slice(4,6),16))})`;
+  }
+
   function hashStr(s) {
     let h = 0;
     for (let i = 0; i < s.length; i++) {
@@ -6734,7 +6964,13 @@ const Garden = (function () {
     stopWalking();
     const t = event.changedTouches && event.changedTouches[0];
     if (!t) return;
-    touchStart = { x: t.clientX, y: t.clientY, at: Date.now() };
+    const cell = cellFromPoint(t.clientX, t.clientY);
+    touchStart = {
+      x: t.clientX, y: t.clientY, at: Date.now(),
+      /* A drag that begins on the gardener is a "walk over there" - the most
+         natural way to move a character with a finger. */
+      onHero: !!cell && cell.row === heroPos.row && cell.col === heroPos.col
+    };
   }
 
   function handleGardenTouchEnd(event) {
@@ -6745,7 +6981,18 @@ const Garden = (function () {
     const start = touchStart;
     touchStart = null;
 
-    /* A definite drag is a swipe: one step whichever way it leaned. */
+    const moved = Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP;
+
+    /* Dragged from the gardener: walk to wherever the finger was let go. */
+    if (start.onHero && moved) {
+      event.preventDefault();
+      const target = cellFromPoint(t.clientX, t.clientY);
+      if (target) walkTo(target.row, target.col);
+      return;
+    }
+
+    /* A definite drag from anywhere else is a swipe: one step whichever way it
+       leaned. */
     if (Math.abs(dx) > SWIPE_MIN || Math.abs(dy) > SWIPE_MIN) {
       event.preventDefault();
       if (Math.abs(dx) > Math.abs(dy)) stepHero(0, dx > 0 ? 1 : -1);
@@ -6753,7 +7000,7 @@ const Garden = (function () {
       return;
     }
 
-    if (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP) return;
+    if (moved) return;
 
     const cell = cellFromPoint(start.x, start.y);
     if (!cell) return;
@@ -6829,8 +7076,25 @@ const Garden = (function () {
     }
   }
 
-  function spawnSparkleAt(row, col) {
+  /* Sparkles, hearts and the drifting wildlife all live in one layer that is
+     kept across re-renders. renderGarden replaces the plot's innerHTML, which
+     used to destroy a sparkle in the same tick it was created - so watering a
+     seedling made a sound and showed nothing. */
+  let effectsLayer = null;
+
+  function effects() {
     const plot = document.getElementById('garden-plot');
+    if (!plot) return null;
+    if (!effectsLayer) {
+      effectsLayer = document.createElement('div');
+      effectsLayer.className = 'garden-effects';
+    }
+    if (effectsLayer.parentElement !== plot) plot.appendChild(effectsLayer);
+    return effectsLayer;
+  }
+
+  function spawnSparkleAt(row, col) {
+    const plot = effects();
     if (!plot) return;
     const el = document.createElement('div');
     el.className = 'garden-sparkle';
@@ -6842,7 +7106,7 @@ const Garden = (function () {
   }
 
   function spawnFriendshipSparkleAt(row, col, friendship) {
-    const plot = document.getElementById('garden-plot');
+    const plot = effects();
     if (!plot) return;
     const pct = Math.max(0, Math.min(100, friendship || 0));
     const size = 8 + (pct / 100) * 26;
@@ -6867,7 +7131,7 @@ const Garden = (function () {
   }
 
   function spawnHeartsAt(row, col) {
-    const plot = document.getElementById('garden-plot');
+    const plot = effects();
     if (!plot) return;
     for (let i = 0; i < 3; i++) {
       setTimeout(() => {
@@ -6916,27 +7180,35 @@ const Garden = (function () {
     const last = wateredCooldown.get(taskId) || 0;
     if (Date.now() - last < WATER_COOLDOWN_MS) return;
     wateredCooldown.set(taskId, Date.now());
-    spawnSparkleAt(row, col);
     playWaterSound();
 
     const pos = gardenLayout[taskId];
-    if (!isSeedling(pos)) return;
+    let justGrew = false;
 
-    /* Water goes straight through a pot. Roots need the ground. */
-    if (!isOnDirt(row, col)) {
-      showThought('Needs planting in the ground');
-      return;
+    if (isSeedling(pos)) {
+      /* Water goes straight through a pot. Roots need the ground. */
+      if (!isOnDirt(row, col)) {
+        spawnSparkleAt(row, col);
+        showThought('Needs planting in the ground');
+        return;
+      }
+      pos.waterCount = (pos.waterCount || 0) + 1;
+      if (pos.waterCount >= PLANT_WATERS_NEEDED) {
+        pos.grown = true;
+        justGrew = true;
+      }
+      saveGardenLayout();
+      renderGarden();
     }
 
-    pos.waterCount = (pos.waterCount || 0) + 1;
-    if (pos.waterCount >= PLANT_WATERS_NEEDED) {
-      pos.grown = true;
+    /* After the redraw, never before it. */
+    spawnSparkleAt(row, col);
+    if (justGrew) {
       const variety = W().plants[pos.variety] || W().plants[0];
-      spawnSparkleAt(row, col);
+      spawnSparkleAt(row, col - 1);
+      spawnSparkleAt(row, col + 1);
       showThought(variety.name + '!');
     }
-    saveGardenLayout();
-    renderGarden();
   }
 
   function findAdjacentPlant() {
@@ -7185,6 +7457,7 @@ const Garden = (function () {
       heldPlantGrown = true;
       heldPlantWaters = 0;
       saveGardenLayout();
+      renderShop();
       playDirtSound();
       renderGarden();
       return;
@@ -7301,6 +7574,7 @@ const Garden = (function () {
       heldPlantId = taskId;
       delete gardenLayout[taskId];
       saveGardenLayout();
+      renderShop();
       playPickupSound();
       renderGarden();
       return;
@@ -7472,6 +7746,65 @@ const Garden = (function () {
     }, 1500);
   }
 
+  /* ------------------------------------------------------------------ */
+  /* Ground dressing                                                      */
+  /* None of this is interactive - it exists so a section reads as a      */
+  /* place rather than a checkerboard.                                    */
+  /* ------------------------------------------------------------------ */
+
+  function detail(theme) {
+    const d = W().themeDetail || {};
+    return d[theme] || d.grass ||
+      { tuft: '#7cb86f', tuft2: '#57964e', pebble: '#c4cbbd', path: '#cdb68c', patch: '#cbe4c3', edge: '#b9a179' };
+  }
+
+  /* Tufts and pebbles, scattered from the tile's own hash so they stay put
+     between renders. Sparse on purpose - this is texture, not decoration. */
+  function scatterHtml(bandIndex, theme) {
+    const d = detail(theme);
+    let out = '';
+    for (let r = 0; r < SECTION_ROWS; r++) {
+      for (let c = 0; c < GARDEN_COLS; c++) {
+        const h = tileHash(bandIndex * SECTION_ROWS + r, c, 7);
+        const kind = h % 10;
+        const x = c * CELL_SIZE + 5 + (h >> 3) % (CELL_SIZE - 14);
+        const y = r * CELL_SIZE + 8 + (h >> 7) % (CELL_SIZE - 16);
+        if (kind === 0 || kind === 1) {
+          out += `<span class="ground-tuft" style="left:${x}px;top:${y}px;">
+            <i style="background:${d.tuft};height:4px;left:0;"></i>
+            <i style="background:${d.tuft2};height:6px;left:2px;"></i>
+            <i style="background:${d.tuft};height:3px;left:4px;"></i></span>`;
+        } else if (kind === 2) {
+          out += `<span class="ground-pebble" style="left:${x}px;top:${y}px;background:${d.pebble};"></span>`;
+        } else if (kind === 3) {
+          const size = 12 + (h >> 11) % 10;
+          out += `<span class="ground-patch" style="left:${x - 4}px;top:${y - 4}px;width:${size}px;height:${Math.round(size * 0.7)}px;background:${d.patch};"></span>`;
+        }
+      }
+    }
+    return out;
+  }
+
+  /* A worn track down the middle, so the eye has somewhere to walk. Two tiles
+     wide, between the beds, and it lines up from one section to the next. */
+  function pathHtml(theme) {
+    const d = detail(theme);
+    return `<div class="ground-path" style="left:${3 * CELL_SIZE}px;width:${CELL_SIZE * 2}px;background:${d.path};"></div>`;
+  }
+
+  /* A line of edging stones where one section meets the next, so the join
+     reads as a border rather than a seam. */
+  function edgingHtml(theme) {
+    const d = detail(theme);
+    let stones = '';
+    const stoneW = CELL_SIZE / 2;
+    for (let c = 0; c < GARDEN_COLS * 2; c++) {
+      const h = tileHash(c, 0, 31);
+      stones += `<i style="left:${c * stoneW + 1}px;width:${stoneW - 3}px;background:${d.edge};height:${3 + h % 2}px;opacity:${0.55 + (h % 3) * 0.12};"></i>`;
+    }
+    return `<div class="ground-edging">${stones}</div>`;
+  }
+
   function findFreeCellNearHero(avoidDirt) {
     for (let radius = 0; radius < GARDEN_COLS + SECTION_ROWS; radius++) {
       for (let dr = -radius; dr <= radius; dr++) {
@@ -7568,6 +7901,25 @@ const Garden = (function () {
      task, rather than something that appears on its own. It arrives as a
      seedling: every one looks the same until it has grown, and which variety
      it turns out to be is a surprise kept until then. */
+  /* Cash in whatever you are carrying. Only works on a plant in your hands,
+     which means you have already picked it deliberately. */
+  function sellHeldPlant() {
+    if (heldPlantId == null) return;
+    const value = heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE;
+    coins += value;
+    heldPlantId = null;
+    heldPlantVariety = null;
+    heldPlantPot = null;
+    heldPlantGrown = true;
+    heldPlantWaters = 0;
+    saveCoins();
+    saveGardenLayout();
+    renderCoins();
+    renderGarden();
+    positionHero();
+    showThought('+' + value + (value === 1 ? ' coin' : ' coins'));
+  }
+
   function buyPlant() {
     if (coins < PLANT_COST) return;
     coins -= PLANT_COST;
@@ -7689,6 +8041,8 @@ const Garden = (function () {
       const grown = all.length - growing;
       const tally = grown + ' ' + (grown === 1 ? terms().plant : terms().plants)
         + (growing ? ', ' + growing + ' still growing' : '');
+      const holding = heldPlantId != null;
+      const value = heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE;
       plantsWrap.innerHTML =
         `<div class="shop-info">Growing: ${Util.escapeHtml(tally)}</div>
          <div class="shop-grid">
@@ -7696,6 +8050,12 @@ const Garden = (function () {
              <span class="shop-tile-icon">\u{1F331}</span>
              <span class="shop-tile-label">Seedling</span>
              <span class="shop-tile-action">${coinSVG()}${PLANT_COST}</span>
+           </button>
+           <button class="shop-tile ${holding ? 'sell' : ''}" ${holding ? '' : 'disabled'} onclick="sellHeldPlant()"
+             title="${holding ? 'Cash in what you are carrying' : 'Pick a ' + terms().plant + ' up first, then cash it in here'}">
+             <span class="shop-tile-icon">\u{1F4B0}</span>
+             <span class="shop-tile-label">${holding ? 'Cash in what you are holding' : 'Cash in a ' + Util.escapeHtml(terms().plant)}</span>
+             <span class="shop-tile-action">${holding ? '+' + coinSVG() + value : 'seedling 1, grown 2'}</span>
            </button>
          </div>`;
     }
@@ -7847,6 +8207,70 @@ const Garden = (function () {
   }
 
   let petTickTimer = null;
+  /* ------------------------------------------------------------------ */
+  /* Ambient life                                                         */
+  /* A butterfly or two drifting across, more of them the fuller the      */
+  /* garden. Lives in the effects layer, so a redraw never interrupts it. */
+  /* ------------------------------------------------------------------ */
+
+  let ambientTimer = null;
+
+  function ambientArt() {
+    const ocean = W().id === 'ocean';
+    const wings = ocean
+      ? ['#8fd6e8', '#f2b8a0', '#c9e8a0']
+      : ['#f2c94c', '#f2a0c4', '#a0c8f2'];
+    const c = wings[Math.floor(Math.random() * wings.length)];
+    if (ocean) {
+      /* a small fish */
+      return `<svg viewBox="0 0 12 8" width="12" height="8" shape-rendering="crispEdges">
+        <rect x="3" y="2" width="6" height="4" fill="${c}"/>
+        <rect x="0" y="3" width="3" height="2" fill="${c}"/>
+        <rect x="7" y="3" width="1" height="1" fill="#3a4a5a"/></svg>`;
+    }
+    return `<svg viewBox="0 0 12 8" width="12" height="8" shape-rendering="crispEdges">
+      <rect x="1" y="1" width="4" height="3" fill="${c}"/>
+      <rect x="7" y="1" width="4" height="3" fill="${c}"/>
+      <rect x="1" y="4" width="4" height="2" fill="${c}" opacity="0.75"/>
+      <rect x="7" y="4" width="4" height="2" fill="${c}" opacity="0.75"/>
+      <rect x="5" y="2" width="2" height="4" fill="#5a4a35"/></svg>`;
+  }
+
+  function spawnAmbient() {
+    const layer = effects();
+    const plot = document.getElementById('garden-plot');
+    if (!layer || !plot) return;
+    if (layer.querySelectorAll('.garden-ambient').length >= 3) return;
+
+    const height = (gardenMaxUnlockedRow + 1) * CELL_SIZE;
+    const el = document.createElement('div');
+    el.className = 'garden-ambient';
+    const fromLeft = Math.random() < 0.5;
+    const y = 10 + Math.random() * Math.max(20, height - 40);
+    const drift = (Math.random() * 40 - 20);
+    const seconds = 7 + Math.random() * 6;
+    el.style.top = y + 'px';
+    el.style.setProperty('--drift', drift + 'px');
+    el.style.animationDuration = seconds + 's';
+    el.style.animationName = fromLeft ? 'ambient-across' : 'ambient-back';
+    el.innerHTML = ambientArt();
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), seconds * 1000 + 400);
+  }
+
+  function startAmbient() {
+    if (ambientTimer) clearInterval(ambientTimer);
+    ambientTimer = setInterval(function () {
+      if (document.hidden) return;
+      const plot = document.getElementById('garden-plot');
+      if (!plot || !plot.offsetParent) return;      /* not on screen */
+      /* The busier the garden, the more there is flying about. */
+      const plants = Object.keys(gardenLayout).length;
+      const chance = Math.min(0.65, 0.12 + plants * 0.05);
+      if (Math.random() < chance) spawnAmbient();
+    }, 3200);
+  }
+
   function startPetTicker() {
     if (petTickTimer) clearInterval(petTickTimer);
     petTickTimer = setInterval(stepAllPets, 5000);
@@ -7951,6 +8375,9 @@ const Garden = (function () {
         }).join('');
 
       bandsHtml += `<div class="garden-section-band${dimClass}" style="top:${top}px;height:${height}px;${checkerBackground(info.theme)}">
+        ${pathHtml(info.theme)}
+        ${scatterHtml(i, info.theme)}
+        ${i > 0 ? edgingHtml(info.theme) : ''}
         ${decorHtml}
         ${roofHtml}
         ${wallHtml}
@@ -7984,9 +8411,30 @@ const Garden = (function () {
       const planted = isOnDirt(pos.row, pos.col);
       const seedling = isSeedling(pos);
       const label = seedling ? seedlingLabel(pos) : variety.name;
-      cellsHtml += `<div class="garden-cell" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${Util.escapeHtml(label)}">
-        <div class="sprite-shadow"></div>
-        ${seedling ? seedlingSVG(planted) : W().plantSVG(variety, potColor, planted)}
+
+      /* Two of the same variety side by side used to look like the same stamp
+         twice. A small, fixed nudge and size difference per plant makes a group
+         read as a clump. */
+      /* Separate hashes per property: consecutive ids differ by one, so
+         shifting the same hash gave whole runs of plants identical numbers. */
+      const nudgeX = (hashStr(id + ':x') % 5) - 2;
+      const scale = (0.93 + (hashStr(id + ':s') % 13) / 100).toFixed(2);
+      /* Staggered so a bed does not sway in unison. */
+      const delay = (hashStr(id + ':d') % 40) / 10;
+      const swayClass = planted ? ' sways' : '';
+
+      /* Halfway through its watering a seedling starts to look like what it
+         will become, so the five waterings show progress rather than counting
+         silently. */
+      const half = seedling && (pos.waterCount || 0) >= Math.ceil(PLANT_WATERS_NEEDED / 2);
+      let art;
+      if (half) art = `<span class="half-grown">${W().plantSVG(variety, potColor, planted)}</span>`;
+      else if (seedling) art = seedlingSVG(planted);
+      else art = W().plantSVG(variety, potColor, planted);
+
+      cellsHtml += `<div class="garden-cell${swayClass}" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px; --sway-delay:${delay}s;" title="${Util.escapeHtml(label)}">
+        <div class="sprite-shadow" style="transform:translateX(calc(-46% + ${nudgeX}px)) scaleX(${scale});"></div>
+        <span class="plant-art" style="--nudge:${nudgeX}px; --scale:${scale}; transform:translateX(${nudgeX}px) scale(${scale});">${art}</span>
       </div>`;
     });
 
@@ -8030,6 +8478,10 @@ const Garden = (function () {
     heroEl.style.height = CELL_SIZE + 'px';
     plot.appendChild(heroEl);
 
+    /* Put the effects layer back on top - the same element, so anything mid
+       animation carries on rather than restarting. */
+    effects();
+
     heroPos.row = Math.min(heroPos.row, maxUnlockedRow);
     heroPos.col = Math.min(heroPos.col, GARDEN_COLS - 1);
     positionHero();
@@ -8052,6 +8504,7 @@ const Garden = (function () {
     const who = heroName();
     const t = terms();
     return {
+      cashin: { icon: '\u{1F4B0}', title: 'Cashing in', body: 'Changed your mind about a ' + t.plant + '? Pick it up, then use Cash in at the top of the shop. A seedling gives back the coin it cost; one you have grown is worth two.' },
       coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
       pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool.' },
@@ -8127,7 +8580,7 @@ const Garden = (function () {
      actually moves. */
   function moveHintText() {
     return isTouchDevice()
-      ? 'Tap a square to walk there, swipe to step one square, tap yourself to pick up or use.'
+      ? 'Tap a square to walk there, or drag from yourself. Tap yourself to pick up or use.'
       : terms().moveHint;
   }
 
@@ -8145,6 +8598,7 @@ const Garden = (function () {
     render();
     applyGardenVisibility();
     startPetTicker();
+    startAmbient();
   }
 
   function render() {
@@ -8176,6 +8630,8 @@ const Garden = (function () {
   function stop() {
     if (petTickTimer) clearInterval(petTickTimer);
     petTickTimer = null;
+    if (ambientTimer) clearInterval(ambientTimer);
+    ambientTimer = null;
     stopWalking();
   }
 
@@ -8187,6 +8643,7 @@ const Garden = (function () {
   window.buyFood = buyFood;
   window.buyLens = buyLens;
   window.buySection = buySection;
+  window.sellHeldPlant = sellHeldPlant;
   window.toggleLens = toggleLens;
   window.unlockRandomPet = unlockRandomPet;
   window.resetGarden = resetGarden;
@@ -8214,6 +8671,7 @@ const Garden = (function () {
   return {
     applyVisibility: applyGardenVisibility,
     __testWater: testWater,
+    __spawnAmbient: spawnAmbient,
     start: start,
     stop: stop,
     render: render,
@@ -9650,6 +10108,15 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-09-01', items: [
+      'Fixed the watering sparkle not appearing.',
+      'Drag from the gardener on a phone and they walk to where you let go.',
+      'The garden has grass tufts, pebbles, a path and proper edging between sections.',
+      'Plants sway, and two of the same kind no longer look identical.',
+      'A seedling starts to look like its plant halfway through watering.',
+      'Butterflies drift across, more of them the fuller the garden.',
+      'Ground you have not bought yet looks like open country rather than a fault.'
+    ]},
     { date: '2026-08-31', items: [
       'Overview and Categories moved to their own section, with every task listed under its category.',
       'Work is now added to accounts that were made before it existed.',
@@ -9657,7 +10124,9 @@ const App = (function () {
       'Fixed the garden sitting off to the right on a phone.',
       'The app now notices a new version when you open it, and updates itself.',
       'New seedlings always arrive in a pot - you choose where to plant them.',
-      'More garden is bought with 10 coins at the gate, instead of unlocking every 10 tasks.'
+      'More garden is bought with 10 coins at the gate, instead of unlocking every 10 tasks.',
+      'Cash a plant back in - a seedling is worth 1 coin, a grown one 2.',
+      'Buying more garden asks you to confirm first.'
     ]},
     { date: '2026-08-30', items: [
       'Everything now says "task" instead of "ticket".',

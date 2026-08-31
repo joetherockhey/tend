@@ -1421,6 +1421,15 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-09-01', items: [
+      'Fixed the watering sparkle not appearing.',
+      'Drag from the gardener on a phone and they walk to where you let go.',
+      'The garden has grass tufts, pebbles, a path and proper edging between sections.',
+      'Plants sway, and two of the same kind no longer look identical.',
+      'A seedling starts to look like its plant halfway through watering.',
+      'Butterflies drift across, more of them the fuller the garden.',
+      'Ground you have not bought yet looks like open country rather than a fault.'
+    ]},
     { date: '2026-08-31', items: [
       'Overview and Categories moved to their own section, with every task listed under its category.',
       'Work is now added to accounts that were made before it existed.',
@@ -1428,7 +1437,9 @@ const App = (function () {
       'Fixed the garden sitting off to the right on a phone.',
       'The app now notices a new version when you open it, and updates itself.',
       'New seedlings always arrive in a pot - you choose where to plant them.',
-      'More garden is bought with 10 coins at the gate, instead of unlocking every 10 tasks.'
+      'More garden is bought with 10 coins at the gate, instead of unlocking every 10 tasks.',
+      'Cash a plant back in - a seedling is worth 1 coin, a grown one 2.',
+      'Buying more garden asks you to confirm first.'
     ]},
     { date: '2026-08-30', items: [
       'Everything now says "task" instead of "ticket".',
