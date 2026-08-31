@@ -438,6 +438,48 @@ const App = (function () {
     return [t.title, t.notes, t.category].some(v => (v || '').toLowerCase().includes(q));
   }
 
+  /* Tasks bucketed by category, in the order the categories are listed, with
+     anything uncategorised - or pointing at a category since deleted - under
+     Other. Empty buckets are dropped: a column of "Nothing left to do." under
+     categories you are not using was the mess on the overview page. */
+  function groupByCategory(list) {
+    const names = categories().map(c => c.name);
+    const known = new Set(names.map(n => n.toLowerCase()));
+    const groups = names.map(n => ({ name: n, color: categoryColor(n), list: [] }));
+    const index = {};
+    groups.forEach(g => { index[g.name.toLowerCase()] = g; });
+    const other = { name: 'Other', color: DEFAULT_CATEGORY_COLOR, list: [] };
+
+    list.forEach(t => {
+      const key = (t.category || '').trim().toLowerCase();
+      ((key && known.has(key)) ? index[key] : other).list.push(t);
+    });
+    groups.push(other);
+    return groups.filter(g => g.list.length);
+  }
+
+  /* The task list has two shapes: the usual Priority / Active split, and the
+     same tasks gathered under their category. A button switches between them
+     and the choice is remembered per account. */
+  function listGrouping() {
+    return Store.prefs().listGroup === 'category' ? 'category' : 'status';
+  }
+
+  function setListGrouping(mode) {
+    Store.prefs().listGroup = mode === 'category' ? 'category' : 'status';
+    Store.savePrefs();
+    renderList();
+  }
+
+  function renderListGroupToggle() {
+    const host = document.getElementById('list-group-toggle');
+    if (!host) return;
+    const mode = listGrouping();
+    host.innerHTML = [['status', 'By status'], ['category', 'By category']].map(([key, label]) =>
+      `<button type="button" class="${mode === key ? 'on' : ''}" onclick="App.setListGrouping('${key}')">${label}</button>`
+    ).join('');
+  }
+
   function renderList() {
     const query = (document.getElementById('search-input').value || '').trim().toLowerCase();
     const filtered = tickets().filter(t => matchesSearch(t, query));
@@ -462,6 +504,16 @@ const App = (function () {
     activeList.innerHTML = active.length ? active.map(renderTaskItem).join('') : `<li class="empty-note">${noActiveMsg}</li>`;
     priorityList.innerHTML = priority.length ? priority.map(renderTaskItem).join('') : `<li class="empty-note">${noPriorityMsg}</li>`;
 
+    renderListGroupToggle();
+    const byCategory = listGrouping() === 'category';
+    const statusEl = document.getElementById('status-sections');
+    const catEl = document.getElementById('category-sections');
+    if (statusEl) statusEl.style.display = byCategory ? 'none' : '';
+    if (catEl) {
+      catEl.style.display = byCategory ? '' : 'none';
+      if (byCategory) renderListByCategory(activeAll, query);
+    }
+
     if (!completed.length) {
       completedList.innerHTML = `<li class="empty-note">${noCompletedMsg}</li>`;
     } else {
@@ -485,6 +537,33 @@ const App = (function () {
 
     document.getElementById('archived-section').style.display = showArchived ? '' : 'none';
     document.getElementById('toggle-archived-btn').textContent = showArchived ? 'Hide archived' : `Show archived (${archived.length})`;
+  }
+
+  /* The same rows as the Priority / Active lists, gathered under their
+     category. Starred tasks come first inside each one, so the thing you
+     flagged is still the thing you see first. */
+  function renderListByCategory(open, query) {
+    const host = document.getElementById('category-sections');
+    if (!host) return;
+
+    const groups = groupByCategory(open);
+    if (!groups.length) {
+      host.innerHTML = `<section class="list-section"><ul class="task-list"><li class="empty-note">${
+        query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.'
+      }</li></ul></section>`;
+      return;
+    }
+
+    host.innerHTML = groups.map(g => {
+      const sorted = g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
+      return `<section class="list-section">
+        <div class="cat-section-head">
+          ${categoryPill(g.name, g.color)}
+          <span class="cat-group-count">${sorted.length} to do</span>
+        </div>
+        <ul class="task-list">${sorted.map(renderTaskItem).join('')}</ul>
+      </section>`;
+    }).join('');
   }
 
   /* A click anywhere on the row that is not one of its own controls opens the
@@ -1442,7 +1521,9 @@ const App = (function () {
       'The shop is back to plain names and prices - the help buttons still explain everything.',
       'Thirteen plants have been retired from both worlds, leaving 31 in each. Everything already growing keeps the plant it was; the few that were one of the retired kinds have become something else.',
       'Butterflies now arrive as the garden fills: one past five plants, two past ten, three past fifteen.',
-      'The garden reset has been taken out of the shop.'
+      'The garden reset has been taken out of the shop.',
+      'The task list has a By category button now, next to By status. It remembers which you last used.',
+      'Tasks by category on the Overview page is tidier: categories you have nothing in are no longer listed, starred tasks come first, and due dates sit on the right.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
@@ -1933,52 +2014,49 @@ const App = (function () {
     renderCategoryScopeToggle();
 
     const scope = categoryScope();
-    const all = tickets();
-    const names = categories().map(c => c.name);
+    const live = tickets().filter(t => !t.archived);
+    const shown = scope === 'all' ? live : live.filter(t => !t.completedAt);
+    const groups = groupByCategory(shown);
 
-    /* Anything with no category, or one that has since been deleted, collects
-       under Other rather than quietly vanishing from the page. */
-    const known = new Set(names.map(n => n.toLowerCase()));
-    const groups = names.map(n => ({ name: n, color: categoryColor(n), list: [] }));
-    const other = { name: 'Other', color: DEFAULT_CATEGORY_COLOR, list: [] };
-    const index = {};
-    groups.forEach(g => { index[g.name.toLowerCase()] = g; });
+    if (!groups.length) {
+      host.innerHTML = `<p class="cat-empty">${
+        scope === 'all' ? 'No tasks yet.' : 'Nothing left to do - the lot is finished.'}</p>`;
+      return;
+    }
 
-    all.forEach(t => {
-      const key = (t.category || '').trim().toLowerCase();
-      const g = (key && known.has(key)) ? index[key] : other;
-      g.list.push(t);
-    });
-    groups.push(other);
+    host.innerHTML = groups.map(g => {
+      const done = g.list.filter(t => t.completedAt).length;
+      const todo = g.list.length - done;
+      /* Under "Still to do" every one of them is still to do, so saying
+         "0 done" beside it was noise. */
+      const counts = scope === 'all'
+        ? `${todo} to do &middot; ${done} done`
+        : `${todo} to do`;
 
-    const rows = groups.map(g => {
-      const open = g.list.filter(t => !t.completedAt && !t.archived);
-      const done = g.list.filter(t => !!t.completedAt);
-      const shown = scope === 'all' ? g.list : open;
-      if (!g.list.length && g.name === 'Other') return '';
+      const sorted = g.list.slice().sort((a, b) => {
+        if (!!a.completedAt !== !!b.completedAt) return a.completedAt ? 1 : -1;
+        if (!!a.priority !== !!b.priority) return a.priority ? -1 : 1;
+        return 0;
+      });
 
-      const counts = `${open.length} to do &middot; ${done.length} done`;
-      const items = shown.length
-        ? `<ul class="cat-tasks">${shown.map(t => {
-            const overdue = !t.completedAt && t.dueDate && t.dueDate < Util.todayStr();
-            const due = t.dueDate
-              ? `<span class="cat-task-due ${overdue ? 'overdue' : ''}">${Util.formatDate(t.dueDate)}</span>` : '';
-            return `<li class="cat-task ${t.completedAt ? 'done' : ''}" onclick="App.showTaskDetail('${t.id}')">
-                <span class="cat-task-title">${Util.escapeHtml(t.title)}</span>${due}
-              </li>`;
-          }).join('')}</ul>`
-        : `<p class="cat-empty">${scope === 'all' ? 'Nothing here yet.' : 'Nothing left to do.'}</p>`;
+      const items = sorted.map(t => {
+        const overdue = !t.completedAt && t.dueDate && t.dueDate < Util.todayStr();
+        const due = t.dueDate
+          ? `<span class="cat-task-due ${overdue ? 'overdue' : ''}">${Util.formatDate(t.dueDate)}</span>` : '';
+        const star = t.priority && !t.completedAt ? '<span class="cat-task-star">&#9733;</span>' : '';
+        return `<li class="cat-task ${t.completedAt ? 'done' : ''}" onclick="App.showTaskDetail('${t.id}')">
+            ${star}<span class="cat-task-title">${Util.escapeHtml(t.title)}</span>${due}
+          </li>`;
+      }).join('');
 
-      return `<section class="cat-group">
+      return `<section class="cat-group" style="--cat-color:${g.color}">
           <div class="cat-group-head">
             ${categoryPill(g.name, g.color)}
             <span class="cat-group-count">${counts}</span>
           </div>
-          ${items}
+          <ul class="cat-tasks">${items}</ul>
         </section>`;
     }).join('');
-
-    host.innerHTML = rows || '<p class="cat-empty">No categories yet.</p>';
   }
 
   /* A brief note when something arrives from another device, so the screen
@@ -2081,6 +2159,7 @@ const App = (function () {
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
     clearSearch, toggleSearch, setTheme, isAppMode, setViewMode, setCategoryScope,
+    setListGrouping,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

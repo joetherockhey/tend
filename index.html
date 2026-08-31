@@ -126,7 +126,11 @@
 <div class="content-col">
 
   <div id="view-list" class="view active">
-    <div class="active-priority-grid">
+    <div class="list-toolbar">
+      <div class="cat-toggle" id="list-group-toggle"></div>
+    </div>
+
+    <div class="active-priority-grid" id="status-sections">
       <section class="list-section">
         <h2>Priority</h2>
         <ul class="task-list" id="priority-list"></ul>
@@ -137,6 +141,8 @@
         <ul class="task-list" id="active-list"></ul>
       </section>
     </div>
+
+    <div id="category-sections" style="display:none;"></div>
 
     <section class="list-section" id="archived-section" style="display:none;">
       <h2>Archived</h2>
