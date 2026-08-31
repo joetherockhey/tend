@@ -1428,7 +1428,12 @@ const App = (function () {
       'Words in the thought bubble now read left to right whichever way the gardener is facing.',
       'The first garden now has four beds running down it - X Y X Y Y X Y X across. Your plants stay exactly where they are.',
       'Buying a seedling with no room left no longer takes the coin and loses the plant: the shop says there is no room and the button switches off.',
-      'A new seedling can no longer arrive on top of a log, a sapling, a bowl of food or you.'
+      'A new seedling can no longer arrive on top of a log, a sapling, a bowl of food or you.',
+      'Press E now picks up whatever you are facing, rather than whatever happens to be above you.',
+      'Walking a long route no longer waters every plant it squeezes past - only the one you walked up to.',
+      'Seedlings are much smaller now: a stem and two leaves, so they no longer look like a grown plant.',
+      'Fewer butterflies - one to three - and they stay around the flowers instead of crossing the whole garden.',
+      'The shop now says what each tool is for. The hose and the bucket are ornaments; watering needs no tool at all.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'

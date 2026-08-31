@@ -490,6 +490,21 @@ const Garden = (function () {
     playWaterSound();
   }
 
+  /* Up, right, down, left - but the way the gardener is looking always comes
+     first, so E acts on what is in front of you rather than on whatever happens
+     to be north of you. */
+  function facingFirstDirs() {
+    const dirs = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+    const face = { up: 0, right: 1, down: 2, left: 3 }[heroDirection];
+    if (face == null) return dirs;
+    return [dirs[face]].concat(dirs.filter((d, i) => i !== face));
+  }
+
+  function facingSquare() {
+    const [dr, dc] = facingFirstDirs()[0];
+    return [heroPos.row + dr, heroPos.col + dc];
+  }
+
   function findUnplantedSaplingAt(row, col) {
     return saplings.find(s => !s.planted && s.row === row && s.col === col) || null;
   }
@@ -497,7 +512,7 @@ const Garden = (function () {
   function findPickupableSapling() {
     const onSelf = findUnplantedSaplingAt(heroPos.row, heroPos.col);
     if (onSelf) return onSelf;
-    const dirs = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+    const dirs = facingFirstDirs();
     for (const [dr, dc] of dirs) {
       const s = findUnplantedSaplingAt(heroPos.row + dr, heroPos.col + dc);
       if (s) return s;
@@ -934,7 +949,9 @@ const Garden = (function () {
       let moved = false;
       for (const [dr, dc] of order) {
         if (!dr && !dc) continue;
-        if (stepHero(dr, dc)) { moved = true; break; }
+        /* Water only the square you actually asked to walk to. */
+        const water = heroPos.row + dr === row && heroPos.col + dc === col;
+        if (stepHero(dr, dc, { water })) { moved = true; break; }
       }
       if (!moved) stopWalking();
     }, WALK_STEP_MS);
@@ -1227,7 +1244,7 @@ const Garden = (function () {
   }
 
   function findAdjacentPlant() {
-    const dirs = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+    const dirs = facingFirstDirs();
     for (const [dr, dc] of dirs) {
       const id = findPlantAt(heroPos.row + dr, heroPos.col + dc);
       if (id) return id;
@@ -1236,7 +1253,7 @@ const Garden = (function () {
   }
 
   function findAdjacentMovable() {
-    const dirs = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+    const dirs = facingFirstDirs();
     for (const [dr, dc] of dirs) {
       const r = heroPos.row + dr, c = heroPos.col + dc;
       const d = placedDecorations.find(x => x.movable && x.blocking &&
@@ -1247,7 +1264,7 @@ const Garden = (function () {
   }
 
   function findAdjacentToolTarget(toolKind) {
-    const dirs = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+    const dirs = facingFirstDirs();
     for (const [dr, dc] of dirs) {
       const r = heroPos.row + dr, c = heroPos.col + dc;
       const d = placedDecorations.find(x => x.choppable && x.toolRequired === toolKind &&
@@ -1258,7 +1275,7 @@ const Garden = (function () {
   }
 
   function findAdjacentGrownSapling() {
-    const dirs = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+    const dirs = facingFirstDirs();
     for (const [dr, dc] of dirs) {
       const r = heroPos.row + dr, c = heroPos.col + dc;
       const s = saplings.find(x => isSaplingGrown(x) && x.row === r && x.col === c);
@@ -1268,7 +1285,7 @@ const Garden = (function () {
   }
 
   function findAdjacentTreat() {
-    const dirs = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+    const dirs = facingFirstDirs();
     for (const [dr, dc] of dirs) {
       const r = heroPos.row + dr, c = heroPos.col + dc;
       const t = pendingTreats.find(x => x.row === r && x.col === c);
@@ -1284,7 +1301,7 @@ const Garden = (function () {
   function findPickupableLog() {
     const onSelf = findGroundLogAt(heroPos.row, heroPos.col);
     if (onSelf) return onSelf;
-    const dirs = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+    const dirs = facingFirstDirs();
     for (const [dr, dc] of dirs) {
       const l = findGroundLogAt(heroPos.row + dr, heroPos.col + dc);
       if (l) return l;
@@ -1376,7 +1393,11 @@ const Garden = (function () {
      what you walk into, bumping off scenery, greeting a pet. Shared by the
      keyboard and by the touch controls. Returns true if the hero actually
      changed square. */
-  function stepHero(dr, dc) {
+  function stepHero(dr, dc, opts) {
+    /* Walking a route can brush past several plants on its way round an
+       obstacle. Only a step you meant - a key, a swipe, or the last step of a
+       tap - waters what it bumps into. */
+    const mayWater = !opts || opts.water !== false;
     if (dc !== 0) {
       heroFacing = dc;
       heroDirection = dc === -1 ? 'left' : 'right';
@@ -1397,7 +1418,7 @@ const Garden = (function () {
 
     const plantId = findPlantAt(targetRow, targetCol);
     if (plantId) {
-      waterCheck(targetRow, targetCol, plantId);
+      if (mayWater) waterCheck(targetRow, targetCol, plantId);
       saveHeroPos();
       positionHero();
       lensLook(targetRow, targetCol);
@@ -1406,7 +1427,7 @@ const Garden = (function () {
 
     const saplingHere = saplings.find(s => s.planted && s.row === targetRow && s.col === targetCol);
     if (saplingHere && !isSaplingGrown(saplingHere)) {
-      waterSaplingCheck(targetRow, targetCol, saplingHere);
+      if (mayWater) waterSaplingCheck(targetRow, targetCol, saplingHere);
       saveHeroPos();
       positionHero();
       lensLook(targetRow, targetCol);
@@ -1572,54 +1593,90 @@ const Garden = (function () {
       return;
     }
 
+    /* Whatever you are looking at comes first, of whatever kind. Only when the
+       square in front is empty do the other three neighbours get a look in. */
+    const [fr, fc] = facingSquare();
+    if (takeFromSquare(fr, fc)) return;
+
     const taskId = findAdjacentPlant();
-    if (taskId) {
-      heldPlantVariety = gardenLayout[taskId].variety;
-      heldPlantPot = gardenLayout[taskId].potColor || potColorFor(taskId);
-      heldPlantGrown = !isSeedling(gardenLayout[taskId]);
-      heldPlantWaters = gardenLayout[taskId].waterCount || 0;
-      heldPlantId = taskId;
-      delete gardenLayout[taskId];
-      saveGardenLayout();
-      renderShop();
-      playPickupSound();
-      renderGarden();
-      return;
-    }
+    if (taskId) { takePlant(taskId); return; }
 
     const decor = findAdjacentMovable();
-    if (decor) {
-      heldDecoration = decor;
-      playPickupSound();
-      renderGarden();
-      return;
-    }
+    if (decor) { takeDecoration(decor); return; }
 
     const log = findPickupableLog();
-    if (log) {
-      heldLog = log;
-      groundLogs = groundLogs.filter(l => l.id !== log.id);
-      saveGroundLogs();
-      playPickupSound();
-      renderGarden();
-      return;
-    }
+    if (log) { takeLog(log); return; }
 
     const sapling = findPickupableSapling();
-    if (sapling) {
-      heldSapling = { id: sapling.id };
-      playPickupSound();
-      renderGarden();
-      return;
-    }
+    if (sapling) { takeSapling(sapling); return; }
 
     const treat = findAdjacentTreat();
-    if (treat) {
-      heldTreat = { id: treat.id };
-      pendingTreats = pendingTreats.filter(t => t.id !== treat.id);
-      playPickupSound();
-      renderGarden();
-    }
+    if (treat) takeTreat(treat);
+  }
+
+  /* Everything E can lift, tried on one square. Keeping them in one place is
+     what lets the square in front of you be checked across every kind of thing
+     before falling back to the neighbours. */
+  function takeFromSquare(r, c) {
+    if (r < 0 || r > gardenMaxUnlockedRow || c < 0 || c >= GARDEN_COLS) return false;
+
+    const plantId = findPlantAt(r, c);
+    if (plantId) { takePlant(plantId); return true; }
+
+    const decor = placedDecorations.find(x => x.movable && x.blocking &&
+      r >= x.row && r < x.row + x.height && c >= x.col && c < x.col + x.width);
+    if (decor) { takeDecoration(decor); return true; }
+
+    const log = findGroundLogAt(r, c);
+    if (log) { takeLog(log); return true; }
+
+    const sapling = findUnplantedSaplingAt(r, c);
+    if (sapling) { takeSapling(sapling); return true; }
+
+    const treat = pendingTreats.find(t => t.row === r && t.col === c);
+    if (treat) { takeTreat(treat); return true; }
+
+    return false;
+  }
+
+  function takePlant(taskId) {
+    heldPlantVariety = gardenLayout[taskId].variety;
+    heldPlantPot = gardenLayout[taskId].potColor || potColorFor(taskId);
+    heldPlantGrown = !isSeedling(gardenLayout[taskId]);
+    heldPlantWaters = gardenLayout[taskId].waterCount || 0;
+    heldPlantId = taskId;
+    delete gardenLayout[taskId];
+    saveGardenLayout();
+    renderShop();
+    playPickupSound();
+    renderGarden();
+  }
+
+  function takeDecoration(decor) {
+    heldDecoration = decor;
+    playPickupSound();
+    renderGarden();
+  }
+
+  function takeLog(log) {
+    heldLog = log;
+    groundLogs = groundLogs.filter(l => l.id !== log.id);
+    saveGroundLogs();
+    playPickupSound();
+    renderGarden();
+  }
+
+  function takeSapling(sapling) {
+    heldSapling = { id: sapling.id };
+    playPickupSound();
+    renderGarden();
+  }
+
+  function takeTreat(treat) {
+    heldTreat = { id: treat.id };
+    pendingTreats = pendingTreats.filter(t => t.id !== treat.id);
+    playPickupSound();
+    renderGarden();
   }
 
   /* ------------------------------------------------------------------ */
@@ -2072,9 +2129,11 @@ const Garden = (function () {
     const itemsWrap = document.getElementById('shop-items');
     if (itemsWrap) {
       const tiles = Object.entries(W().items).map(([kind, def]) => `
-        <button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyItem('${kind}')">
+        <button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyItem('${kind}')"
+          title="${def.desc ? Util.escapeHtml(def.desc) : ''}">
           <span class="shop-tile-icon">${def.icon}</span>
-          <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
+          <span class="shop-tile-label">${Util.escapeHtml(def.label)}${
+            def.desc ? `<span class="shop-tile-desc">${Util.escapeHtml(def.desc)}</span>` : ''}</span>
           <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
         </button>`).join('') +
         `<button class="shop-tile" ${(coins < SAPLING_COST || !findFreeCellAtTop()) ? 'disabled' : ''} onclick="buySapling()">
@@ -2255,7 +2314,7 @@ const Garden = (function () {
   function ambientTarget() {
     const plants = Object.keys(gardenLayout).length;
     if (!plants) return 0;
-    return Math.min(6, 1 + Math.floor(plants / 2));
+    return Math.min(3, Math.ceil(plants / 3));
   }
 
   /* Every plant's middle, in pixels. Grown ones are the real draw - a seedling
@@ -2288,18 +2347,26 @@ const Garden = (function () {
     const flowers = ambientFlowers();
     const grown = flowers.filter(p => p.grown);
     const pool = grown.length ? grown : flowers;
+    f.age = 0;
 
-    if (pool.length && Math.random() < 0.78) {
-      const flower = pool[Math.floor(Math.random() * pool.length)];
-      f.tx = flower.x + (Math.random() * 18 - 9);
-      f.ty = flower.y + (Math.random() * 14 - 11);
-      f.hover = 1400 + Math.random() * 3000;
-    } else {
+    /* With nothing planted there is nowhere to be, so they simply drift. */
+    if (!pool.length) {
       f.tx = 8 + Math.random() * Math.max(8, b.w - 16);
       f.ty = 6 + Math.random() * Math.max(8, b.h - 12);
-      f.hover = 200 + Math.random() * 800;
+      f.hover = 300 + Math.random() * 700;
+      return;
     }
-    f.age = 0;
+
+    /* Otherwise it is always a flower. Most moves are a short hop around the
+       one they are already on; now and then they cross to another. Nothing
+       sends them off wandering the empty grass. */
+    const stay = f.flower && Math.random() < 0.6 ? f.flower : pool[Math.floor(Math.random() * pool.length)];
+    f.flower = stay;
+    const close = Math.random() < 0.55;
+    const spread = close ? 7 : 13;
+    f.tx = stay.x + (Math.random() * spread * 2 - spread);
+    f.ty = stay.y + (Math.random() * spread * 1.6 - spread * 1.2);
+    f.hover = close ? (500 + Math.random() * 1100) : (1600 + Math.random() * 2600);
   }
 
   function spawnAmbient() {
@@ -2323,6 +2390,7 @@ const Garden = (function () {
       ty: 0,
       hover: 0,
       age: 0,
+      flower: null,
       dir: Math.random() < 0.5 ? -1 : 1,
       speed: 0.75 + Math.random() * 0.5,
       phase: Math.random() * Math.PI * 2,
