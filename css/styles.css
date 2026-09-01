@@ -1208,6 +1208,38 @@ li.task.archived {
   gap: 6px;
 }
 
+/* The categories are a ranking, so each one gets a handle to drag it by. The
+   handle rather than the whole row, so the remove button and the pill's own
+   text stay clickable. */
+.key-sortable {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.key-grip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 4px;
+  color: var(--border);
+  cursor: grab;
+  touch-action: none;
+}
+
+.key-grip:hover { color: var(--muted); background: var(--bg); }
+.key-grip:active { cursor: grabbing; }
+
+/* The pill takes the slack, so the handle sits left and the remove button
+   right rather than all three spreading across the row. */
+.cat-sortable-item .category-tag { margin-right: auto; }
+
+.cat-sortable-item.dragging {
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
 .person-remove-btn {
   background: none;
   border: none;

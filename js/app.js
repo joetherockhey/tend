@@ -87,25 +87,106 @@ const App = (function () {
     const hint = document.getElementById('category-hint');
     if (hint) {
       const ocean = (Store.prefs() || {}).world === 'ocean';
-      hint.textContent = ocean
+      hint.textContent = (ocean
         ? 'Colour-codes your tasks and the shells your corals sit in.'
-        : 'Colour-codes your tasks and the plant pots in your garden.';
+        : 'Colour-codes your tasks and the plant pots in your garden.')
+        + ' Drag one by its handle to change the order they are listed in.';
     }
 
+    const grip = `<span class="key-grip" title="Drag to reorder" aria-hidden="true"><svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2.5" cy="3" r="1.3"/><circle cx="7.5" cy="3" r="1.3"/><circle cx="2.5" cy="8" r="1.3"/><circle cx="7.5" cy="8" r="1.3"/><circle cx="2.5" cy="13" r="1.3"/><circle cx="7.5" cy="13" r="1.3"/></svg></span>`;
     const items = categories().map((c, i) =>
-      `<div class="key-item person-key-item">
+      `<div class="key-item person-key-item cat-sortable-item" data-cat-index="${i}">
+        ${grip}
         ${categoryPill(c.name, c.color)}
         <button class="person-remove-btn" title="Remove ${Util.escapeHtml(c.name)}" onclick="App.removeCategoryByIndex(${i})">&times;</button>
       </div>`
     );
-    items.push(`<div class="key-item">${categoryPill('Other', DEFAULT_CATEGORY_COLOR)}</div>`);
     const addForm = `
       <div class="person-add-row">
         <input type="color" id="category-add-color" value="${nextCategoryColor()}" title="Pick a colour">
         <input type="text" id="category-add-name" placeholder="Add category&hellip;" maxlength="100" onkeydown="if(event.key==='Enter')App.submitAddCategory()">
         <button class="person-add-btn" onclick="App.submitAddCategory()">Add</button>
       </div>`;
-    document.getElementById('category-key').innerHTML = items.join('') + addForm;
+    /* Only the real categories are draggable; Other is not a category anybody
+       owns, so it stays pinned at the bottom outside the sortable block. */
+    document.getElementById('category-key').innerHTML =
+      `<div class="key-sortable" id="category-order">${items.join('')}</div>`
+      + `<div class="key-item">${categoryPill('Other', DEFAULT_CATEGORY_COLOR)}</div>`
+      + addForm;
+    initCategoryDrag();
+  }
+
+  /* ---------------------------------------------------------------
+     The category list is a ranking, not just a palette: its order is
+     the order the groups appear in on both category views and in the
+     task dropdowns. Dragging uses pointer events rather than HTML5
+     drag-and-drop, so it works with a finger as well as a mouse.
+     --------------------------------------------------------------- */
+
+  let catDrag = null;
+
+  function catDropTarget(host, y) {
+    const others = [...host.querySelectorAll('.cat-sortable-item:not(.dragging)')];
+    return others.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+  }
+
+  function commitCategoryOrder(host) {
+    const order = [...host.querySelectorAll('.cat-sortable-item')].map(el => Number(el.dataset.catIndex));
+    const list = categories();
+    const moved = order.map(i => list[i]).filter(Boolean);
+    /* If anything looks off, redraw from the stored order rather than saving
+       a list that has lost or doubled an entry. */
+    if (moved.length !== list.length) { renderCategoryKey(); return; }
+    if (moved.every((c, i) => c === list[i])) return;      /* nothing actually moved */
+
+    list.length = 0;
+    moved.forEach(c => list.push(c));
+    Store.saveCategories();
+
+    renderCategoryKey();
+    renderByCategory();
+    populateCategorySelects();
+    renderList();
+  }
+
+  function initCategoryDrag() {
+    const host = document.getElementById('category-order');
+    if (!host || host.dataset.dndReady) return;
+    host.dataset.dndReady = '1';
+
+    host.addEventListener('pointerdown', e => {
+      const grip = e.target.closest('.key-grip');
+      if (!grip) return;
+      const item = grip.closest('.cat-sortable-item');
+      if (!item) return;
+      e.preventDefault();
+      item.classList.add('dragging');
+      try { grip.setPointerCapture(e.pointerId); } catch (err) { /* older browsers */ }
+      catDrag = { item: item, grip: grip, pointerId: e.pointerId };
+    });
+
+    host.addEventListener('pointermove', e => {
+      if (!catDrag || e.pointerId !== catDrag.pointerId) return;
+      e.preventDefault();
+      const after = catDropTarget(host, e.clientY);
+      if (after == null) host.appendChild(catDrag.item);
+      else host.insertBefore(catDrag.item, after);
+    });
+
+    const finish = function (e) {
+      if (!catDrag || (e && e.pointerId !== catDrag.pointerId)) return;
+      catDrag.item.classList.remove('dragging');
+      try { catDrag.grip.releasePointerCapture(catDrag.pointerId); } catch (err) { /* already released */ }
+      catDrag = null;
+      commitCategoryOrder(host);
+    };
+    host.addEventListener('pointerup', finish);
+    host.addEventListener('pointercancel', finish);
   }
 
   function submitAddCategory() {
@@ -1521,7 +1602,8 @@ const App = (function () {
       'The garden reset has been taken out of the shop.',
       'The task list has a By category button now, next to By status. It remembers which you last used.',
       'Tasks by category on the Overview page is tidier: categories you have nothing in are no longer listed, starred tasks come first, and due dates sit on the right.',
-      'By category lays the groups out side by side on a wide screen, the way Priority and Active do - three columns across with the garden hidden.'
+      'By category lays the groups out side by side on a wide screen, the way Priority and Active do - three columns across with the garden hidden.',
+      'Drag your categories into the order you want them on the Overview page - grab the handle to the left of one. That order is used everywhere: both category views and the dropdown when you add a task.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
