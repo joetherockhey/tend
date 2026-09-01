@@ -114,6 +114,13 @@ nav.tabs button.active {
   font-weight: 600;
 }
 
+/* Undo sits with the tabs, beside the garden switch, and greys out when
+   there is nothing to take back. */
+#undo-btn { margin-left: auto; }
+#undo-btn:disabled { opacity: 0.4; }
+#undo-btn:not(:disabled) { cursor: pointer; }
+#undo-btn + .garden-toggle-btn { margin-left: 8px; }
+
 .garden-toggle-btn {
   margin-left: 12px;
   align-self: center;
@@ -3651,3 +3658,128 @@ li.task[draggable="false"] { cursor: pointer; }
 .key-grip,
 .key-grip:active,
 .cat-sortable-item.dragging { cursor: move; }
+
+/* ---------------------------------------------------------------------------
+   Friends: everybody's garden, read-only.
+   --------------------------------------------------------------------------- */
+
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.friend-row:hover { border-color: var(--accent); }
+.friend-row.on { border-color: var(--accent); background: var(--accent-soft); }
+
+.friend-avatar {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.friend-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-you {
+  font-weight: 600;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+  margin-left: 6px;
+}
+
+.friend-counts {
+  flex: none;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.friend-counts b { color: var(--text); }
+
+@media (max-width: 560px) {
+  .friend-kinds { display: none; }
+}
+
+.friend-garden-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.friend-garden-head h2 { margin: 0; }
+
+.friend-garden-sub {
+  margin: 4px 0 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* The plot can be taller than the panel, so it scrolls inside its own box
+   rather than stretching the page. */
+.friend-garden-plot {
+  overflow: auto;
+  max-height: 60vh;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--bg);
+}
+
+.garden-preview {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.preview-band { position: absolute; left: 0; right: 0; }
+
+.preview-bed {
+  position: absolute;
+  background: #6b4423;
+  opacity: 0.92;
+}
+
+.preview-plant {
+  position: absolute;
+  display: grid;
+  place-items: end center;
+  pointer-events: none;
+}
+
+.preview-plant svg { display: block; }

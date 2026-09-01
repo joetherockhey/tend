@@ -642,6 +642,55 @@ const Store = (function () {
     }, POLL_MS);
   }
 
+  /* ========================= other people's gardens =========================
+     The Friends tab. `public.gardens` is a read-only view holding each
+     account's name, world and plot and nothing else - see
+     supabase/gardens.sql, which has to be run once before this returns
+     anything. In local mode there is no server, so the profiles on this
+     device stand in for it. */
+
+  async function listGardens() {
+    if (!CLOUD || !client) return localGardens();
+    const { data, error } = await client
+      .from('gardens')
+      .select('user_id, display_name, world, layout, sections, found')
+      .order('display_name');
+    if (error) throw error;
+    return (data || []).map(r => ({
+      id: r.user_id,
+      name: r.display_name || 'Gardener',
+      world: r.world || 'garden',
+      layout: safeParse(r.layout, {}),
+      sections: Number(r.sections) || 1,
+      found: safeParse(r.found, []),
+      isMe: !!(account && r.user_id === account.id)
+    }));
+  }
+
+  function safeParse(raw, fallback) {
+    try { const v = JSON.parse(raw); return v === null ? fallback : v; } catch (e) { return fallback; }
+  }
+
+  /* Local mode: the profiles kept in this browser, read straight out of their
+     own key/value bags. */
+  function localGardens() {
+    return localProfiles().map(prof => {
+      const prefix = 'tend:kv:' + prof.id + ':';
+      const get = k => { try { return localStorage.getItem(prefix + k); } catch (e) { return null; } };
+      let prefsOfProfile = {};
+      try { prefsOfProfile = JSON.parse(localStorage.getItem('tend:cache:' + prof.id + ':prefs')) || {}; } catch (e) { /* none yet */ }
+      return {
+        id: prof.id,
+        name: prof.name || 'Gardener',
+        world: prefsOfProfile.world || 'garden',
+        layout: safeParse(get('garden-layout-v5'), {}),
+        sections: Number(get('garden-sections-v1')) || 1,
+        found: safeParse(get('garden-found-v1'), []),
+        isMe: !!(account && prof.id === account.id)
+      };
+    });
+  }
+
   /* ========================= opening an account ========================= */
 
   /* Cloud mode: called by auth.js with the signed-in user.
@@ -1001,6 +1050,9 @@ const Store = (function () {
 
     /* local profiles */
     localProfiles, createLocalProfile, deleteLocalProfile, localProfileTicketCount, lastAccountId,
+
+    /* other people's gardens */
+    listGardens,
 
     /* backup */
     exportData, importData, eraseAccountData

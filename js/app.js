@@ -36,6 +36,14 @@ const App = (function () {
     return CATEGORY_PALETTE.find(c => !used.has(c)) || DEFAULT_CATEGORY_COLOR;
   }
 
+  /* garden.js declares `const Garden`, which is a global *lexical* binding and
+     not a property of window - so every `window.Garden && ...` guard in here
+     was quietly always false, and the branch behind it never ran. The garden
+     tab kept its default label in the ocean world, hiding the garden did not
+     reach it, and switching to it did not redraw. Same for `window.App` from
+     the garden's side. */
+  function hasGarden() { return typeof Garden !== 'undefined'; }
+
   function addCategory(name, color) {
     name = (name || '').trim();
     if (!name) return false;
@@ -48,6 +56,7 @@ const App = (function () {
   function removeCategoryByIndex(i) {
     const list = categories();
     if (i < 0 || i >= list.length) return;
+    snapshot('removing the ' + list[i].name + ' category');
     list.splice(i, 1);
     Store.saveCategories();
     renderCategoryKey();
@@ -145,6 +154,7 @@ const App = (function () {
     if (moved.length !== list.length) { renderCategoryKey(); return; }
     if (moved.every((c, i) => c === list[i])) return;      /* nothing actually moved */
 
+    snapshot('reordering the categories');
     list.length = 0;
     moved.forEach(c => list.push(c));
     Store.saveCategories();
@@ -195,6 +205,7 @@ const App = (function () {
     const colorInput = document.getElementById('category-add-color');
     const name = nameInput.value.trim();
     if (!name) { nameInput.focus(); return; }
+    snapshot('adding the ' + name + ' category');
     if (addCategory(name, colorInput.value)) {
       nameInput.value = '';
       renderCategoryKey();
@@ -240,6 +251,7 @@ const App = (function () {
 
     const title = input.value.trim();
     if (!title) return;
+    snapshot('adding "' + title + '"');
 
     const category = catSelect.value === 'other' ? catOtherInput.value.trim() : catSelect.value;
 
@@ -290,15 +302,72 @@ const App = (function () {
     if (event.target.id === 'new-task-modal-backdrop') closeNewTaskModal();
   }
 
+  /* ---------------------------------------------------------------
+     Undo.
+
+     Every action that changes a task or a category takes a snapshot of
+     both lists first, and Undo puts the last one back. Snapshots rather
+     than a dozen hand-written opposites: one restore is far easier to
+     keep honest than twelve inverses, and the lists are small.
+
+     The garden is deliberately not in here. Growth and purchases are
+     merged forward across devices on purpose, so an undo of those would
+     be quietly re-applied by the next sync - which is worse than not
+     offering it.
+     --------------------------------------------------------------- */
+
+  const UNDO_LIMIT = 30;
+  let undoStack = [];
+
+  function snapshot(label) {
+    undoStack.push({
+      label: label,
+      tickets: JSON.stringify(tickets()),
+      categories: JSON.stringify(categories())
+    });
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    renderUndoButton();
+  }
+
+  function canUndo() { return undoStack.length > 0; }
+
+  function undoLast() {
+    const step = undoStack.pop();
+    if (!step) return;
+
+    Store.setTickets(JSON.parse(step.tickets));
+    const cats = categories();
+    cats.length = 0;
+    JSON.parse(step.categories).forEach(c => cats.push(c));
+    Store.saveCategories();
+
+    renderAll();
+    renderUndoButton();
+    showToast('Undone: ' + step.label);
+  }
+
+  function renderUndoButton() {
+    const btn = document.getElementById('undo-btn');
+    if (!btn) return;
+    const next = undoStack[undoStack.length - 1];
+    btn.disabled = !next;
+    btn.title = next ? 'Undo: ' + next.label + '  (Ctrl+Z)' : 'Nothing to undo';
+  }
+
   function toggleTask(id, elm) {
     const t = tickets().find(x => x.id === id);
     if (!t) return;
     const nowCompleting = !t.completedAt;
+    snapshot(nowCompleting ? 'finishing "' + t.title + '"' : 'un-ticking "' + t.title + '"');
     t.completedAt = t.completedAt ? null : Util.todayStr();
     Store.saveTickets();
-    if (nowCompleting && elm) {
-      const r = elm.getBoundingClientRect();
-      launchConfetti(r.left + r.width / 2, r.top + r.height / 2);
+    if (nowCompleting) {
+      /* A coin has just been earned, so it sounds like one. */
+      if (hasGarden() && Garden.playCashSound) Garden.playCashSound();
+      if (elm) {
+        const r = elm.getBoundingClientRect();
+        launchConfetti(r.left + r.width / 2, r.top + r.height / 2);
+      }
     }
     renderAll();
   }
@@ -306,6 +375,7 @@ const App = (function () {
   function togglePriority(id) {
     const t = tickets().find(x => x.id === id);
     if (!t) return;
+    snapshot((t.priority ? 'unstarring "' : 'starring "') + t.title + '"');
     t.priority = !t.priority;
     Store.saveTickets();
     renderList();
@@ -313,6 +383,7 @@ const App = (function () {
 
   function toggleArchive(id) {
     const t = tickets().find(x => x.id === id);
+    if (t) snapshot((t.archived ? 'unarchiving "' : 'archiving "') + t.title + '"');
     if (!t) return;
     t.archived = !t.archived;
     if (t.archived) t.priority = false;
@@ -324,6 +395,7 @@ const App = (function () {
     const t = tickets().find(x => x.id === id);
     if (!t) return;
     if (!confirm(`Delete "${t.title}"?`)) return;
+    snapshot('deleting "' + t.title + '"');
     const list = tickets();
     const i = list.findIndex(x => x.id === id);
     if (i !== -1) list.splice(i, 1);
@@ -350,6 +422,7 @@ const App = (function () {
     if (!t) return;
     const sub = subtasksOf(t).find(x => x.id === subId);
     if (!sub) return;
+    snapshot('a step on "' + t.title + '"');
     sub.done = !sub.done;
     Store.saveTickets();
     renderList();
@@ -472,6 +545,7 @@ const App = (function () {
   }
 
   function commitListOrder(ul) {
+    snapshot('reordering the list');
     const idsInOrder = [...ul.querySelectorAll('.task')].map(li => li.dataset.id);
     const list = tickets();
     const moved = idsInOrder.map(id => list.find(t => t.id === id)).filter(Boolean);
@@ -873,7 +947,7 @@ const App = (function () {
     if (was && !phoneView && currentView === 'garden') switchView('list');
 
     const label = document.getElementById('bnav-garden-label');
-    if (label && window.Garden && Garden.shortLabel) label.textContent = Garden.shortLabel();
+    if (label && hasGarden() && Garden.shortLabel) label.textContent = Garden.shortLabel();
 
     /* With the sections in the bottom bar the tab row is empty, so search
        moves up beside the account chip rather than sitting on a row of its
@@ -892,7 +966,7 @@ const App = (function () {
     }
 
     updateAppTitle(currentView);
-    if (window.Garden && Garden.applyVisibility) Garden.applyVisibility();
+    if (hasGarden() && Garden.applyVisibility) Garden.applyVisibility();
   }
 
   /* The window can be resized across the threshold at any moment. */
@@ -913,7 +987,8 @@ const App = (function () {
     if (!h) return;
     if (view === 'calendar') h.textContent = 'Calendar';
     else if (view === 'overview') h.textContent = 'Overview';
-    else if (view === 'garden') h.textContent = (window.Garden && Garden.shortLabel) ? Garden.shortLabel() : 'Garden';
+    else if (view === 'friends') h.textContent = 'Friends';
+    else if (view === 'garden') h.textContent = (hasGarden() && Garden.shortLabel) ? Garden.shortLabel() : 'Garden';
     else {
       const name = Store.displayName() || 'Your';
       h.textContent = (/s$/i.test(name) ? name + "'" : name + "'s") + ' Tasks';
@@ -927,7 +1002,7 @@ const App = (function () {
     if (view === 'garden' && !phoneView) view = 'list';
     currentView = view;
 
-    ['list', 'calendar', 'overview'].forEach(v => {
+    ['list', 'calendar', 'overview', 'friends'].forEach(v => {
       const el = document.getElementById('view-' + v);
       if (el) el.classList.toggle('active', view === v);
       const tab = document.getElementById('tab-' + v);
@@ -942,7 +1017,8 @@ const App = (function () {
     }
 
     [['bnav-list', 'list'], ['bnav-calendar', 'calendar'],
-     ['bnav-overview', 'overview'], ['bnav-garden', 'garden']].forEach(([id, v]) => {
+     ['bnav-overview', 'overview'], ['bnav-friends', 'friends'],
+     ['bnav-garden', 'garden']].forEach(([id, v]) => {
       const btn = document.getElementById(id);
       if (btn) btn.classList.toggle('active', view === v);
     });
@@ -953,7 +1029,8 @@ const App = (function () {
 
     if (view === 'calendar') renderCalendar();
     if (view === 'overview') renderOverview();
-    if (view === 'garden' && window.Garden) Garden.render();
+    if (view === 'friends') renderFriends();
+    if (view === 'garden' && hasGarden()) Garden.render();
     applyCalendarWidth();
     updateAppTitle(view);
     if (phoneView) window.scrollTo(0, 0);
@@ -1359,6 +1436,7 @@ const App = (function () {
 
     const title = document.getElementById('edit-task-title').value.trim();
     if (!title) return;
+    snapshot('editing "' + t.title + '"');
 
     const sel = document.getElementById('edit-task-category');
     const category = sel.value === 'other' ? document.getElementById('edit-task-category-other').value.trim() : sel.value;
@@ -1651,7 +1729,10 @@ const App = (function () {
       'Picking a plant up no longer risks losing it. Carry one while the app updates or syncs and it goes back where it was instead of vanishing.',
       'The magnifying glass names plants and nothing else now - no more Flower bed, Lawnmower or Dug soil.',
       'The pale open-hand cursor is gone from the category handles and the task rows; dragging still works.',
-      'The garden now counts the kinds you have found - "Found 5 of 31 plants" beside the gardener, and in the shop. Growing a seedling is what reveals a kind, and once found it stays found even if you cash the plant in.'
+      'The garden now counts the kinds you have found - "Found 5 of 31 plants" beside the gardener, and in the shop. Growing a seedling is what reveals a kind, and once found it stays found even if you cash the plant in.',
+      'Finishing a task now makes a cash-register sound, to go with the coin.',
+      'Undo. There is a button next to Hide Garden, and Ctrl+Z works too. It takes back the last change to your tasks or categories - ticking, deleting, editing, reordering, the lot.',
+      'A Friends tab: everyone with an account, how many plants they have and how many kinds they have found. Click a name to look around their garden. Tasks stay private - only the garden is shared.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
@@ -2089,9 +2170,98 @@ const App = (function () {
     closeSettings();
   }
 
+  /* ---------------------------------------------------------------
+     Friends.
+
+     Everybody with an account, their garden and how much is in it.
+     The list comes from `public.gardens`, a read-only view holding a
+     name, a world and a plot - and nothing else, so nobody's tasks,
+     notes or email are anywhere near it. Until supabase/gardens.sql has
+     been run the view does not exist, and the tab says so plainly
+     rather than looking broken.
+     --------------------------------------------------------------- */
+
+  let friendsCache = [];
+  let openFriendId = null;
+
+  function friendInitials(name) {
+    return (name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+  }
+
+  function plantsIn(layout) {
+    return Object.keys(layout || {}).filter(id => layout[id] && !layout[id].held).length;
+  }
+
+  async function renderFriends() {
+    const host = document.getElementById('friends-list');
+    if (!host) return;
+    host.innerHTML = '<p class="cat-empty">Looking for gardens&hellip;</p>';
+
+    let list;
+    try {
+      list = await Store.listGardens();
+    } catch (err) {
+      host.innerHTML = '<p class="cat-empty">Could not load the other gardens.'
+        + ' If this is a new install, the one-off <code>supabase/gardens.sql</code> still needs running.</p>';
+      return;
+    }
+
+    friendsCache = list || [];
+    if (!friendsCache.length) {
+      host.innerHTML = '<p class="cat-empty">Nobody else has a garden yet.</p>';
+      return;
+    }
+
+    /* Biggest gardens first - it is a list you scroll to compare. */
+    const sorted = friendsCache.slice().sort((a, b) => plantsIn(b.layout) - plantsIn(a.layout));
+    const totalKinds = Worlds.get(Worlds.DEFAULT_WORLD).plants.length;
+
+    host.innerHTML = `<div class="friend-list">${sorted.map(f => {
+      const plants = plantsIn(f.layout);
+      const found = Array.isArray(f.found) ? f.found.length : 0;
+      return `<button type="button" class="friend-row ${openFriendId === f.id ? 'on' : ''}" onclick="App.openFriendGarden('${f.id}')">
+          <span class="friend-avatar">${Util.escapeHtml(friendInitials(f.name))}</span>
+          <span class="friend-name">${Util.escapeHtml(f.name)}${f.isMe ? ' <span class="friend-you">you</span>' : ''}</span>
+          <span class="friend-counts">
+            <b>${plants}</b> ${plants === 1 ? 'plant' : 'plants'}
+            <span class="friend-kinds">&middot; ${found} of ${totalKinds} kinds</span>
+          </span>
+        </button>`;
+    }).join('')}</div>`;
+  }
+
+  function openFriendGarden(id) {
+    const f = friendsCache.find(x => x.id === id);
+    const panel = document.getElementById('friend-garden-panel');
+    if (!f || !panel) return;
+    openFriendId = id;
+
+    const plants = plantsIn(f.layout);
+    const found = Array.isArray(f.found) ? f.found.length : 0;
+    const world = Worlds.get(f.world);
+    document.getElementById('friend-garden-title').textContent =
+      (/s$/i.test(f.name) ? f.name + "'" : f.name + "'s") + ' ' + world.terms.place.replace(/^the\s+/i, '');
+    document.getElementById('friend-garden-sub').textContent =
+      `${plants} ${plants === 1 ? world.terms.plant : world.terms.plants} \u00b7 found ${found} of ${world.plants.length} kinds`;
+    document.getElementById('friend-garden-plot').innerHTML =
+      hasGarden() ? Garden.previewPlotHTML({ world: f.world, layout: f.layout, sections: f.sections }) : '';
+
+    panel.hidden = false;
+    renderFriends();
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeFriendGarden() {
+    openFriendId = null;
+    const panel = document.getElementById('friend-garden-panel');
+    if (panel) panel.hidden = true;
+    renderFriends();
+  }
+
   /* ========================= boot ========================= */
 
   function renderAll() {
+    renderUndoButton();
     renderDueToday();
     renderCategoryKey();
     populateCategorySelects();
@@ -2180,7 +2350,7 @@ const App = (function () {
      changing under you is explained rather than startling. The header badge is
      hidden on a phone, which is exactly where this matters most. */
   let syncedFlashTimer = null;
-  function flashSynced() {
+  function showToast(text) {
     let el = document.getElementById('sync-toast');
     if (!el) {
       el = document.createElement('div');
@@ -2188,7 +2358,7 @@ const App = (function () {
       el.className = 'sync-toast';
       document.body.appendChild(el);
     }
-    el.textContent = 'Updated from your other device';
+    el.textContent = text;
     el.classList.add('show');
     if (syncedFlashTimer) clearTimeout(syncedFlashTimer);
     syncedFlashTimer = setTimeout(function () {
@@ -2196,6 +2366,8 @@ const App = (function () {
       syncedFlashTimer = null;
     }, 2200);
   }
+
+  function flashSynced() { showToast('Updated from your other device'); }
 
   function boot() {
     loadViewPrefs();
@@ -2232,6 +2404,16 @@ const App = (function () {
           flashSynced();
         });
       }
+
+      /* Ctrl+Z anywhere except inside something you are typing in, where the
+         browser's own undo is the one you want. */
+      document.addEventListener('keydown', function (e) {
+        if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+        const el = e.target;
+        if (el && (el.matches('input, textarea, select') || el.isContentEditable)) return;
+        e.preventDefault();
+        undoLast();
+      });
 
       document.getElementById('new-task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
       document.getElementById('search-input').addEventListener('input', function () {
@@ -2276,7 +2458,8 @@ const App = (function () {
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
     clearSearch, toggleSearch, setTheme, isAppMode, setViewMode, setCategoryScope,
-    setListGrouping,
+    setListGrouping, undoLast,
+    renderFriends, openFriendGarden, closeFriendGarden,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

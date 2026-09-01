@@ -132,6 +132,13 @@ nav.tabs button.active {
   font-weight: 600;
 }
 
+/* Undo sits with the tabs, beside the garden switch, and greys out when
+   there is nothing to take back. */
+#undo-btn { margin-left: auto; }
+#undo-btn:disabled { opacity: 0.4; }
+#undo-btn:not(:disabled) { cursor: pointer; }
+#undo-btn + .garden-toggle-btn { margin-left: 8px; }
+
 .garden-toggle-btn {
   margin-left: 12px;
   align-self: center;
@@ -3648,6 +3655,131 @@ li.task[draggable="false"] { cursor: pointer; }
 .key-grip:active,
 .cat-sortable-item.dragging { cursor: move; }
 
+/* ---------------------------------------------------------------------------
+   Friends: everybody's garden, read-only.
+   --------------------------------------------------------------------------- */
+
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.friend-row:hover { border-color: var(--accent); }
+.friend-row.on { border-color: var(--accent); background: var(--accent-soft); }
+
+.friend-avatar {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.friend-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-you {
+  font-weight: 600;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+  margin-left: 6px;
+}
+
+.friend-counts {
+  flex: none;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.friend-counts b { color: var(--text); }
+
+@media (max-width: 560px) {
+  .friend-kinds { display: none; }
+}
+
+.friend-garden-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.friend-garden-head h2 { margin: 0; }
+
+.friend-garden-sub {
+  margin: 4px 0 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* The plot can be taller than the panel, so it scrolls inside its own box
+   rather than stretching the page. */
+.friend-garden-plot {
+  overflow: auto;
+  max-height: 60vh;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--bg);
+}
+
+.garden-preview {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.preview-band { position: absolute; left: 0; right: 0; }
+
+.preview-bed {
+  position: absolute;
+  background: #6b4423;
+  opacity: 0.92;
+}
+
+.preview-plant {
+  position: absolute;
+  display: grid;
+  place-items: end center;
+  pointer-events: none;
+}
+
+.preview-plant svg { display: block; }
+
 </style>
 </head>
 <body class="gated">
@@ -3683,6 +3815,7 @@ li.task[draggable="false"] { cursor: pointer; }
     <button id="tab-list" class="active" onclick="App.switchView('list')">Tasks</button>
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
     <button id="tab-overview" onclick="App.switchView('overview')">Overview</button>
+    <button id="tab-friends" onclick="App.switchView('friends')">Friends</button>
     <div class="nav-search" id="nav-search">
       <button type="button" class="nav-search-icon" id="search-icon" onclick="App.toggleSearch()"
               title="Search tasks" aria-label="Search tasks">&#128269;</button>
@@ -3690,6 +3823,8 @@ li.task[draggable="false"] { cursor: pointer; }
              aria-label="Search tasks by title, notes or category">
       <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
     </div>
+    <button id="undo-btn" class="garden-toggle-btn" onclick="App.undoLast()" disabled
+            title="Nothing to undo">&#8630; Undo</button>
     <button id="garden-toggle-btn" class="garden-toggle-btn" onclick="toggleGardenVisibility()">Hide Garden</button>
   </nav>
 </div>
@@ -3812,6 +3947,22 @@ li.task[draggable="false"] { cursor: pointer; }
         </div>
       </div>
       <div class="cal-grid" id="cal-grid"></div>
+    </div>
+  </div>
+
+  <div id="view-friends" class="view">
+    <div class="panel">
+      <h2>Friends</h2>
+      <p class="category-hint">Everybody growing a garden on Tend. Click a name to look around theirs - tasks stay private, only the garden is shared.</p>
+      <div id="friends-list"></div>
+    </div>
+    <div class="panel" id="friend-garden-panel" hidden>
+      <div class="friend-garden-head">
+        <h2 id="friend-garden-title">Garden</h2>
+        <button type="button" class="section-toggle-btn" onclick="App.closeFriendGarden()">Close</button>
+      </div>
+      <p class="friend-garden-sub" id="friend-garden-sub"></p>
+      <div class="friend-garden-plot" id="friend-garden-plot"></div>
     </div>
   </div>
 
@@ -3976,6 +4127,13 @@ li.task[draggable="false"] { cursor: pointer; }
       <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
     </svg>
     <span class="bnav-label">Overview</span>
+  </button>
+  <button type="button" class="bnav-btn" id="bnav-friends" onclick="App.switchView('friends')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/>
+      <path d="M16.5 5.6a3.2 3.2 0 0 1 0 4.8"/><path d="M18 14.4A6 6 0 0 1 21 20"/>
+    </svg>
+    <span class="bnav-label">Friends</span>
   </button>
   <button type="button" class="bnav-btn" id="bnav-garden" onclick="App.switchView('garden')">
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -6180,6 +6338,55 @@ const Store = (function () {
     }, POLL_MS);
   }
 
+  /* ========================= other people's gardens =========================
+     The Friends tab. `public.gardens` is a read-only view holding each
+     account's name, world and plot and nothing else - see
+     supabase/gardens.sql, which has to be run once before this returns
+     anything. In local mode there is no server, so the profiles on this
+     device stand in for it. */
+
+  async function listGardens() {
+    if (!CLOUD || !client) return localGardens();
+    const { data, error } = await client
+      .from('gardens')
+      .select('user_id, display_name, world, layout, sections, found')
+      .order('display_name');
+    if (error) throw error;
+    return (data || []).map(r => ({
+      id: r.user_id,
+      name: r.display_name || 'Gardener',
+      world: r.world || 'garden',
+      layout: safeParse(r.layout, {}),
+      sections: Number(r.sections) || 1,
+      found: safeParse(r.found, []),
+      isMe: !!(account && r.user_id === account.id)
+    }));
+  }
+
+  function safeParse(raw, fallback) {
+    try { const v = JSON.parse(raw); return v === null ? fallback : v; } catch (e) { return fallback; }
+  }
+
+  /* Local mode: the profiles kept in this browser, read straight out of their
+     own key/value bags. */
+  function localGardens() {
+    return localProfiles().map(prof => {
+      const prefix = 'tend:kv:' + prof.id + ':';
+      const get = k => { try { return localStorage.getItem(prefix + k); } catch (e) { return null; } };
+      let prefsOfProfile = {};
+      try { prefsOfProfile = JSON.parse(localStorage.getItem('tend:cache:' + prof.id + ':prefs')) || {}; } catch (e) { /* none yet */ }
+      return {
+        id: prof.id,
+        name: prof.name || 'Gardener',
+        world: prefsOfProfile.world || 'garden',
+        layout: safeParse(get('garden-layout-v5'), {}),
+        sections: Number(get('garden-sections-v1')) || 1,
+        found: safeParse(get('garden-found-v1'), []),
+        isMe: !!(account && prof.id === account.id)
+      };
+    });
+  }
+
   /* ========================= opening an account ========================= */
 
   /* Cloud mode: called by auth.js with the signed-in user.
@@ -6540,6 +6747,9 @@ const Store = (function () {
     /* local profiles */
     localProfiles, createLocalProfile, deleteLocalProfile, localProfileTicketCount, lastAccountId,
 
+    /* other people's gardens */
+    listGardens,
+
     /* backup */
     exportData, importData, eraseAccountData
   };
@@ -6622,6 +6832,51 @@ const Garden = (function () {
     const [c1, c2] = W().themeColors[theme];
     const size = CELL_SIZE * 2;
     return `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Somebody else's plot, drawn read-only for the Friends tab.           */
+  /* It is handed a world, a plot and a section count and builds its own   */
+  /* HTML from those - it reads none of this account's state and writes    */
+  /* nothing, so looking at a friend's garden cannot disturb your own.     */
+  /* ------------------------------------------------------------------ */
+
+  function previewPlotHTML(opts) {
+    const world = Worlds.get((opts && opts.world) || Worlds.DEFAULT_WORLD);
+    const layout = (opts && opts.layout) || {};
+    const bands = Math.max(1, Math.min(12, Number(opts && opts.sections) || 1));
+    const rows = bands * SECTION_ROWS;
+
+    let html = '';
+    for (let i = 0; i < bands; i++) {
+      const theme = (world.sections[i] && world.sections[i].theme)
+        || world.themeOrder[i % world.themeOrder.length];
+      const [c1, c2] = world.themeColors[theme];
+      const size = CELL_SIZE * 2;
+      const checker = `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
+      html += `<div class="preview-band" style="top:${i * SECTION_ROWS * CELL_SIZE}px; height:${SECTION_ROWS * CELL_SIZE}px; ${checker}"></div>`;
+
+      /* The beds, so the plot reads as a garden rather than a checkerboard. */
+      (DECORATIONS_BY_THEME[theme] || []).forEach(d => {
+        if (d.kind !== 'bed') return;
+        html += `<div class="preview-bed" style="left:${d.col * CELL_SIZE}px; top:${(i * SECTION_ROWS + d.row) * CELL_SIZE}px;`
+          + ` width:${d.width * CELL_SIZE}px; height:${d.height * CELL_SIZE}px;"></div>`;
+      });
+    }
+
+    Object.keys(layout).forEach(id => {
+      const pos = layout[id];
+      if (!pos || pos.held || pos.row == null || pos.row >= rows) return;
+      const variety = world.plants[pos.variety] || world.plants[0];
+      const pot = pos.potColor || NEUTRAL_POT;
+      const art = pos.grown === false
+        ? `<svg width="24" height="34" viewBox="0 0 14 20" shape-rendering="crispEdges">${world.art.seedling()}</svg>`
+        : world.plantSVG(variety, pot, true);
+      html += `<div class="preview-plant" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px;`
+        + ` width:${CELL_SIZE}px; height:${CELL_SIZE}px;">${art}</div>`;
+    });
+
+    return `<div class="garden-preview" style="width:${GARDEN_COLS * CELL_SIZE}px; height:${rows * CELL_SIZE}px;">${html}</div>`;
   }
 
   /* Null until the first render, which is where an older garden is given the
@@ -7277,6 +7532,15 @@ const Garden = (function () {
     setTimeout(() => playTone(700, 0.06, 'triangle', 0.05), 40);
   }
 
+  /* A cash register: the bell struck, then two bright notes ringing over it.
+     Played when a task is ticked off, which is the moment a coin is earned. */
+  function playCashSound() {
+    playNoiseBurst(0.04, 5200, 0.045);
+    playTone(1318.5, 0.14, 'triangle', 0.07);
+    setTimeout(() => playTone(1760, 0.34, 'triangle', 0.075), 85);
+    setTimeout(() => playTone(2637, 0.28, 'sine', 0.03), 105);
+  }
+
   function playDirtSound() {
     playNoiseBurst(0.09, 450, 0.07);
   }
@@ -7632,7 +7896,7 @@ const Garden = (function () {
     const col = document.querySelector('.garden-col');
     /* Installed as an app the garden is a tab of its own, so which of the
        three is on screen is the view's business, not this switch's. */
-    const phoneView = window.App && App.isAppMode && App.isAppMode();
+    const phoneView = typeof App !== 'undefined' && App.isAppMode && App.isAppMode();
     if (col) col.style.display = (phoneView || gardenVisible) ? '' : 'none';
     /* The layout grid keeps a 420px track for the garden, so tell it when there
        is no garden to put there. */
@@ -9437,6 +9701,8 @@ const Garden = (function () {
     reskin: reskin,
     loadAll: loadAll,
     heroName: heroName,
+    playCashSound: playCashSound,
+    previewPlotHTML: previewPlotHTML,
     shortLabel: shortLabel,
     renderCoins: renderCoins,
     renderShop: renderShop
@@ -9482,6 +9748,14 @@ const App = (function () {
     return CATEGORY_PALETTE.find(c => !used.has(c)) || DEFAULT_CATEGORY_COLOR;
   }
 
+  /* garden.js declares `const Garden`, which is a global *lexical* binding and
+     not a property of window - so every `window.Garden && ...` guard in here
+     was quietly always false, and the branch behind it never ran. The garden
+     tab kept its default label in the ocean world, hiding the garden did not
+     reach it, and switching to it did not redraw. Same for `window.App` from
+     the garden's side. */
+  function hasGarden() { return typeof Garden !== 'undefined'; }
+
   function addCategory(name, color) {
     name = (name || '').trim();
     if (!name) return false;
@@ -9494,6 +9768,7 @@ const App = (function () {
   function removeCategoryByIndex(i) {
     const list = categories();
     if (i < 0 || i >= list.length) return;
+    snapshot('removing the ' + list[i].name + ' category');
     list.splice(i, 1);
     Store.saveCategories();
     renderCategoryKey();
@@ -9591,6 +9866,7 @@ const App = (function () {
     if (moved.length !== list.length) { renderCategoryKey(); return; }
     if (moved.every((c, i) => c === list[i])) return;      /* nothing actually moved */
 
+    snapshot('reordering the categories');
     list.length = 0;
     moved.forEach(c => list.push(c));
     Store.saveCategories();
@@ -9641,6 +9917,7 @@ const App = (function () {
     const colorInput = document.getElementById('category-add-color');
     const name = nameInput.value.trim();
     if (!name) { nameInput.focus(); return; }
+    snapshot('adding the ' + name + ' category');
     if (addCategory(name, colorInput.value)) {
       nameInput.value = '';
       renderCategoryKey();
@@ -9686,6 +9963,7 @@ const App = (function () {
 
     const title = input.value.trim();
     if (!title) return;
+    snapshot('adding "' + title + '"');
 
     const category = catSelect.value === 'other' ? catOtherInput.value.trim() : catSelect.value;
 
@@ -9736,15 +10014,72 @@ const App = (function () {
     if (event.target.id === 'new-task-modal-backdrop') closeNewTaskModal();
   }
 
+  /* ---------------------------------------------------------------
+     Undo.
+
+     Every action that changes a task or a category takes a snapshot of
+     both lists first, and Undo puts the last one back. Snapshots rather
+     than a dozen hand-written opposites: one restore is far easier to
+     keep honest than twelve inverses, and the lists are small.
+
+     The garden is deliberately not in here. Growth and purchases are
+     merged forward across devices on purpose, so an undo of those would
+     be quietly re-applied by the next sync - which is worse than not
+     offering it.
+     --------------------------------------------------------------- */
+
+  const UNDO_LIMIT = 30;
+  let undoStack = [];
+
+  function snapshot(label) {
+    undoStack.push({
+      label: label,
+      tickets: JSON.stringify(tickets()),
+      categories: JSON.stringify(categories())
+    });
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    renderUndoButton();
+  }
+
+  function canUndo() { return undoStack.length > 0; }
+
+  function undoLast() {
+    const step = undoStack.pop();
+    if (!step) return;
+
+    Store.setTickets(JSON.parse(step.tickets));
+    const cats = categories();
+    cats.length = 0;
+    JSON.parse(step.categories).forEach(c => cats.push(c));
+    Store.saveCategories();
+
+    renderAll();
+    renderUndoButton();
+    showToast('Undone: ' + step.label);
+  }
+
+  function renderUndoButton() {
+    const btn = document.getElementById('undo-btn');
+    if (!btn) return;
+    const next = undoStack[undoStack.length - 1];
+    btn.disabled = !next;
+    btn.title = next ? 'Undo: ' + next.label + '  (Ctrl+Z)' : 'Nothing to undo';
+  }
+
   function toggleTask(id, elm) {
     const t = tickets().find(x => x.id === id);
     if (!t) return;
     const nowCompleting = !t.completedAt;
+    snapshot(nowCompleting ? 'finishing "' + t.title + '"' : 'un-ticking "' + t.title + '"');
     t.completedAt = t.completedAt ? null : Util.todayStr();
     Store.saveTickets();
-    if (nowCompleting && elm) {
-      const r = elm.getBoundingClientRect();
-      launchConfetti(r.left + r.width / 2, r.top + r.height / 2);
+    if (nowCompleting) {
+      /* A coin has just been earned, so it sounds like one. */
+      if (hasGarden() && Garden.playCashSound) Garden.playCashSound();
+      if (elm) {
+        const r = elm.getBoundingClientRect();
+        launchConfetti(r.left + r.width / 2, r.top + r.height / 2);
+      }
     }
     renderAll();
   }
@@ -9752,6 +10087,7 @@ const App = (function () {
   function togglePriority(id) {
     const t = tickets().find(x => x.id === id);
     if (!t) return;
+    snapshot((t.priority ? 'unstarring "' : 'starring "') + t.title + '"');
     t.priority = !t.priority;
     Store.saveTickets();
     renderList();
@@ -9759,6 +10095,7 @@ const App = (function () {
 
   function toggleArchive(id) {
     const t = tickets().find(x => x.id === id);
+    if (t) snapshot((t.archived ? 'unarchiving "' : 'archiving "') + t.title + '"');
     if (!t) return;
     t.archived = !t.archived;
     if (t.archived) t.priority = false;
@@ -9770,6 +10107,7 @@ const App = (function () {
     const t = tickets().find(x => x.id === id);
     if (!t) return;
     if (!confirm(`Delete "${t.title}"?`)) return;
+    snapshot('deleting "' + t.title + '"');
     const list = tickets();
     const i = list.findIndex(x => x.id === id);
     if (i !== -1) list.splice(i, 1);
@@ -9796,6 +10134,7 @@ const App = (function () {
     if (!t) return;
     const sub = subtasksOf(t).find(x => x.id === subId);
     if (!sub) return;
+    snapshot('a step on "' + t.title + '"');
     sub.done = !sub.done;
     Store.saveTickets();
     renderList();
@@ -9918,6 +10257,7 @@ const App = (function () {
   }
 
   function commitListOrder(ul) {
+    snapshot('reordering the list');
     const idsInOrder = [...ul.querySelectorAll('.task')].map(li => li.dataset.id);
     const list = tickets();
     const moved = idsInOrder.map(id => list.find(t => t.id === id)).filter(Boolean);
@@ -10319,7 +10659,7 @@ const App = (function () {
     if (was && !phoneView && currentView === 'garden') switchView('list');
 
     const label = document.getElementById('bnav-garden-label');
-    if (label && window.Garden && Garden.shortLabel) label.textContent = Garden.shortLabel();
+    if (label && hasGarden() && Garden.shortLabel) label.textContent = Garden.shortLabel();
 
     /* With the sections in the bottom bar the tab row is empty, so search
        moves up beside the account chip rather than sitting on a row of its
@@ -10338,7 +10678,7 @@ const App = (function () {
     }
 
     updateAppTitle(currentView);
-    if (window.Garden && Garden.applyVisibility) Garden.applyVisibility();
+    if (hasGarden() && Garden.applyVisibility) Garden.applyVisibility();
   }
 
   /* The window can be resized across the threshold at any moment. */
@@ -10359,7 +10699,8 @@ const App = (function () {
     if (!h) return;
     if (view === 'calendar') h.textContent = 'Calendar';
     else if (view === 'overview') h.textContent = 'Overview';
-    else if (view === 'garden') h.textContent = (window.Garden && Garden.shortLabel) ? Garden.shortLabel() : 'Garden';
+    else if (view === 'friends') h.textContent = 'Friends';
+    else if (view === 'garden') h.textContent = (hasGarden() && Garden.shortLabel) ? Garden.shortLabel() : 'Garden';
     else {
       const name = Store.displayName() || 'Your';
       h.textContent = (/s$/i.test(name) ? name + "'" : name + "'s") + ' Tasks';
@@ -10373,7 +10714,7 @@ const App = (function () {
     if (view === 'garden' && !phoneView) view = 'list';
     currentView = view;
 
-    ['list', 'calendar', 'overview'].forEach(v => {
+    ['list', 'calendar', 'overview', 'friends'].forEach(v => {
       const el = document.getElementById('view-' + v);
       if (el) el.classList.toggle('active', view === v);
       const tab = document.getElementById('tab-' + v);
@@ -10388,7 +10729,8 @@ const App = (function () {
     }
 
     [['bnav-list', 'list'], ['bnav-calendar', 'calendar'],
-     ['bnav-overview', 'overview'], ['bnav-garden', 'garden']].forEach(([id, v]) => {
+     ['bnav-overview', 'overview'], ['bnav-friends', 'friends'],
+     ['bnav-garden', 'garden']].forEach(([id, v]) => {
       const btn = document.getElementById(id);
       if (btn) btn.classList.toggle('active', view === v);
     });
@@ -10399,7 +10741,8 @@ const App = (function () {
 
     if (view === 'calendar') renderCalendar();
     if (view === 'overview') renderOverview();
-    if (view === 'garden' && window.Garden) Garden.render();
+    if (view === 'friends') renderFriends();
+    if (view === 'garden' && hasGarden()) Garden.render();
     applyCalendarWidth();
     updateAppTitle(view);
     if (phoneView) window.scrollTo(0, 0);
@@ -10805,6 +11148,7 @@ const App = (function () {
 
     const title = document.getElementById('edit-task-title').value.trim();
     if (!title) return;
+    snapshot('editing "' + t.title + '"');
 
     const sel = document.getElementById('edit-task-category');
     const category = sel.value === 'other' ? document.getElementById('edit-task-category-other').value.trim() : sel.value;
@@ -11097,7 +11441,10 @@ const App = (function () {
       'Picking a plant up no longer risks losing it. Carry one while the app updates or syncs and it goes back where it was instead of vanishing.',
       'The magnifying glass names plants and nothing else now - no more Flower bed, Lawnmower or Dug soil.',
       'The pale open-hand cursor is gone from the category handles and the task rows; dragging still works.',
-      'The garden now counts the kinds you have found - "Found 5 of 31 plants" beside the gardener, and in the shop. Growing a seedling is what reveals a kind, and once found it stays found even if you cash the plant in.'
+      'The garden now counts the kinds you have found - "Found 5 of 31 plants" beside the gardener, and in the shop. Growing a seedling is what reveals a kind, and once found it stays found even if you cash the plant in.',
+      'Finishing a task now makes a cash-register sound, to go with the coin.',
+      'Undo. There is a button next to Hide Garden, and Ctrl+Z works too. It takes back the last change to your tasks or categories - ticking, deleting, editing, reordering, the lot.',
+      'A Friends tab: everyone with an account, how many plants they have and how many kinds they have found. Click a name to look around their garden. Tasks stay private - only the garden is shared.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
@@ -11535,9 +11882,98 @@ const App = (function () {
     closeSettings();
   }
 
+  /* ---------------------------------------------------------------
+     Friends.
+
+     Everybody with an account, their garden and how much is in it.
+     The list comes from `public.gardens`, a read-only view holding a
+     name, a world and a plot - and nothing else, so nobody's tasks,
+     notes or email are anywhere near it. Until supabase/gardens.sql has
+     been run the view does not exist, and the tab says so plainly
+     rather than looking broken.
+     --------------------------------------------------------------- */
+
+  let friendsCache = [];
+  let openFriendId = null;
+
+  function friendInitials(name) {
+    return (name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+  }
+
+  function plantsIn(layout) {
+    return Object.keys(layout || {}).filter(id => layout[id] && !layout[id].held).length;
+  }
+
+  async function renderFriends() {
+    const host = document.getElementById('friends-list');
+    if (!host) return;
+    host.innerHTML = '<p class="cat-empty">Looking for gardens&hellip;</p>';
+
+    let list;
+    try {
+      list = await Store.listGardens();
+    } catch (err) {
+      host.innerHTML = '<p class="cat-empty">Could not load the other gardens.'
+        + ' If this is a new install, the one-off <code>supabase/gardens.sql</code> still needs running.</p>';
+      return;
+    }
+
+    friendsCache = list || [];
+    if (!friendsCache.length) {
+      host.innerHTML = '<p class="cat-empty">Nobody else has a garden yet.</p>';
+      return;
+    }
+
+    /* Biggest gardens first - it is a list you scroll to compare. */
+    const sorted = friendsCache.slice().sort((a, b) => plantsIn(b.layout) - plantsIn(a.layout));
+    const totalKinds = Worlds.get(Worlds.DEFAULT_WORLD).plants.length;
+
+    host.innerHTML = `<div class="friend-list">${sorted.map(f => {
+      const plants = plantsIn(f.layout);
+      const found = Array.isArray(f.found) ? f.found.length : 0;
+      return `<button type="button" class="friend-row ${openFriendId === f.id ? 'on' : ''}" onclick="App.openFriendGarden('${f.id}')">
+          <span class="friend-avatar">${Util.escapeHtml(friendInitials(f.name))}</span>
+          <span class="friend-name">${Util.escapeHtml(f.name)}${f.isMe ? ' <span class="friend-you">you</span>' : ''}</span>
+          <span class="friend-counts">
+            <b>${plants}</b> ${plants === 1 ? 'plant' : 'plants'}
+            <span class="friend-kinds">&middot; ${found} of ${totalKinds} kinds</span>
+          </span>
+        </button>`;
+    }).join('')}</div>`;
+  }
+
+  function openFriendGarden(id) {
+    const f = friendsCache.find(x => x.id === id);
+    const panel = document.getElementById('friend-garden-panel');
+    if (!f || !panel) return;
+    openFriendId = id;
+
+    const plants = plantsIn(f.layout);
+    const found = Array.isArray(f.found) ? f.found.length : 0;
+    const world = Worlds.get(f.world);
+    document.getElementById('friend-garden-title').textContent =
+      (/s$/i.test(f.name) ? f.name + "'" : f.name + "'s") + ' ' + world.terms.place.replace(/^the\s+/i, '');
+    document.getElementById('friend-garden-sub').textContent =
+      `${plants} ${plants === 1 ? world.terms.plant : world.terms.plants} \u00b7 found ${found} of ${world.plants.length} kinds`;
+    document.getElementById('friend-garden-plot').innerHTML =
+      hasGarden() ? Garden.previewPlotHTML({ world: f.world, layout: f.layout, sections: f.sections }) : '';
+
+    panel.hidden = false;
+    renderFriends();
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeFriendGarden() {
+    openFriendId = null;
+    const panel = document.getElementById('friend-garden-panel');
+    if (panel) panel.hidden = true;
+    renderFriends();
+  }
+
   /* ========================= boot ========================= */
 
   function renderAll() {
+    renderUndoButton();
     renderDueToday();
     renderCategoryKey();
     populateCategorySelects();
@@ -11626,7 +12062,7 @@ const App = (function () {
      changing under you is explained rather than startling. The header badge is
      hidden on a phone, which is exactly where this matters most. */
   let syncedFlashTimer = null;
-  function flashSynced() {
+  function showToast(text) {
     let el = document.getElementById('sync-toast');
     if (!el) {
       el = document.createElement('div');
@@ -11634,7 +12070,7 @@ const App = (function () {
       el.className = 'sync-toast';
       document.body.appendChild(el);
     }
-    el.textContent = 'Updated from your other device';
+    el.textContent = text;
     el.classList.add('show');
     if (syncedFlashTimer) clearTimeout(syncedFlashTimer);
     syncedFlashTimer = setTimeout(function () {
@@ -11642,6 +12078,8 @@ const App = (function () {
       syncedFlashTimer = null;
     }, 2200);
   }
+
+  function flashSynced() { showToast('Updated from your other device'); }
 
   function boot() {
     loadViewPrefs();
@@ -11678,6 +12116,16 @@ const App = (function () {
           flashSynced();
         });
       }
+
+      /* Ctrl+Z anywhere except inside something you are typing in, where the
+         browser's own undo is the one you want. */
+      document.addEventListener('keydown', function (e) {
+        if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+        const el = e.target;
+        if (el && (el.matches('input, textarea, select') || el.isContentEditable)) return;
+        e.preventDefault();
+        undoLast();
+      });
 
       document.getElementById('new-task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
       document.getElementById('search-input').addEventListener('input', function () {
@@ -11722,7 +12170,8 @@ const App = (function () {
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
     clearSearch, toggleSearch, setTheme, isAppMode, setViewMode, setCategoryScope,
-    setListGrouping,
+    setListGrouping, undoLast,
+    renderFriends, openFriendGarden, closeFriendGarden,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,

@@ -50,6 +50,7 @@
     <button id="tab-list" class="active" onclick="App.switchView('list')">Tasks</button>
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
     <button id="tab-overview" onclick="App.switchView('overview')">Overview</button>
+    <button id="tab-friends" onclick="App.switchView('friends')">Friends</button>
     <div class="nav-search" id="nav-search">
       <button type="button" class="nav-search-icon" id="search-icon" onclick="App.toggleSearch()"
               title="Search tasks" aria-label="Search tasks">&#128269;</button>
@@ -57,6 +58,8 @@
              aria-label="Search tasks by title, notes or category">
       <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
     </div>
+    <button id="undo-btn" class="garden-toggle-btn" onclick="App.undoLast()" disabled
+            title="Nothing to undo">&#8630; Undo</button>
     <button id="garden-toggle-btn" class="garden-toggle-btn" onclick="toggleGardenVisibility()">Hide Garden</button>
   </nav>
 </div>
@@ -179,6 +182,22 @@
         </div>
       </div>
       <div class="cal-grid" id="cal-grid"></div>
+    </div>
+  </div>
+
+  <div id="view-friends" class="view">
+    <div class="panel">
+      <h2>Friends</h2>
+      <p class="category-hint">Everybody growing a garden on Tend. Click a name to look around theirs - tasks stay private, only the garden is shared.</p>
+      <div id="friends-list"></div>
+    </div>
+    <div class="panel" id="friend-garden-panel" hidden>
+      <div class="friend-garden-head">
+        <h2 id="friend-garden-title">Garden</h2>
+        <button type="button" class="section-toggle-btn" onclick="App.closeFriendGarden()">Close</button>
+      </div>
+      <p class="friend-garden-sub" id="friend-garden-sub"></p>
+      <div class="friend-garden-plot" id="friend-garden-plot"></div>
     </div>
   </div>
 
@@ -343,6 +362,13 @@
       <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
     </svg>
     <span class="bnav-label">Overview</span>
+  </button>
+  <button type="button" class="bnav-btn" id="bnav-friends" onclick="App.switchView('friends')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/>
+      <path d="M16.5 5.6a3.2 3.2 0 0 1 0 4.8"/><path d="M18 14.4A6 6 0 0 1 21 20"/>
+    </svg>
+    <span class="bnav-label">Friends</span>
   </button>
   <button type="button" class="bnav-btn" id="bnav-garden" onclick="App.switchView('garden')">
     <svg viewBox="0 0 24 24" aria-hidden="true">

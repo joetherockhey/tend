@@ -84,6 +84,51 @@ const Garden = (function () {
 
 
 
+  /* ------------------------------------------------------------------ */
+  /* Somebody else's plot, drawn read-only for the Friends tab.           */
+  /* It is handed a world, a plot and a section count and builds its own   */
+  /* HTML from those - it reads none of this account's state and writes    */
+  /* nothing, so looking at a friend's garden cannot disturb your own.     */
+  /* ------------------------------------------------------------------ */
+
+  function previewPlotHTML(opts) {
+    const world = Worlds.get((opts && opts.world) || Worlds.DEFAULT_WORLD);
+    const layout = (opts && opts.layout) || {};
+    const bands = Math.max(1, Math.min(12, Number(opts && opts.sections) || 1));
+    const rows = bands * SECTION_ROWS;
+
+    let html = '';
+    for (let i = 0; i < bands; i++) {
+      const theme = (world.sections[i] && world.sections[i].theme)
+        || world.themeOrder[i % world.themeOrder.length];
+      const [c1, c2] = world.themeColors[theme];
+      const size = CELL_SIZE * 2;
+      const checker = `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
+      html += `<div class="preview-band" style="top:${i * SECTION_ROWS * CELL_SIZE}px; height:${SECTION_ROWS * CELL_SIZE}px; ${checker}"></div>`;
+
+      /* The beds, so the plot reads as a garden rather than a checkerboard. */
+      (DECORATIONS_BY_THEME[theme] || []).forEach(d => {
+        if (d.kind !== 'bed') return;
+        html += `<div class="preview-bed" style="left:${d.col * CELL_SIZE}px; top:${(i * SECTION_ROWS + d.row) * CELL_SIZE}px;`
+          + ` width:${d.width * CELL_SIZE}px; height:${d.height * CELL_SIZE}px;"></div>`;
+      });
+    }
+
+    Object.keys(layout).forEach(id => {
+      const pos = layout[id];
+      if (!pos || pos.held || pos.row == null || pos.row >= rows) return;
+      const variety = world.plants[pos.variety] || world.plants[0];
+      const pot = pos.potColor || NEUTRAL_POT;
+      const art = pos.grown === false
+        ? `<svg width="24" height="34" viewBox="0 0 14 20" shape-rendering="crispEdges">${world.art.seedling()}</svg>`
+        : world.plantSVG(variety, pot, true);
+      html += `<div class="preview-plant" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px;`
+        + ` width:${CELL_SIZE}px; height:${CELL_SIZE}px;">${art}</div>`;
+    });
+
+    return `<div class="garden-preview" style="width:${GARDEN_COLS * CELL_SIZE}px; height:${rows * CELL_SIZE}px;">${html}</div>`;
+  }
+
   /* Null until the first render, which is where an older garden is given the
      sections it had already earned so nothing it contains is walled off. */
   let sectionsBought = null;
@@ -791,6 +836,15 @@ const Garden = (function () {
     setTimeout(() => playTone(700, 0.06, 'triangle', 0.05), 40);
   }
 
+  /* A cash register: the bell struck, then two bright notes ringing over it.
+     Played when a task is ticked off, which is the moment a coin is earned. */
+  function playCashSound() {
+    playNoiseBurst(0.04, 5200, 0.045);
+    playTone(1318.5, 0.14, 'triangle', 0.07);
+    setTimeout(() => playTone(1760, 0.34, 'triangle', 0.075), 85);
+    setTimeout(() => playTone(2637, 0.28, 'sine', 0.03), 105);
+  }
+
   function playDirtSound() {
     playNoiseBurst(0.09, 450, 0.07);
   }
@@ -1160,7 +1214,7 @@ const Garden = (function () {
     const col = document.querySelector('.garden-col');
     /* Installed as an app the garden is a tab of its own, so which of the
        three is on screen is the view's business, not this switch's. */
-    const phoneView = window.App && App.isAppMode && App.isAppMode();
+    const phoneView = typeof App !== 'undefined' && App.isAppMode && App.isAppMode();
     if (col) col.style.display = (phoneView || gardenVisible) ? '' : 'none';
     /* The layout grid keeps a 420px track for the garden, so tell it when there
        is no garden to put there. */
@@ -2966,6 +3020,8 @@ const Garden = (function () {
     reskin: reskin,
     loadAll: loadAll,
     heroName: heroName,
+    playCashSound: playCashSound,
+    previewPlotHTML: previewPlotHTML,
     shortLabel: shortLabel,
     renderCoins: renderCoins,
     renderShop: renderShop
