@@ -653,17 +653,25 @@ const Store = (function () {
     if (!CLOUD || !client) return localGardens();
     const { data, error } = await client
       .from('gardens')
-      .select('user_id, display_name, world, layout, sections, found')
+      .select('user_id, display_name, world, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets')
       .order('display_name');
     if (error) throw error;
     return (data || []).map(r => ({
       id: r.user_id,
       name: r.display_name || 'Gardener',
+      isMe: !!(account && r.user_id === account.id),
       world: r.world || 'garden',
       layout: safeParse(r.layout, {}),
       sections: Number(r.sections) || 1,
       found: safeParse(r.found, []),
-      isMe: !!(account && r.user_id === account.id)
+      chopped: safeParse(r.chopped, []),
+      movables: safeParse(r.movables, {}),
+      items: safeParse(r.items, []),
+      saplings: safeParse(r.saplings, []),
+      logs: safeParse(r.logs, []),
+      cabins: safeParse(r.cabins, []),
+      dug: safeParse(r.dug, []),
+      pets: safeParse(r.pets, [])
     }));
   }
 
@@ -682,11 +690,19 @@ const Store = (function () {
       return {
         id: prof.id,
         name: prof.name || 'Gardener',
+        isMe: !!(account && prof.id === account.id),
         world: prefsOfProfile.world || 'garden',
         layout: safeParse(get('garden-layout-v5'), {}),
         sections: Number(get('garden-sections-v1')) || 1,
         found: safeParse(get('garden-found-v1'), []),
-        isMe: !!(account && prof.id === account.id)
+        chopped: safeParse(get('garden-chopped-v1'), []),
+        movables: safeParse(get('garden-movables-v1'), {}),
+        items: safeParse(get('garden-items-v1'), []),
+        saplings: safeParse(get('garden-saplings-v1'), []),
+        logs: safeParse(get('garden-logs-v1'), []),
+        cabins: safeParse(get('garden-cabins-v1'), []),
+        dug: safeParse(get('garden-dug-v1'), []),
+        pets: safeParse(get('garden-pets-v1'), [])
       };
     });
   }

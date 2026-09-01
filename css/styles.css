@@ -3769,12 +3769,10 @@ li.task[draggable="false"] { cursor: pointer; }
 
 .preview-band { position: absolute; left: 0; right: 0; }
 
-.preview-bed {
-  position: absolute;
-  background: #6b4423;
-  opacity: 0.92;
-}
+/* Beds and dug soil sit under everything, the way they do on the real plot. */
+.preview-surface { position: absolute; }
 
+.preview-decor,
 .preview-plant {
   position: absolute;
   display: grid;
@@ -3782,4 +3780,5 @@ li.task[draggable="false"] { cursor: pointer; }
   pointer-events: none;
 }
 
+.preview-decor svg,
 .preview-plant svg { display: block; }

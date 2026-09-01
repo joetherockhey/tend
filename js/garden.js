@@ -91,42 +91,100 @@ const Garden = (function () {
   /* nothing, so looking at a friend's garden cannot disturb your own.     */
   /* ------------------------------------------------------------------ */
 
-  function previewPlotHTML(opts) {
-    const world = Worlds.get((opts && opts.world) || Worlds.DEFAULT_WORLD);
-    const layout = (opts && opts.layout) || {};
-    const bands = Math.max(1, Math.min(12, Number(opts && opts.sections) || 1));
+  function previewPlotHTML(g) {
+    g = g || {};
+    const world = Worlds.get(g.world || Worlds.DEFAULT_WORLD);
+    const layout = g.layout || {};
+    const bands = Math.max(1, Math.min(12, Number(g.sections) || 1));
     const rows = bands * SECTION_ROWS;
+    const chopped = new Set(g.chopped || []);
+    const movables = g.movables || {};
+    const dug = g.dug || [];
+    const px = n => n * CELL_SIZE;
 
-    let html = '';
+    /* Same shape as a real decoration on the plot: a sprite in a square, with
+       a shadow under it if it stands up. */
+    const sprite = (row, col, w, h, svg, shadow) =>
+      `<div class="preview-decor" style="left:${px(col)}px; top:${px(row)}px; width:${px(w)}px; height:${px(h)}px;">`
+      + (shadow === false ? '' : '<div class="sprite-shadow"></div>') + svg + '</div>';
+
+    let ground = '';
+    let things = '';
+
     for (let i = 0; i < bands; i++) {
       const theme = (world.sections[i] && world.sections[i].theme)
         || world.themeOrder[i % world.themeOrder.length];
       const [c1, c2] = world.themeColors[theme];
       const size = CELL_SIZE * 2;
-      const checker = `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
-      html += `<div class="preview-band" style="top:${i * SECTION_ROWS * CELL_SIZE}px; height:${SECTION_ROWS * CELL_SIZE}px; ${checker}"></div>`;
+      ground += `<div class="preview-band" style="top:${px(i * SECTION_ROWS)}px; height:${px(SECTION_ROWS)}px;`
+        + ` background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}),`
+        + ` linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1});`
+        + ` background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;"></div>`;
 
-      /* The beds, so the plot reads as a garden rather than a checkerboard. */
+      /* Everything the theme puts in this band - beds, trees, bushes, the
+         washing line, the mower - read the same way the real plot reads it, so
+         a tree they have felled is gone and a bush they have moved is where
+         they moved it to. */
       (DECORATIONS_BY_THEME[theme] || []).forEach(d => {
-        if (d.kind !== 'bed') return;
-        html += `<div class="preview-bed" style="left:${d.col * CELL_SIZE}px; top:${(i * SECTION_ROWS + d.row) * CELL_SIZE}px;`
-          + ` width:${d.width * CELL_SIZE}px; height:${d.height * CELL_SIZE}px;"></div>`;
+        let row = i * SECTION_ROWS + d.row;
+        let col = d.col;
+        const instanceId = (d.movable || d.choppable) ? i + ':' + d.id : null;
+        const felled = !!(d.choppable && chopped.has(instanceId));
+
+        if (felled && d.toolRequired === 'axe') return;          /* chopped down and gone */
+
+        if (d.movable || (felled && d.toolRequired === 'shovel')) {
+          const moved = movables[instanceId];
+          if (moved) { row = moved.row; col = moved.col; }
+        }
+
+        if (!d.blocking) {
+          ground += `<div class="preview-surface" style="left:${px(col)}px; top:${px(row)}px;`
+            + ` width:${px(d.width)}px; height:${px(d.height)}px; background:${world.surfaceBackground(d.kind)};"></div>`;
+          return;
+        }
+        things += sprite(row, col, d.width, d.height, d.art ? world.art[d.art](d.width) : d.svg);
       });
     }
+
+    /* Soil they have turned over with the hoe. */
+    dug.forEach(key => {
+      const [r, c] = String(key).split(':').map(Number);
+      if (!isFinite(r) || !isFinite(c)) return;
+      ground += `<div class="preview-surface" style="left:${px(c)}px; top:${px(r)}px; width:${CELL_SIZE}px;`
+        + ` height:${CELL_SIZE}px; background:${world.surfaceBackground('bed')};"></div>`;
+    });
+
+    (g.items || []).forEach(it => {
+      const def = world.items[it.kind];
+      if (def) things += sprite(it.row, it.col, 1, 1, def.svg());
+    });
+
+    (g.saplings || []).forEach(sp => {
+      const grownUp = !!(sp.planted && (sp.waterCount || 0) >= SAPLING_WATERS_NEEDED);
+      things += sprite(sp.row, sp.col, 1, 1, grownUp ? world.art.tree() : world.art.sapling());
+    });
+
+    (g.logs || []).forEach(l => { things += sprite(l.row, l.col, 1, 1, world.art.log(), false); });
+    (g.cabins || []).forEach(c => { things += sprite(c.row, c.col, 1, 1, world.art.build(c.logCount)); });
 
     Object.keys(layout).forEach(id => {
       const pos = layout[id];
       if (!pos || pos.held || pos.row == null || pos.row >= rows) return;
       const variety = world.plants[pos.variety] || world.plants[0];
-      const pot = pos.potColor || NEUTRAL_POT;
       const art = pos.grown === false
         ? `<svg width="24" height="34" viewBox="0 0 14 20" shape-rendering="crispEdges">${world.art.seedling()}</svg>`
-        : world.plantSVG(variety, pot, true);
-      html += `<div class="preview-plant" style="left:${pos.col * CELL_SIZE}px; top:${pos.row * CELL_SIZE}px;`
+        : world.plantSVG(variety, pos.potColor || NEUTRAL_POT, true);
+      things += `<div class="preview-plant" style="left:${px(pos.col)}px; top:${px(pos.row)}px;`
         + ` width:${CELL_SIZE}px; height:${CELL_SIZE}px;">${art}</div>`;
     });
 
-    return `<div class="garden-preview" style="width:${GARDEN_COLS * CELL_SIZE}px; height:${rows * CELL_SIZE}px;">${html}</div>`;
+    (g.pets || []).forEach(pet => {
+      const def = world.pets[pet.type];
+      if (def) things += sprite(pet.row, pet.col, 1, 1, def.svg());
+    });
+
+    return `<div class="garden-preview" style="width:${px(GARDEN_COLS)}px; height:${px(rows)}px;">${ground}${things}</div>`;
   }
 
   /* Null until the first render, which is where an older garden is given the

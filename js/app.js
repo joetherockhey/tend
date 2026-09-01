@@ -1733,7 +1733,8 @@ const App = (function () {
       'Finishing a task now makes a cash-register sound, to go with the coin.',
       'Undo. There is a button next to Hide Garden, and Ctrl+Z works too. It takes back the last change to your tasks or categories - ticking, deleting, editing, reordering, the lot.',
       'A Friends tab: everyone with an account, how many plants they have and how many kinds they have found. Click a name to look around their garden. Tasks stay private - only the garden is shared.',
-      'Fixed: clicking a friend made the list flicker and the garden jump down the page.'
+      'Fixed: clicking a friend made the list flicker and the garden jump down the page.',
+      'A friend\u2019s garden now shows everything in it - trees, bushes, the washing line, tools they have set down, saplings, logs, cabins and their animals - not just the plants.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
@@ -2261,7 +2262,7 @@ const App = (function () {
     document.getElementById('friend-garden-sub').textContent =
       `${plants} ${plants === 1 ? world.terms.plant : world.terms.plants} \u00b7 found ${found} of ${world.plants.length} kinds`;
     document.getElementById('friend-garden-plot').innerHTML =
-      hasGarden() ? Garden.previewPlotHTML({ world: f.world, layout: f.layout, sections: f.sections }) : '';
+      hasGarden() ? Garden.previewPlotHTML(f) : '';
 
     /* Move the highlight first, then show the panel, so the list is its final
        height before anything is scrolled to. */
