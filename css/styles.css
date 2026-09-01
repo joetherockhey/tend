@@ -3769,16 +3769,11 @@ li.task[draggable="false"] { cursor: pointer; }
 
 .preview-band { position: absolute; left: 0; right: 0; }
 
-/* Beds and dug soil sit under everything, the way they do on the real plot. */
-.preview-surface { position: absolute; }
-
-.preview-decor,
-.preview-plant {
-  position: absolute;
-  display: grid;
-  place-items: end center;
+/* The preview is a real plot in every respect but one: nothing in it can be
+   clicked, walked on or dragged, so it takes the page's normal touch rules
+   back rather than the plot's own. */
+.garden-preview {
+  touch-action: auto;
   pointer-events: none;
+  cursor: default;
 }
-
-.preview-decor svg,
-.preview-plant svg { display: block; }

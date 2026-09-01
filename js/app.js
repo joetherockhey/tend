@@ -1030,6 +1030,7 @@ const App = (function () {
     if (view === 'calendar') renderCalendar();
     if (view === 'overview') renderOverview();
     if (view === 'friends') renderFriends();
+    else if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
     if (view === 'garden' && hasGarden()) Garden.render();
     applyCalendarWidth();
     updateAppTitle(view);
@@ -1734,7 +1735,7 @@ const App = (function () {
       'Undo. There is a button next to Hide Garden, and Ctrl+Z works too. It takes back the last change to your tasks or categories - ticking, deleting, editing, reordering, the lot.',
       'A Friends tab: everyone with an account, how many plants they have and how many kinds they have found. Click a name to look around their garden. Tasks stay private - only the garden is shared.',
       'Fixed: clicking a friend made the list flicker and the garden jump down the page.',
-      'A friend\u2019s garden now shows everything in it - trees, bushes, the washing line, tools they have set down, saplings, logs, cabins and their animals - not just the plants.'
+      'A friend\u2019s garden now looks like a real garden: the same ground textures, fences and walls, plants swaying in their pots, their animals wandering about and butterflies over their flowers.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
@@ -2261,8 +2262,10 @@ const App = (function () {
       (/s$/i.test(f.name) ? f.name + "'" : f.name + "'s") + ' ' + world.terms.place.replace(/^the\s+/i, '');
     document.getElementById('friend-garden-sub').textContent =
       `${plants} ${plants === 1 ? world.terms.plant : world.terms.plants} \u00b7 found ${found} of ${world.plants.length} kinds`;
-    document.getElementById('friend-garden-plot').innerHTML =
-      hasGarden() ? Garden.previewPlotHTML(f) : '';
+    const plotHost = document.getElementById('friend-garden-plot');
+    plotHost.innerHTML = hasGarden() ? Garden.previewPlotHTML(f) : '';
+    /* Butterflies and wandering animals, on their plot rather than yours. */
+    if (hasGarden() && Garden.startPreviewLife) Garden.startPreviewLife(plotHost, f);
 
     /* Move the highlight first, then show the panel, so the list is its final
        height before anything is scrolled to. */
@@ -2279,8 +2282,11 @@ const App = (function () {
 
   function closeFriendGarden() {
     openFriendId = null;
+    if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
     const panel = document.getElementById('friend-garden-panel');
     if (panel) panel.hidden = true;
+    const plotHost = document.getElementById('friend-garden-plot');
+    if (plotHost) plotHost.innerHTML = '';
     paintFriends();
   }
 

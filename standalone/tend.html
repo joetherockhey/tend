@@ -3765,19 +3765,14 @@ li.task[draggable="false"] { cursor: pointer; }
 
 .preview-band { position: absolute; left: 0; right: 0; }
 
-/* Beds and dug soil sit under everything, the way they do on the real plot. */
-.preview-surface { position: absolute; }
-
-.preview-decor,
-.preview-plant {
-  position: absolute;
-  display: grid;
-  place-items: end center;
+/* The preview is a real plot in every respect but one: nothing in it can be
+   clicked, walked on or dragged, so it takes the page's normal touch rules
+   back rather than the plot's own. */
+.garden-preview {
+  touch-action: auto;
   pointer-events: none;
+  cursor: default;
 }
-
-.preview-decor svg,
-.preview-plant svg { display: block; }
 
 </style>
 </head>
@@ -6860,96 +6855,291 @@ const Garden = (function () {
     g = g || {};
     const world = Worlds.get(g.world || Worlds.DEFAULT_WORLD);
     const layout = g.layout || {};
+    /* Only the land they have actually opened up. The real plot shows one
+       locked band ahead as something to save for, which is no use to a
+       visitor - it would just be half a panel of grey. */
     const bands = Math.max(1, Math.min(12, Number(g.sections) || 1));
     const rows = bands * SECTION_ROWS;
     const chopped = new Set(g.chopped || []);
     const movables = g.movables || {};
-    const dug = g.dug || [];
+    const dug = new Set((g.dug || []).map(String));
     const px = n => n * CELL_SIZE;
 
-    /* Same shape as a real decoration on the plot: a sprite in a square, with
-       a shadow under it if it stands up. */
-    const sprite = (row, col, w, h, svg, shadow) =>
-      `<div class="preview-decor" style="left:${px(col)}px; top:${px(row)}px; width:${px(w)}px; height:${px(h)}px;">`
-      + (shadow === false ? '' : '<div class="sprite-shadow"></div>') + svg + '</div>';
+    const themeOf = i => (world.sections[i] && world.sections[i].theme)
+      || world.themeOrder[i % world.themeOrder.length];
 
-    let ground = '';
-    let things = '';
-
+    /* Every theme decoration, resolved the way the real plot resolves it -
+       felled ones gone, moved ones where they were moved to. */
+    const placed = [];
     for (let i = 0; i < bands; i++) {
-      const theme = (world.sections[i] && world.sections[i].theme)
-        || world.themeOrder[i % world.themeOrder.length];
-      const [c1, c2] = world.themeColors[theme];
-      const size = CELL_SIZE * 2;
-      ground += `<div class="preview-band" style="top:${px(i * SECTION_ROWS)}px; height:${px(SECTION_ROWS)}px;`
-        + ` background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}),`
-        + ` linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1});`
-        + ` background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;"></div>`;
-
-      /* Everything the theme puts in this band - beds, trees, bushes, the
-         washing line, the mower - read the same way the real plot reads it, so
-         a tree they have felled is gone and a bush they have moved is where
-         they moved it to. */
-      (DECORATIONS_BY_THEME[theme] || []).forEach(d => {
+      (DECORATIONS_BY_THEME[themeOf(i)] || []).forEach(d => {
         let row = i * SECTION_ROWS + d.row;
         let col = d.col;
         const instanceId = (d.movable || d.choppable) ? i + ':' + d.id : null;
         const felled = !!(d.choppable && chopped.has(instanceId));
-
-        if (felled && d.toolRequired === 'axe') return;          /* chopped down and gone */
-
-        if (d.movable || (felled && d.toolRequired === 'shovel')) {
+        if (felled && d.toolRequired === 'axe') return;
+        const movableNow = d.movable || (felled && d.toolRequired === 'shovel');
+        if (movableNow) {
           const moved = movables[instanceId];
           if (moved) { row = moved.row; col = moved.col; }
         }
-
-        if (!d.blocking) {
-          ground += `<div class="preview-surface" style="left:${px(col)}px; top:${px(row)}px;`
-            + ` width:${px(d.width)}px; height:${px(d.height)}px; background:${world.surfaceBackground(d.kind)};"></div>`;
-          return;
-        }
-        things += sprite(row, col, d.width, d.height, d.art ? world.art[d.art](d.width) : d.svg);
+        placed.push({ ...d, row, col, band: i, movable: movableNow,
+                      svg: d.art ? world.art[d.art](d.width) : d.svg });
       });
     }
 
-    /* Soil they have turned over with the hoe. */
-    dug.forEach(key => {
-      const [r, c] = String(key).split(':').map(Number);
-      if (!isFinite(r) || !isFinite(c)) return;
-      ground += `<div class="preview-surface" style="left:${px(c)}px; top:${px(r)}px; width:${CELL_SIZE}px;`
-        + ` height:${CELL_SIZE}px; background:${world.surfaceBackground('bed')};"></div>`;
-    });
+    /* Dirt, the same test the real garden makes: a bed, or soil they dug. */
+    const onDirt = (row, col) => dug.has(row + ':' + col) || placed.some(d =>
+      !d.blocking && d.kind === 'bed' &&
+      row >= d.row && row < d.row + d.height && col >= d.col && col < d.col + d.width);
 
-    (g.items || []).forEach(it => {
-      const def = world.items[it.kind];
-      if (def) things += sprite(it.row, it.col, 1, 1, def.svg());
-    });
+    const decor = (row, col, w, h, svg, shadow) =>
+      `<div class="garden-decor" style="left:${px(col)}px; top:${px(row)}px; width:${px(w)}px; height:${px(h)}px;">`
+      + (shadow === false ? '' : '<div class="sprite-shadow"></div>') + svg + '</div>';
 
-    (g.saplings || []).forEach(sp => {
-      const grownUp = !!(sp.planted && (sp.waterCount || 0) >= SAPLING_WATERS_NEEDED);
-      things += sprite(sp.row, sp.col, 1, 1, grownUp ? world.art.tree() : world.art.sapling());
-    });
+    /* --- the bands, with their texture, edging, walls and roofs --- */
+    let bandsHtml = '';
+    for (let i = 0; i < bands; i++) {
+      const theme = themeOf(i);
+      const [c1, c2] = world.themeColors[theme];
+      const size = CELL_SIZE * 2;
+      const checker = `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
+      const roofHtml = (theme === 'glass' || theme === 'wood')
+        ? `<div class="garden-section-roof ${theme}"></div>` : '';
 
-    (g.logs || []).forEach(l => { things += sprite(l.row, l.col, 1, 1, world.art.log(), false); });
-    (g.cabins || []).forEach(c => { things += sprite(c.row, c.col, 1, 1, world.art.build(c.logCount)); });
+      const bandDecor = placed.filter(d => !d.movable && d.band === i).map(d => {
+        const relTop = px(d.row - i * SECTION_ROWS);
+        if (d.blocking) {
+          return `<div class="garden-decor" style="left:${px(d.col)}px; top:${relTop}px; width:${px(d.width)}px; height:${px(d.height)}px;"><div class="sprite-shadow"></div>${d.svg}</div>`;
+        }
+        return `<div class="garden-surface" style="left:${px(d.col)}px; top:${relTop}px; width:${px(d.width)}px; height:${px(d.height)}px; background:${world.surfaceBackground(d.kind)};"></div>`;
+      }).join('');
 
+      bandsHtml += `<div class="garden-section-band" style="top:${px(i * SECTION_ROWS)}px; height:${px(SECTION_ROWS)}px; ${checker}">
+        ${scatterHtml(i, theme, world)}
+        ${i > 0 ? edgingHtml(theme, world) : ''}
+        ${bandDecor}
+        ${roofHtml}
+        <div class="garden-section-wall" style="background:${world.wallPattern(theme)};"></div>
+      </div>`;
+    }
+
+    const dugHtml = [...dug].map(key => {
+      const [r, c] = key.split(':').map(Number);
+      if (!isFinite(r) || !isFinite(c)) return '';
+      return `<div class="garden-surface" style="left:${px(c)}px; top:${px(r)}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px; background:${world.surfaceBackground('bed')};"></div>`;
+    }).join('');
+
+    const movablesHtml = placed.filter(d => d.movable)
+      .map(d => decor(d.row, d.col, d.width, d.height, d.svg)).join('');
+
+    /* --- the plants, with the same sway, nudge and half-grown stage --- */
+    let cellsHtml = '';
     Object.keys(layout).forEach(id => {
       const pos = layout[id];
       if (!pos || pos.held || pos.row == null || pos.row >= rows) return;
       const variety = world.plants[pos.variety] || world.plants[0];
-      const art = pos.grown === false
-        ? `<svg width="24" height="34" viewBox="0 0 14 20" shape-rendering="crispEdges">${world.art.seedling()}</svg>`
-        : world.plantSVG(variety, pos.potColor || NEUTRAL_POT, true);
-      things += `<div class="preview-plant" style="left:${px(pos.col)}px; top:${px(pos.row)}px;`
-        + ` width:${CELL_SIZE}px; height:${CELL_SIZE}px;">${art}</div>`;
+      const planted = onDirt(pos.row, pos.col);
+      const seedling = pos.grown === false;
+      const half = seedling && (pos.waterCount || 0) >= Math.ceil(PLANT_WATERS_NEEDED / 2);
+      const potColor = pos.potColor || NEUTRAL_POT;
+
+      const nudgeX = (hashStr(id + ':x') % 5) - 2;
+      const scale = (0.93 + (hashStr(id + ':s') % 13) / 100).toFixed(2);
+      const delay = (hashStr(id + ':d') % 40) / 10;
+
+      let art;
+      if (half) art = `<span class="half-grown">${world.plantSVG(variety, potColor, planted)}</span>`;
+      else if (seedling) {
+        const pot = planted ? '' : `<rect x="2" y="15" width="10" height="1" fill="${NEUTRAL_POT}"/><rect x="3" y="16" width="8" height="3" fill="${NEUTRAL_POT}"/><rect x="4" y="18" width="6" height="1" fill="rgba(0,0,0,0.18)"/>`;
+        art = `<svg width="24" height="34" viewBox="0 0 14 20" shape-rendering="crispEdges">${world.art.seedling()}${pot}</svg>`;
+      } else art = world.plantSVG(variety, potColor, planted);
+
+      cellsHtml += `<div class="garden-cell${planted ? ' sways' : ''}" style="left:${px(pos.col)}px; top:${px(pos.row)}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px; --sway-delay:${delay}s;">
+        <div class="sprite-shadow" style="transform:translateX(calc(-46% + ${nudgeX}px)) scaleX(${scale});"></div>
+        <span class="plant-art" style="--nudge:${nudgeX}px; --scale:${scale}; transform:translateX(${nudgeX}px) scale(${scale});">${art}</span>
+      </div>`;
     });
 
-    (g.pets || []).forEach(pet => {
+    const itemsHtml = (g.items || []).map(it => {
+      const def = world.items[it.kind];
+      return def ? decor(it.row, it.col, 1, 1, def.svg()) : '';
+    }).join('');
+
+    const saplingsHtml = (g.saplings || []).map(sp => decor(sp.row, sp.col, 1, 1,
+      (sp.planted && (sp.waterCount || 0) >= SAPLING_WATERS_NEEDED) ? world.art.tree() : world.art.sapling())).join('');
+
+    const logsHtml = (g.logs || []).map(l => decor(l.row, l.col, 1, 1, world.art.log(), false)).join('');
+    const cabinsHtml = (g.cabins || []).map(c => decor(c.row, c.col, 1, 1, world.art.build(c.logCount))).join('');
+    const treatsHtml = (g.treats || []).map(t => decor(t.row, t.col, 1, 1, world.art.treat(), false)).join('');
+
+    /* Pets get the same element shape as the real ones, so the preview's own
+       ticker can walk them about afterwards. */
+    const petsHtml = (g.pets || []).map(pet => {
       const def = world.pets[pet.type];
-      if (def) things += sprite(pet.row, pet.col, 1, 1, def.svg());
-    });
+      if (!def) return '';
+      return `<div class="garden-pet" data-pet="${Util.escapeHtml(pet.id || '')}" style="width:${CELL_SIZE}px; height:${CELL_SIZE}px; transform:translate(${px(pet.col)}px, ${px(pet.row)}px);"><div class="sprite-shadow"></div>${def.svg()}</div>`;
+    }).join('');
 
-    return `<div class="garden-preview" style="width:${px(GARDEN_COLS)}px; height:${px(rows)}px;">${ground}${things}</div>`;
+    return `<div class="garden-plot garden-preview" style="width:${px(GARDEN_COLS)}px; height:${px(rows)}px;">`
+      + bandsHtml + dugHtml + cellsHtml + movablesHtml + itemsHtml + saplingsHtml
+      + logsHtml + cabinsHtml + treatsHtml + petsHtml
+      + `<div class="garden-effects"></div></div>`;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Bringing a friend's plot to life.                                    */
+  /* The same butterflies and the same wandering pets as a real garden,   */
+  /* run against the preview's own element and its own copy of the data.  */
+  /* Nothing here writes to storage or touches this account's state, and  */
+  /* it all stops the moment the preview is closed or replaced.           */
+  /* ------------------------------------------------------------------ */
+
+  let previewLife = null;
+
+  function stopPreviewLife() {
+    if (!previewLife) return;
+    if (previewLife.frame != null) cancelAnimationFrame(previewLife.frame);
+    if (previewLife.timer) clearInterval(previewLife.timer);
+    if (previewLife.petTimer) clearInterval(previewLife.petTimer);
+    previewLife = null;
+  }
+
+  function startPreviewLife(host, g) {
+    stopPreviewLife();
+    if (!host || !g) return;
+
+    const world = Worlds.get(g.world || Worlds.DEFAULT_WORLD);
+    const plot = host.querySelector('.garden-preview');
+    const layer = plot && plot.querySelector('.garden-effects');
+    if (!plot || !layer) return;
+
+    const rows = Math.round(plot.offsetHeight / CELL_SIZE) || SECTION_ROWS;
+    const bounds = { w: GARDEN_COLS * CELL_SIZE, h: rows * CELL_SIZE };
+    const ocean = world.id === 'ocean';
+    const layout = g.layout || {};
+
+    /* Their flowers, for the butterflies to hang about over. */
+    const flowers = Object.keys(layout).map(id => layout[id])
+      .filter(p => p && !p.held && p.row != null && p.row < rows)
+      .map(p => ({ x: p.col * CELL_SIZE + CELL_SIZE / 2, y: p.row * CELL_SIZE + CELL_SIZE * 0.35, grown: p.grown !== false }));
+
+    /* A copy of their pets, so walking them about changes nothing of theirs. */
+    const pets = (g.pets || []).map(p => ({ ...p })).filter(p => world.pets[p.type]);
+
+    previewLife = { flyers: [], last: 0, frame: null, timer: null, petTimer: null };
+
+    const target = () => {
+      const n = Object.keys(layout).filter(id => layout[id] && !layout[id].held).length;
+      return n > 15 ? 3 : n > 10 ? 2 : n > 5 ? 1 : 0;
+    };
+
+    const pick = f => {
+      f.age = 0;
+      const grown = flowers.filter(x => x.grown);
+      const pool = grown.length ? grown : flowers;
+      if (!pool.length) {
+        f.tx = 8 + Math.random() * Math.max(8, bounds.w - 16);
+        f.ty = 6 + Math.random() * Math.max(8, bounds.h - 12);
+        f.hover = 300 + Math.random() * 700;
+        return;
+      }
+      const stay = (f.flower && Math.random() < 0.6) ? f.flower : pool[Math.floor(Math.random() * pool.length)];
+      f.flower = stay;
+      const close = Math.random() < 0.55;
+      const spread = close ? 7 : 13;
+      f.tx = stay.x + (Math.random() * spread * 2 - spread);
+      f.ty = stay.y + (Math.random() * spread * 1.6 - spread * 1.2);
+      f.hover = close ? (500 + Math.random() * 1100) : (1600 + Math.random() * 2600);
+    };
+
+    const spawn = () => {
+      const el = document.createElement('div');
+      el.className = 'garden-ambient';
+      el.innerHTML = ambientArt(world);
+      layer.appendChild(el);
+      const side = Math.floor(Math.random() * 4);
+      const f = {
+        el: el,
+        x: side === 0 ? -18 : side === 1 ? bounds.w + 18 : Math.random() * bounds.w,
+        y: side === 2 ? -16 : side === 3 ? bounds.h + 16 : Math.random() * bounds.h,
+        vx: 0, vy: 0, tx: 0, ty: 0, hover: 0, age: 0, flower: null,
+        dir: Math.random() < 0.5 ? -1 : 1,
+        speed: 0.34 + Math.random() * 0.26,
+        phase: Math.random() * Math.PI * 2,
+        life: 40000 + Math.random() * 50000
+      };
+      pick(f);
+      previewLife.flyers.push(f);
+    };
+
+    const loop = ts => {
+      if (!previewLife) return;
+      previewLife.frame = requestAnimationFrame(loop);
+      const dt = previewLife.last ? Math.min(80, ts - previewLife.last) : 16;
+      previewLife.last = ts;
+      if (document.hidden || !previewLife.flyers.length) return;
+      const k = Math.min(3, dt / 16);
+
+      for (let i = previewLife.flyers.length - 1; i >= 0; i--) {
+        const f = previewLife.flyers[i];
+        f.life -= dt; f.hover -= dt; f.age += dt;
+        f.phase += 0.085 * k;
+
+        const dx = f.tx - f.x, dy = f.ty - f.y;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        if ((dist < 9 && f.hover <= 0) || f.age > 9000) pick(f);
+
+        const pull = dist < 14 ? 0.02 : 0.055;
+        f.vx += ((dx / dist) * pull * f.speed + Math.cos(f.phase * 1.7) * 0.05) * k;
+        f.vy += ((dy / dist) * pull * f.speed + Math.sin(f.phase) * 0.06) * k;
+        f.vx *= 0.94; f.vy *= 0.94;
+        const max = 1.1 * f.speed, sp = Math.hypot(f.vx, f.vy);
+        if (sp > max) { f.vx = f.vx / sp * max; f.vy = f.vy / sp * max; }
+        f.x = Math.max(-30, Math.min(bounds.w + 30, f.x + f.vx * k));
+        f.y = Math.max(-26, Math.min(bounds.h + 26, f.y + f.vy * k));
+        if (Math.abs(f.vx) > 0.06) f.dir = f.vx < 0 ? -1 : 1;
+
+        if (f.life <= 0) { f.el.remove(); previewLife.flyers.splice(i, 1); continue; }
+        const flap = ocean ? 1 : (0.62 + 0.38 * Math.abs(Math.sin(f.phase * 1.9)));
+        f.el.style.opacity = f.life < 900 ? (f.life / 900).toFixed(2) : '0.9';
+        f.el.style.transform = 'translate(' + f.x.toFixed(1) + 'px, ' + f.y.toFixed(1) + 'px) scaleX(' + (f.dir * flap).toFixed(2) + ')';
+      }
+    };
+
+    previewLife.timer = setInterval(() => {
+      if (!previewLife || document.hidden || !plot.offsetParent) return;
+      if (previewLife.reduced === undefined) {
+        previewLife.reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      }
+      if (previewLife.reduced) return;
+      const want = target();
+      if (previewLife.flyers.length > want) {
+        for (let i = 0; i < previewLife.flyers.length - want; i++) {
+          if (previewLife.flyers[i].life > 1200) previewLife.flyers[i].life = 900;
+        }
+      } else if (previewLife.flyers.length < want && Math.random() < 0.6) spawn();
+    }, 1600);
+
+    /* Their animals mill about the same way yours do - there is nobody for
+       them to follow or shy away from here, so it is the wander alone. */
+    if (pets.length) {
+      previewLife.petTimer = setInterval(() => {
+        if (!previewLife || document.hidden || !plot.offsetParent) return;
+        pets.forEach(pet => {
+          if (Math.random() >= 0.6) return;
+          const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+          const [dr, dc] = dirs[Math.floor(Math.random() * dirs.length)];
+          const nr = Math.max(0, Math.min(rows - 1, pet.row + dr));
+          const nc = Math.max(0, Math.min(GARDEN_COLS - 1, pet.col + dc));
+          pet.row = nr; pet.col = nc;
+          const el = plot.querySelector('.garden-pet[data-pet="' + (pet.id || '') + '"]');
+          if (el) el.style.transform = 'translate(' + (nc * CELL_SIZE) + 'px, ' + (nr * CELL_SIZE) + 'px)';
+        });
+      }, 5000);
+    }
+
+    previewLife.frame = requestAnimationFrame(loop);
   }
 
   /* Null until the first render, which is where an older garden is given the
@@ -8700,16 +8890,16 @@ const Garden = (function () {
   /* place rather than a checkerboard.                                    */
   /* ------------------------------------------------------------------ */
 
-  function detail(theme) {
-    const d = W().themeDetail || {};
+  function detail(theme, world) {
+    const d = (world || W()).themeDetail || {};
     return d[theme] || d.grass ||
       { tuft: '#7cb86f', tuft2: '#57964e', pebble: '#c4cbbd', path: '#cdb68c', patch: '#cbe4c3', edge: '#b9a179' };
   }
 
   /* Tufts and pebbles, scattered from the tile's own hash so they stay put
      between renders. Sparse on purpose - this is texture, not decoration. */
-  function scatterHtml(bandIndex, theme) {
-    const d = detail(theme);
+  function scatterHtml(bandIndex, theme, world) {
+    const d = detail(theme, world);
     let out = '';
     for (let r = 0; r < SECTION_ROWS; r++) {
       for (let c = 0; c < GARDEN_COLS; c++) {
@@ -8735,8 +8925,8 @@ const Garden = (function () {
 
   /* A worn track down the middle, so the eye has somewhere to walk. Two tiles
      wide, between the beds, and it lines up from one section to the next. */
-  function edgingHtml(theme) {
-    const d = detail(theme);
+  function edgingHtml(theme, world) {
+    const d = detail(theme, world);
     let stones = '';
     const stoneW = CELL_SIZE / 2;
     for (let c = 0; c < GARDEN_COLS * 2; c++) {
@@ -9131,8 +9321,8 @@ const Garden = (function () {
   let ambientLast = 0;
   let ambientFlyers = [];
 
-  function ambientArt() {
-    const ocean = W().id === 'ocean';
+  function ambientArt(world) {
+    const ocean = (world || W()).id === 'ocean';
     const wings = ocean
       ? ['#8fd6e8', '#f2b8a0', '#c9e8a0']
       : ['#f2c94c', '#f2a0c4', '#a0c8f2'];
@@ -9776,6 +9966,8 @@ const Garden = (function () {
     heroName: heroName,
     playCashSound: playCashSound,
     previewPlotHTML: previewPlotHTML,
+    startPreviewLife: startPreviewLife,
+    stopPreviewLife: stopPreviewLife,
     shortLabel: shortLabel,
     renderCoins: renderCoins,
     renderShop: renderShop
@@ -10815,6 +11007,7 @@ const App = (function () {
     if (view === 'calendar') renderCalendar();
     if (view === 'overview') renderOverview();
     if (view === 'friends') renderFriends();
+    else if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
     if (view === 'garden' && hasGarden()) Garden.render();
     applyCalendarWidth();
     updateAppTitle(view);
@@ -11519,7 +11712,7 @@ const App = (function () {
       'Undo. There is a button next to Hide Garden, and Ctrl+Z works too. It takes back the last change to your tasks or categories - ticking, deleting, editing, reordering, the lot.',
       'A Friends tab: everyone with an account, how many plants they have and how many kinds they have found. Click a name to look around their garden. Tasks stay private - only the garden is shared.',
       'Fixed: clicking a friend made the list flicker and the garden jump down the page.',
-      'A friend\u2019s garden now shows everything in it - trees, bushes, the washing line, tools they have set down, saplings, logs, cabins and their animals - not just the plants.'
+      'A friend\u2019s garden now looks like a real garden: the same ground textures, fences and walls, plants swaying in their pots, their animals wandering about and butterflies over their flowers.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
@@ -12046,8 +12239,10 @@ const App = (function () {
       (/s$/i.test(f.name) ? f.name + "'" : f.name + "'s") + ' ' + world.terms.place.replace(/^the\s+/i, '');
     document.getElementById('friend-garden-sub').textContent =
       `${plants} ${plants === 1 ? world.terms.plant : world.terms.plants} \u00b7 found ${found} of ${world.plants.length} kinds`;
-    document.getElementById('friend-garden-plot').innerHTML =
-      hasGarden() ? Garden.previewPlotHTML(f) : '';
+    const plotHost = document.getElementById('friend-garden-plot');
+    plotHost.innerHTML = hasGarden() ? Garden.previewPlotHTML(f) : '';
+    /* Butterflies and wandering animals, on their plot rather than yours. */
+    if (hasGarden() && Garden.startPreviewLife) Garden.startPreviewLife(plotHost, f);
 
     /* Move the highlight first, then show the panel, so the list is its final
        height before anything is scrolled to. */
@@ -12064,8 +12259,11 @@ const App = (function () {
 
   function closeFriendGarden() {
     openFriendId = null;
+    if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
     const panel = document.getElementById('friend-garden-panel');
     if (panel) panel.hidden = true;
+    const plotHost = document.getElementById('friend-garden-plot');
+    if (plotHost) plotHost.innerHTML = '';
     paintFriends();
   }
 
