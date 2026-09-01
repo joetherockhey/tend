@@ -1696,6 +1696,10 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'Fifty plants to find in each world. The nineteen you picked have been added to the end of the list, so nothing already growing has changed into something else.',
+      "A friend's garden now opens straight under their name rather than at the foot of the page, and clicking the name again folds it away.",
+      'Every row says how many plants that gardener has, and how many kinds they have found out of fifty.',
+      "You now see their gardener too, wearing whatever outfit they have bought and put on - and they stroll about, along with their animals and their butterflies (fish, in the reef).",
       'Butterflies now wander the garden in every direction and hang about over the flowers, instead of crossing in a straight line from the left.',
       'There are more of them the more you have planted, and none at all on an empty plot.',
       'Picking a plant up no longer sends the butterflies back to the edge and starts them over.',
@@ -2238,55 +2242,73 @@ const App = (function () {
     host.innerHTML = `<div class="friend-list">${sorted.map(f => {
       const plants = plantsIn(f.layout);
       const found = Array.isArray(f.found) ? f.found.length : 0;
-      return `<button type="button" class="friend-row ${openFriendId === f.id ? 'on' : ''}" onclick="App.openFriendGarden('${f.id}')">
-          <span class="friend-avatar">${Util.escapeHtml(friendInitials(f.name))}</span>
-          <span class="friend-name">${Util.escapeHtml(f.name)}${f.isMe ? ' <span class="friend-you">you</span>' : ''}</span>
-          <span class="friend-counts">
-            <b>${plants}</b> ${plants === 1 ? 'plant' : 'plants'}
-            <span class="friend-kinds">&middot; ${found} of ${totalKinds} kinds</span>
-          </span>
-        </button>`;
+      const open = openFriendId === f.id;
+      return `<div class="friend-item ${open ? 'open' : ''}">
+          <button type="button" class="friend-row ${open ? 'on' : ''}" onclick="App.openFriendGarden('${f.id}')">
+            <span class="friend-avatar">${Util.escapeHtml(friendInitials(f.name))}</span>
+            <span class="friend-name">${Util.escapeHtml(f.name)}${f.isMe ? ' <span class="friend-you">you</span>' : ''}</span>
+            <span class="friend-counts">
+              <b>${plants}</b> ${plants === 1 ? 'plant' : 'plants'}
+              <span class="friend-kinds">&middot; ${found} of ${totalKinds} kinds</span>
+            </span>
+          </button>
+          ${open ? friendGardenHtml(f) : ''}
+        </div>`;
     }).join('')}</div>`;
+
+    /* The plot only exists once it has been painted, so its butterflies, fish,
+       animals and gardener are started here rather than in the click. */
+    if (!openFriendId) {
+      if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
+      return;
+    }
+    const openF = friendsCache.find(x => x.id === openFriendId);
+    const plotHost = host.querySelector('.friend-garden-plot');
+    if (openF && plotHost && hasGarden() && Garden.startPreviewLife) Garden.startPreviewLife(plotHost, openF);
   }
 
-  function openFriendGarden(id) {
-    const f = friendsCache.find(x => x.id === id);
-    const panel = document.getElementById('friend-garden-panel');
-    if (!f || !panel) return;
-    openFriendId = id;
-
+  /* The garden itself, folded in under the row it belongs to. */
+  function friendGardenHtml(f) {
     const plants = plantsIn(f.layout);
     const found = Array.isArray(f.found) ? f.found.length : 0;
     const world = Worlds.get(f.world);
-    document.getElementById('friend-garden-title').textContent =
-      (/s$/i.test(f.name) ? f.name + "'" : f.name + "'s") + ' ' + world.terms.place.replace(/^the\s+/i, '');
-    document.getElementById('friend-garden-sub').textContent =
-      `${plants} ${plants === 1 ? world.terms.plant : world.terms.plants} \u00b7 found ${found} of ${world.plants.length} kinds`;
-    const plotHost = document.getElementById('friend-garden-plot');
-    plotHost.innerHTML = hasGarden() ? Garden.previewPlotHTML(f) : '';
-    /* Butterflies and wandering animals, on their plot rather than yours. */
-    if (hasGarden() && Garden.startPreviewLife) Garden.startPreviewLife(plotHost, f);
+    const title = (/s$/i.test(f.name) ? f.name + "'" : f.name + "'s")
+      + ' ' + world.terms.place.replace(/^the\s+/i, '');
+    const sub = `${plants} ${plants === 1 ? world.terms.plant : world.terms.plants}`
+      + ` \u00b7 found ${found} of ${world.plants.length} kinds`;
+    return `<div class="friend-garden-inline">
+        <div class="friend-garden-head">
+          <h2>${Util.escapeHtml(title)}</h2>
+          <button type="button" class="section-toggle-btn" onclick="event.stopPropagation(); App.closeFriendGarden()">Close</button>
+        </div>
+        <p class="friend-garden-sub">${Util.escapeHtml(sub)}</p>
+        <div class="friend-garden-plot">${hasGarden() ? Garden.previewPlotHTML(f) : ''}</div>
+      </div>`;
+  }
 
-    /* Move the highlight first, then show the panel, so the list is its final
-       height before anything is scrolled to. */
+  /* Clicking a name opens it in place; clicking it again folds it away. */
+  function openFriendGarden(id) {
+    const f = friendsCache.find(x => x.id === id);
+    if (!f) return;
+    if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
+    openFriendId = (openFriendId === id) ? null : id;
     paintFriends();
-    panel.hidden = false;
+    if (!openFriendId) return;
 
-    /* And only scroll if it actually opened off-screen - scrolling something
-       already in front of you is just the page lurching for no reason. */
-    const box = panel.getBoundingClientRect();
+    /* Only scroll if the row it opened under is off-screen - the garden appears
+       right where you clicked, so usually there is nothing to scroll to. */
+    const host = document.getElementById('friends-list');
+    const item = host && host.querySelector('.friend-item.open');
+    if (!item) return;
+    const box = item.getBoundingClientRect();
     if (box.top < 0 || box.top > window.innerHeight - 80) {
-      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
 
   function closeFriendGarden() {
     openFriendId = null;
     if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
-    const panel = document.getElementById('friend-garden-panel');
-    if (panel) panel.hidden = true;
-    const plotHost = document.getElementById('friend-garden-plot');
-    if (plotHost) plotHost.innerHTML = '';
     paintFriends();
   }
 

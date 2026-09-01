@@ -653,7 +653,7 @@ const Store = (function () {
     if (!CLOUD || !client) return localGardens();
     const { data, error } = await client
       .from('gardens')
-      .select('user_id, display_name, world, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets')
+      .select('user_id, display_name, world, hero, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets, outfits, hero_pos')
       .order('display_name');
     if (error) throw error;
     return (data || []).map(r => ({
@@ -661,6 +661,7 @@ const Store = (function () {
       name: r.display_name || 'Gardener',
       isMe: !!(account && r.user_id === account.id),
       world: r.world || 'garden',
+      hero: r.hero === 'female' ? 'female' : 'male',
       layout: safeParse(r.layout, {}),
       sections: Number(r.sections) || 1,
       found: safeParse(r.found, []),
@@ -671,7 +672,9 @@ const Store = (function () {
       logs: safeParse(r.logs, []),
       cabins: safeParse(r.cabins, []),
       dug: safeParse(r.dug, []),
-      pets: safeParse(r.pets, [])
+      pets: safeParse(r.pets, []),
+      outfits: safeParse(r.outfits, {}),
+      heroPos: safeParse(r.hero_pos, null)
     }));
   }
 
@@ -692,6 +695,7 @@ const Store = (function () {
         name: prof.name || 'Gardener',
         isMe: !!(account && prof.id === account.id),
         world: prefsOfProfile.world || 'garden',
+        hero: prefsOfProfile.hero === 'female' ? 'female' : 'male',
         layout: safeParse(get('garden-layout-v5'), {}),
         sections: Number(get('garden-sections-v1')) || 1,
         found: safeParse(get('garden-found-v1'), []),
@@ -702,7 +706,9 @@ const Store = (function () {
         logs: safeParse(get('garden-logs-v1'), []),
         cabins: safeParse(get('garden-cabins-v1'), []),
         dug: safeParse(get('garden-dug-v1'), []),
-        pets: safeParse(get('garden-pets-v1'), [])
+        pets: safeParse(get('garden-pets-v1'), []),
+        outfits: safeParse(get('garden-outfits-v1'), {}),
+        heroPos: safeParse(get('garden-hero-v5'), null)
       };
     });
   }

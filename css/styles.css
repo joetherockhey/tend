@@ -3735,6 +3735,26 @@ li.task[draggable="false"] { cursor: pointer; }
   .friend-kinds { display: none; }
 }
 
+/* A garden opens where the name is, folded in under the row that was clicked,
+   so nobody has to go looking for it at the foot of the page. */
+.friend-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.friend-item.open .friend-row {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.friend-garden-inline {
+  border: 1px solid var(--accent);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  background: var(--panel);
+  padding: 10px 12px 12px;
+}
+
 .friend-garden-head {
   display: flex;
   align-items: center;

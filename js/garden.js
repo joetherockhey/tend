@@ -221,9 +221,20 @@ const Garden = (function () {
       return `<div class="garden-pet" data-pet="${Util.escapeHtml(pet.id || '')}" style="width:${CELL_SIZE}px; height:${CELL_SIZE}px; transform:translate(${px(pet.col)}px, ${px(pet.row)}px);"><div class="sprite-shadow"></div>${def.svg()}</div>`;
     }).join('');
 
+    /* Their gardener, in whatever they last bought and put on. Where they were
+       standing is a per-device thing and is often not synced, so if it did not
+       come through they are simply stood in the middle of their first band. */
+    const hp = (g.heroPos && isFinite(g.heroPos.row) && isFinite(g.heroPos.col)) ? g.heroPos : null;
+    const heroRow = Math.max(0, Math.min(rows - 1, hp ? Number(hp.row) : Math.floor(SECTION_ROWS / 2)));
+    const heroCol = Math.max(0, Math.min(GARDEN_COLS - 1, hp ? Number(hp.col) : Math.floor(GARDEN_COLS / 2)));
+    const heroOutfit = (g.outfits && world.outfits[g.outfits.equipped]) || world.outfits.classic;
+    const heroArt = Worlds.heroSVG(world.id, g.hero === 'female' ? 'female' : 'male',
+                                   (hp && hp.direction) || 'down', heroOutfit);
+    const heroHtml = `<div class="garden-hero garden-preview-hero" style="width:${CELL_SIZE}px; height:${CELL_SIZE}px; transform:translate(${px(heroCol)}px, ${px(heroRow)}px);"><div class="sprite-shadow"></div>${heroArt}</div>`;
+
     return `<div class="garden-plot garden-preview" style="width:${px(GARDEN_COLS)}px; height:${px(rows)}px;">`
       + bandsHtml + dugHtml + cellsHtml + movablesHtml + itemsHtml + saplingsHtml
-      + logsHtml + cabinsHtml + treatsHtml + petsHtml
+      + logsHtml + cabinsHtml + treatsHtml + petsHtml + heroHtml
       + `<div class="garden-effects"></div></div>`;
   }
 
@@ -242,6 +253,7 @@ const Garden = (function () {
     if (previewLife.frame != null) cancelAnimationFrame(previewLife.frame);
     if (previewLife.timer) clearInterval(previewLife.timer);
     if (previewLife.petTimer) clearInterval(previewLife.petTimer);
+    if (previewLife.heroTimer) clearInterval(previewLife.heroTimer);
     previewLife = null;
   }
 
@@ -267,7 +279,7 @@ const Garden = (function () {
     /* A copy of their pets, so walking them about changes nothing of theirs. */
     const pets = (g.pets || []).map(p => ({ ...p })).filter(p => world.pets[p.type]);
 
-    previewLife = { flyers: [], last: 0, frame: null, timer: null, petTimer: null };
+    previewLife = { flyers: [], last: 0, frame: null, timer: null, petTimer: null, heroTimer: null };
 
     const target = () => {
       const n = Object.keys(layout).filter(id => layout[id] && !layout[id].held).length;
@@ -360,6 +372,29 @@ const Garden = (function () {
         }
       } else if (previewLife.flyers.length < want && Math.random() < 0.6) spawn();
     }, 1600);
+
+    /* Their gardener takes a turn about the place too, so a friend's garden is
+       not a photograph. They only ever move on the preview's own element. */
+    const heroEl = plot.querySelector('.garden-preview-hero');
+    if (heroEl) {
+      const start = heroEl.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+      const walker = {
+        row: start ? Math.round(Number(start[2]) / CELL_SIZE) : 0,
+        col: start ? Math.round(Number(start[1]) / CELL_SIZE) : 0,
+        facing: 1
+      };
+      previewLife.heroTimer = setInterval(() => {
+        if (!previewLife || document.hidden || !plot.offsetParent) return;
+        if (Math.random() < 0.35) return;
+        const dirs = [[-1, 0, null], [1, 0, null], [0, -1, -1], [0, 1, 1]];
+        const [dr, dc, face] = dirs[Math.floor(Math.random() * dirs.length)];
+        walker.row = Math.max(0, Math.min(rows - 1, walker.row + dr));
+        walker.col = Math.max(0, Math.min(GARDEN_COLS - 1, walker.col + dc));
+        if (face) walker.facing = face;
+        heroEl.style.transform = 'translate(' + (walker.col * CELL_SIZE) + 'px, '
+          + (walker.row * CELL_SIZE) + 'px) scaleX(' + walker.facing + ')';
+      }, 2200);
+    }
 
     /* Their animals mill about the same way yours do - there is nobody for
        them to follow or shy away from here, so it is the wander alone. */

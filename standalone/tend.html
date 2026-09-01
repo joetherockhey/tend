@@ -3731,6 +3731,26 @@ li.task[draggable="false"] { cursor: pointer; }
   .friend-kinds { display: none; }
 }
 
+/* A garden opens where the name is, folded in under the row that was clicked,
+   so nobody has to go looking for it at the foot of the page. */
+.friend-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.friend-item.open .friend-row {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.friend-garden-inline {
+  border: 1px solid var(--accent);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  background: var(--panel);
+  padding: 10px 12px 12px;
+}
+
 .friend-garden-head {
   display: flex;
   align-items: center;
@@ -3949,14 +3969,6 @@ li.task[draggable="false"] { cursor: pointer; }
       <h2>Friends</h2>
       <p class="category-hint">Everybody growing a garden on Tend. Click a name to look around theirs - tasks stay private, only the garden is shared.</p>
       <div id="friends-list"></div>
-    </div>
-    <div class="panel" id="friend-garden-panel" hidden>
-      <div class="friend-garden-head">
-        <h2 id="friend-garden-title">Garden</h2>
-        <button type="button" class="section-toggle-btn" onclick="App.closeFriendGarden()">Close</button>
-      </div>
-      <p class="friend-garden-sub" id="friend-garden-sub"></p>
-      <div class="friend-garden-plot" id="friend-garden-plot"></div>
     </div>
   </div>
 
@@ -5069,7 +5081,26 @@ const Worlds = (function () {
       { name: 'Jasmine', plant: '<rect x="6" y="6" width="1" height="8" fill="#2f7a34"/><rect x="3" y="8" width="3" height="1" fill="#3f9142"/><rect x="7" y="10" width="3" height="1" fill="#3f9142"/><rect x="2" y="4" width="3" height="3" fill="#f7f7f2"/><rect x="6" y="2" width="3" height="3" fill="#f7f7f2"/><rect x="9" y="6" width="3" height="3" fill="#f7f7f2"/><rect x="3" y="5" width="1" height="1" fill="#f4c430"/><rect x="7" y="3" width="1" height="1" fill="#f4c430"/>' },
       { name: 'Strawberry Plant', plant: '<rect x="6" y="11" width="1" height="3" fill="#2f7a34"/><rect x="2" y="6" width="10" height="5" fill="#3f9142"/><rect x="3" y="8" width="2" height="2" fill="#d0353a"/><rect x="7" y="7" width="2" height="2" fill="#d0353a"/><rect x="9" y="9" width="2" height="2" fill="#e0546a"/><rect x="5" y="4" width="2" height="2" fill="#f7f7f2"/>' },
       { name: 'Chilli Plant', plant: '<rect x="6" y="9" width="1" height="5" fill="#2f7a34"/><rect x="3" y="3" width="8" height="6" fill="#4c8c3c"/><rect x="4" y="8" width="1" height="4" fill="#d0353a"/><rect x="8" y="9" width="1" height="4" fill="#eb6834"/><rect x="6" y="10" width="1" height="3" fill="#d0353a"/>' },
-      { name: 'Rosemary', plant: '<rect x="6" y="4" width="1" height="10" fill="#4c8c3c"/><rect x="4" y="5" width="2" height="1" fill="#6bc06e"/><rect x="7" y="6" width="2" height="1" fill="#6bc06e"/><rect x="4" y="8" width="2" height="1" fill="#6bc06e"/><rect x="7" y="9" width="2" height="1" fill="#6bc06e"/><rect x="4" y="11" width="2" height="1" fill="#6bc06e"/><rect x="5" y="2" width="3" height="2" fill="#9b8ad4"/>' }
+      { name: 'Rosemary', plant: '<rect x="6" y="4" width="1" height="10" fill="#4c8c3c"/><rect x="4" y="5" width="2" height="1" fill="#6bc06e"/><rect x="7" y="6" width="2" height="1" fill="#6bc06e"/><rect x="4" y="8" width="2" height="1" fill="#6bc06e"/><rect x="7" y="9" width="2" height="1" fill="#6bc06e"/><rect x="4" y="11" width="2" height="1" fill="#6bc06e"/><rect x="5" y="2" width="3" height="2" fill="#9b8ad4"/>' },
+      { name: 'Snapdragon', plant: '<rect x="6" y="6" width="1" height="8" fill="#2f7a34"/><rect x="7" y="2" width="4" height="3" fill="#e0546a"/><rect x="3" y="5" width="4" height="3" fill="#f2a0c4"/><rect x="7" y="8" width="4" height="3" fill="#e0546a"/><rect x="5" y="1" width="2" height="2" fill="#f2a0c4"/>' },
+      { name: 'Cornflower', plant: '<rect x="6" y="8" width="1" height="6" fill="#4c8c3c"/><rect x="4" y="4" width="6" height="4" fill="#4361ee"/><rect x="3" y="5" width="1" height="2" fill="#5a78f0"/><rect x="10" y="5" width="1" height="2" fill="#5a78f0"/><rect x="5" y="3" width="1" height="1" fill="#5a78f0"/><rect x="8" y="3" width="1" height="1" fill="#5a78f0"/>' },
+      { name: 'Nasturtium', plant: '<rect x="6" y="10" width="1" height="4" fill="#3f9142"/><rect x="2" y="7" width="5" height="3" fill="#6bc06e"/><rect x="8" y="8" width="4" height="2" fill="#6bc06e"/><rect x="4" y="3" width="6" height="4" fill="#eb6834"/><rect x="6" y="4" width="2" height="2" fill="#f4c430"/>' },
+      { name: 'Pansy', plant: '<rect x="6" y="10" width="1" height="4" fill="#3f9142"/><rect x="3" y="4" width="4" height="4" fill="#6a4fb0"/><rect x="7" y="4" width="4" height="4" fill="#7536ff"/><rect x="4" y="7" width="6" height="3" fill="#f4c430"/><rect x="6" y="6" width="2" height="2" fill="#3b3f45"/>' },
+      { name: 'Violet', plant: '<rect x="6" y="10" width="1" height="4" fill="#2f7a34"/><rect x="2" y="9" width="4" height="3" fill="#3f9142"/><rect x="8" y="9" width="4" height="3" fill="#3f9142"/><rect x="4" y="5" width="3" height="3" fill="#6a4fb0"/><rect x="8" y="6" width="3" height="3" fill="#9b8ad4"/><rect x="6" y="3" width="3" height="3" fill="#6a4fb0"/>' },
+      { name: 'Primrose', plant: '<rect x="6" y="10" width="1" height="4" fill="#3f9142"/><rect x="2" y="9" width="10" height="2" fill="#2f7a34"/><rect x="3" y="4" width="4" height="4" fill="#f4c430"/><rect x="8" y="5" width="4" height="4" fill="#eda100"/><rect x="4" y="5" width="2" height="2" fill="#eb9c34"/>' },
+      { name: 'Crocus', plant: '<rect x="6" y="9" width="1" height="5" fill="#4c8c3c"/><rect x="4" y="9" width="1" height="5" fill="#6bc06e"/><rect x="9" y="9" width="1" height="5" fill="#6bc06e"/><rect x="5" y="3" width="4" height="6" fill="#9b8ad4"/><rect x="6" y="2" width="2" height="1" fill="#c4aee6"/><rect x="6" y="5" width="2" height="2" fill="#f4c430"/>' },
+      { name: 'Daffodil', plant: '<rect x="6" y="8" width="1" height="6" fill="#3f9142"/><rect x="3" y="9" width="1" height="5" fill="#6bc06e"/><rect x="3" y="4" width="8" height="4" fill="#f4c430"/><rect x="5" y="2" width="4" height="3" fill="#eda100"/><rect x="6" y="3" width="2" height="1" fill="#eb9c34"/>' },
+      { name: 'Amaryllis', plant: '<rect x="6" y="8" width="2" height="6" fill="#3f9142"/><rect x="2" y="3" width="4" height="4" fill="#d0353a"/><rect x="8" y="3" width="4" height="4" fill="#e0546a"/><rect x="5" y="1" width="4" height="3" fill="#d0353a"/><rect x="6" y="4" width="2" height="2" fill="#f7f7f2"/>' },
+      { name: 'Gladiolus', plant: '<rect x="5" y="2" width="2" height="12" fill="#3f9142"/><rect x="7" y="3" width="3" height="2" fill="#e87ba4"/><rect x="7" y="6" width="3" height="2" fill="#e0546a"/><rect x="7" y="9" width="3" height="2" fill="#e87ba4"/><rect x="2" y="5" width="3" height="2" fill="#e0546a"/><rect x="2" y="8" width="3" height="2" fill="#e87ba4"/>' },
+      { name: 'Lupin', plant: '<rect x="6" y="9" width="1" height="5" fill="#4c8c3c"/><rect x="4" y="2" width="5" height="7" fill="#6a4fb0"/><rect x="5" y="1" width="3" height="1" fill="#9b8ad4"/><rect x="4" y="4" width="5" height="1" fill="#9b8ad4"/><rect x="4" y="7" width="5" height="1" fill="#9b8ad4"/><rect x="3" y="10" width="7" height="1" fill="#6bc06e"/>' },
+      { name: 'Magnolia', plant: '<rect x="6" y="10" width="2" height="4" fill="#6b4423"/><rect x="2" y="8" width="4" height="2" fill="#2f7a34"/><rect x="8" y="8" width="4" height="2" fill="#2f7a34"/><rect x="3" y="3" width="8" height="5" fill="#f7f7f2"/><rect x="4" y="2" width="6" height="1" fill="#f2e2d0"/><rect x="6" y="5" width="2" height="2" fill="#e87ba4"/>' },
+      { name: 'Azalea', plant: '<rect x="6" y="11" width="1" height="3" fill="#6b4423"/><rect x="2" y="8" width="10" height="3" fill="#2f7a34"/><rect x="3" y="4" width="4" height="4" fill="#e87ba4"/><rect x="7" y="3" width="4" height="4" fill="#f2a0c4"/><rect x="5" y="6" width="4" height="2" fill="#e0546a"/>' },
+      { name: 'Gardenia', plant: '<rect x="6" y="11" width="1" height="3" fill="#2f7a34"/><rect x="2" y="7" width="4" height="4" fill="#2f7a34"/><rect x="8" y="7" width="4" height="4" fill="#3f9142"/><rect x="4" y="3" width="6" height="5" fill="#f7f7f2"/><rect x="5" y="2" width="4" height="1" fill="#f2e2d0"/><rect x="6" y="5" width="2" height="2" fill="#f4c430"/>' },
+      { name: 'Bird of Paradise', plant: '<rect x="6" y="7" width="1" height="7" fill="#3f9142"/><rect x="2" y="8" width="4" height="2" fill="#2f7a34"/><rect x="3" y="6" width="6" height="2" fill="#4c8c3c"/><rect x="8" y="3" width="4" height="2" fill="#eb6834"/><rect x="6" y="2" width="3" height="2" fill="#f4c430"/><rect x="9" y="5" width="3" height="2" fill="#4361ee"/>' },
+      { name: 'Protea', plant: '<rect x="6" y="10" width="2" height="4" fill="#6b4423"/><rect x="3" y="5" width="8" height="5" fill="#e87ba4"/><rect x="2" y="6" width="1" height="3" fill="#e0546a"/><rect x="11" y="6" width="1" height="3" fill="#e0546a"/><rect x="5" y="3" width="4" height="2" fill="#f2a0c4"/><rect x="6" y="6" width="2" height="3" fill="#f7f7f2"/>' },
+      { name: 'Prickly Pear', plant: '<rect x="5" y="7" width="5" height="7" fill="#4c8c3c"/><rect x="2" y="4" width="4" height="5" fill="#4c8c3c"/><rect x="9" y="3" width="4" height="5" fill="#4c8c3c"/><rect x="3" y="3" width="2" height="1" fill="#eb6834"/><rect x="10" y="2" width="2" height="1" fill="#eb6834"/><rect x="6" y="6" width="1" height="1" fill="#f4c430"/>' },
+      { name: 'String of Pearls', plant: '<rect x="2" y="2" width="10" height="2" fill="#6b4423"/><rect x="3" y="4" width="2" height="2" fill="#6bc06e"/><rect x="3" y="7" width="2" height="2" fill="#6bc06e"/><rect x="3" y="10" width="2" height="2" fill="#6bc06e"/><rect x="7" y="4" width="2" height="2" fill="#3fb8a8"/><rect x="7" y="7" width="2" height="2" fill="#3fb8a8"/><rect x="10" y="5" width="2" height="2" fill="#6bc06e"/><rect x="10" y="8" width="2" height="2" fill="#6bc06e"/>' },
+      { name: 'Wisteria', plant: '<rect x="1" y="2" width="12" height="2" fill="#6b4423"/><rect x="3" y="4" width="2" height="6" fill="#9b8ad4"/><rect x="6" y="4" width="2" height="8" fill="#c4aee6"/><rect x="9" y="4" width="2" height="5" fill="#9b8ad4"/><rect x="3" y="9" width="2" height="1" fill="#6a4fb0"/><rect x="6" y="11" width="2" height="1" fill="#6a4fb0"/>' }
     ];
     const THEME_STEP_SOUND = {
       grass: 'grass', glass: 'stone', wood: 'wood', patio: 'stone',
@@ -5391,7 +5422,26 @@ const Worlds = (function () {
     { name: 'Red Algae', plant: '<rect x="6" y="7" width="1" height="7" fill="#c96a58"/><rect x="3" y="4" width="3" height="3" fill="#d4526b"/><rect x="7" y="3" width="3" height="3" fill="#d4526b"/><rect x="2" y="7" width="3" height="2" fill="#e0705a"/><rect x="8" y="7" width="3" height="2" fill="#e0705a"/>' },
     { name: 'Barrel Sponge', plant: '<rect x="3" y="4" width="8" height="10" fill="#e0705a"/><rect x="4" y="3" width="6" height="2" fill="#ffb08c"/><rect x="5" y="4" width="4" height="2" fill="#8e5a4a"/><rect x="4" y="8" width="1" height="4" fill="#c96a58"/><rect x="9" y="8" width="1" height="4" fill="#c96a58"/>' },
     { name: 'Sea Grass', plant: '<rect x="3" y="3" width="1" height="11" fill="#56b07a"/><rect x="5" y="1" width="1" height="13" fill="#3f8f5c"/><rect x="7" y="4" width="1" height="10" fill="#56b07a"/><rect x="9" y="2" width="1" height="12" fill="#7cc79a"/><rect x="11" y="5" width="1" height="9" fill="#3f8f5c"/>' },
-    { name: 'Fire Coral', plant: '<rect x="5" y="7" width="3" height="7" fill="#eb6834"/><rect x="2" y="9" width="2" height="5" fill="#e0705a"/><rect x="9" y="8" width="2" height="6" fill="#e0705a"/><rect x="5" y="4" width="1" height="3" fill="#f4c430"/><rect x="7" y="3" width="1" height="4" fill="#f4c430"/><rect x="2" y="7" width="2" height="2" fill="#f4c430"/><rect x="9" y="6" width="2" height="2" fill="#f4c430"/>' }
+    { name: 'Fire Coral', plant: '<rect x="5" y="7" width="3" height="7" fill="#eb6834"/><rect x="2" y="9" width="2" height="5" fill="#e0705a"/><rect x="9" y="8" width="2" height="6" fill="#e0705a"/><rect x="5" y="4" width="1" height="3" fill="#f4c430"/><rect x="7" y="3" width="1" height="4" fill="#f4c430"/><rect x="2" y="7" width="2" height="2" fill="#f4c430"/><rect x="9" y="6" width="2" height="2" fill="#f4c430"/>' },
+    { name: 'Dragon Kelp', plant: '<rect x="6" y="6" width="1" height="8" fill="#2f6b46"/><rect x="7" y="2" width="4" height="3" fill="#56b07a"/><rect x="3" y="5" width="4" height="3" fill="#7cc79a"/><rect x="7" y="8" width="4" height="3" fill="#56b07a"/><rect x="5" y="1" width="2" height="2" fill="#eda100"/>' },
+    { name: 'Blue Ridge Coral', plant: '<rect x="6" y="8" width="1" height="6" fill="#3f8f5c"/><rect x="4" y="4" width="6" height="4" fill="#4a9cb2"/><rect x="3" y="5" width="1" height="2" fill="#8fd6e8"/><rect x="10" y="5" width="1" height="2" fill="#8fd6e8"/><rect x="5" y="3" width="1" height="1" fill="#b8e6f2"/><rect x="8" y="3" width="1" height="1" fill="#b8e6f2"/>' },
+    { name: 'Flame Anemone', plant: '<rect x="6" y="10" width="1" height="4" fill="#3f8f5c"/><rect x="2" y="7" width="5" height="3" fill="#7cc79a"/><rect x="8" y="8" width="4" height="2" fill="#7cc79a"/><rect x="4" y="3" width="6" height="4" fill="#e0705a"/><rect x="6" y="4" width="2" height="2" fill="#f0b73c"/>' },
+    { name: 'Painted Anemone', plant: '<rect x="6" y="10" width="1" height="4" fill="#3f8f5c"/><rect x="3" y="4" width="4" height="4" fill="#8e6bb0"/><rect x="7" y="4" width="4" height="4" fill="#a78bd0"/><rect x="4" y="7" width="6" height="3" fill="#f0b73c"/><rect x="6" y="6" width="2" height="2" fill="#3a4a5a"/>' },
+    { name: 'Violet Sponge', plant: '<rect x="6" y="10" width="1" height="4" fill="#2f6b46"/><rect x="2" y="9" width="4" height="3" fill="#3f8f5c"/><rect x="8" y="9" width="4" height="3" fill="#3f8f5c"/><rect x="4" y="5" width="3" height="3" fill="#8e6bb0"/><rect x="8" y="6" width="3" height="3" fill="#c4aee6"/><rect x="6" y="3" width="3" height="3" fill="#a78bd0"/>' },
+    { name: 'Primrose Polyp', plant: '<rect x="6" y="10" width="1" height="4" fill="#3f8f5c"/><rect x="2" y="9" width="10" height="2" fill="#2f6b46"/><rect x="3" y="4" width="4" height="4" fill="#f0b73c"/><rect x="8" y="5" width="4" height="4" fill="#eda100"/><rect x="4" y="5" width="2" height="2" fill="#f2e2d0"/>' },
+    { name: 'Crocus Coral', plant: '<rect x="6" y="9" width="1" height="5" fill="#3f8f5c"/><rect x="4" y="9" width="1" height="5" fill="#7cc79a"/><rect x="9" y="9" width="1" height="5" fill="#7cc79a"/><rect x="5" y="3" width="4" height="6" fill="#a78bd0"/><rect x="6" y="2" width="2" height="1" fill="#c4aee6"/><rect x="6" y="5" width="2" height="2" fill="#f0b73c"/>' },
+    { name: 'Trumpet Kelp', plant: '<rect x="6" y="8" width="1" height="6" fill="#3f8f5c"/><rect x="3" y="9" width="1" height="5" fill="#7cc79a"/><rect x="3" y="4" width="8" height="4" fill="#f0b73c"/><rect x="5" y="2" width="4" height="3" fill="#eda100"/><rect x="6" y="3" width="2" height="1" fill="#c96a58"/>' },
+    { name: 'Lily Anemone', plant: '<rect x="6" y="8" width="2" height="6" fill="#3f8f5c"/><rect x="2" y="3" width="4" height="4" fill="#d4526b"/><rect x="8" y="3" width="4" height="4" fill="#e0705a"/><rect x="5" y="1" width="4" height="3" fill="#d4526b"/><rect x="6" y="4" width="2" height="2" fill="#f2e2d0"/>' },
+    { name: 'Sword Kelp', plant: '<rect x="5" y="2" width="2" height="12" fill="#2f6b46"/><rect x="7" y="3" width="3" height="2" fill="#56b07a"/><rect x="7" y="6" width="3" height="2" fill="#3f8f5c"/><rect x="7" y="9" width="3" height="2" fill="#56b07a"/><rect x="2" y="5" width="3" height="2" fill="#3f8f5c"/><rect x="2" y="8" width="3" height="2" fill="#7cc79a"/>' },
+    { name: 'Spire Coral', plant: '<rect x="6" y="9" width="1" height="5" fill="#3f8f5c"/><rect x="4" y="2" width="5" height="7" fill="#8e6bb0"/><rect x="5" y="1" width="3" height="1" fill="#c4aee6"/><rect x="4" y="4" width="5" height="1" fill="#c4aee6"/><rect x="4" y="7" width="5" height="1" fill="#c4aee6"/><rect x="3" y="10" width="7" height="1" fill="#7cc79a"/>' },
+    { name: 'Moon Coral', plant: '<rect x="6" y="10" width="2" height="4" fill="#8a5a2e"/><rect x="2" y="8" width="4" height="2" fill="#2f6b46"/><rect x="8" y="8" width="4" height="2" fill="#2f6b46"/><rect x="3" y="3" width="8" height="5" fill="#f2e2d0"/><rect x="4" y="2" width="6" height="1" fill="#e0c8b0"/><rect x="6" y="5" width="2" height="2" fill="#8fd6e8"/>' },
+    { name: 'Blush Coral', plant: '<rect x="6" y="11" width="1" height="3" fill="#8a5a2e"/><rect x="2" y="8" width="10" height="3" fill="#2f6b46"/><rect x="3" y="4" width="4" height="4" fill="#e0705a"/><rect x="7" y="3" width="4" height="4" fill="#f2a0c4"/><rect x="5" y="6" width="4" height="2" fill="#d4526b"/>' },
+    { name: 'Pearl Anemone', plant: '<rect x="6" y="11" width="1" height="3" fill="#2f6b46"/><rect x="2" y="7" width="4" height="4" fill="#2f6b46"/><rect x="8" y="7" width="4" height="4" fill="#3f8f5c"/><rect x="4" y="3" width="6" height="5" fill="#f2e2d0"/><rect x="5" y="2" width="4" height="1" fill="#b8e6f2"/><rect x="6" y="5" width="2" height="2" fill="#c4aee6"/>' },
+    { name: 'Crest Coral', plant: '<rect x="6" y="7" width="1" height="7" fill="#3f8f5c"/><rect x="2" y="8" width="4" height="2" fill="#2f6b46"/><rect x="3" y="6" width="6" height="2" fill="#56b07a"/><rect x="8" y="3" width="4" height="2" fill="#e0705a"/><rect x="6" y="2" width="3" height="2" fill="#f0b73c"/><rect x="9" y="5" width="3" height="2" fill="#4a9cb2"/>' },
+    { name: 'Urchin Bloom', plant: '<rect x="6" y="10" width="2" height="4" fill="#8a5a2e"/><rect x="3" y="5" width="8" height="5" fill="#d4526b"/><rect x="2" y="6" width="1" height="3" fill="#b04456"/><rect x="11" y="6" width="1" height="3" fill="#b04456"/><rect x="5" y="3" width="4" height="2" fill="#e0705a"/><rect x="6" y="6" width="2" height="3" fill="#f2e2d0"/>' },
+    { name: 'Spine Coral', plant: '<rect x="5" y="7" width="5" height="7" fill="#3f8f5c"/><rect x="2" y="4" width="4" height="5" fill="#3f8f5c"/><rect x="9" y="3" width="4" height="5" fill="#3f8f5c"/><rect x="3" y="3" width="2" height="1" fill="#e0705a"/><rect x="10" y="2" width="2" height="1" fill="#e0705a"/><rect x="6" y="6" width="1" height="1" fill="#f0b73c"/>' },
+    { name: 'Pearl Chain Weed', plant: '<rect x="2" y="2" width="10" height="2" fill="#8a5a2e"/><rect x="3" y="4" width="2" height="2" fill="#f2e2d0"/><rect x="3" y="7" width="2" height="2" fill="#f2e2d0"/><rect x="3" y="10" width="2" height="2" fill="#e0c8b0"/><rect x="7" y="4" width="2" height="2" fill="#b8e6f2"/><rect x="7" y="7" width="2" height="2" fill="#b8e6f2"/><rect x="10" y="5" width="2" height="2" fill="#f2e2d0"/><rect x="10" y="8" width="2" height="2" fill="#e0c8b0"/>' },
+    { name: 'Hanging Kelp', plant: '<rect x="1" y="2" width="12" height="2" fill="#8a5a2e"/><rect x="3" y="4" width="2" height="6" fill="#56b07a"/><rect x="6" y="4" width="2" height="8" fill="#7cc79a"/><rect x="9" y="4" width="2" height="5" fill="#56b07a"/><rect x="3" y="9" width="2" height="1" fill="#2f6b46"/><rect x="6" y="11" width="2" height="1" fill="#2f6b46"/>' }
   ];
 
   const OCEAN_SECTIONS = [
@@ -6343,7 +6393,7 @@ const Store = (function () {
     if (!CLOUD || !client) return localGardens();
     const { data, error } = await client
       .from('gardens')
-      .select('user_id, display_name, world, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets')
+      .select('user_id, display_name, world, hero, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets, outfits, hero_pos')
       .order('display_name');
     if (error) throw error;
     return (data || []).map(r => ({
@@ -6351,6 +6401,7 @@ const Store = (function () {
       name: r.display_name || 'Gardener',
       isMe: !!(account && r.user_id === account.id),
       world: r.world || 'garden',
+      hero: r.hero === 'female' ? 'female' : 'male',
       layout: safeParse(r.layout, {}),
       sections: Number(r.sections) || 1,
       found: safeParse(r.found, []),
@@ -6361,7 +6412,9 @@ const Store = (function () {
       logs: safeParse(r.logs, []),
       cabins: safeParse(r.cabins, []),
       dug: safeParse(r.dug, []),
-      pets: safeParse(r.pets, [])
+      pets: safeParse(r.pets, []),
+      outfits: safeParse(r.outfits, {}),
+      heroPos: safeParse(r.hero_pos, null)
     }));
   }
 
@@ -6382,6 +6435,7 @@ const Store = (function () {
         name: prof.name || 'Gardener',
         isMe: !!(account && prof.id === account.id),
         world: prefsOfProfile.world || 'garden',
+        hero: prefsOfProfile.hero === 'female' ? 'female' : 'male',
         layout: safeParse(get('garden-layout-v5'), {}),
         sections: Number(get('garden-sections-v1')) || 1,
         found: safeParse(get('garden-found-v1'), []),
@@ -6392,7 +6446,9 @@ const Store = (function () {
         logs: safeParse(get('garden-logs-v1'), []),
         cabins: safeParse(get('garden-cabins-v1'), []),
         dug: safeParse(get('garden-dug-v1'), []),
-        pets: safeParse(get('garden-pets-v1'), [])
+        pets: safeParse(get('garden-pets-v1'), []),
+        outfits: safeParse(get('garden-outfits-v1'), {}),
+        heroPos: safeParse(get('garden-hero-v5'), null)
       };
     });
   }
@@ -6981,9 +7037,20 @@ const Garden = (function () {
       return `<div class="garden-pet" data-pet="${Util.escapeHtml(pet.id || '')}" style="width:${CELL_SIZE}px; height:${CELL_SIZE}px; transform:translate(${px(pet.col)}px, ${px(pet.row)}px);"><div class="sprite-shadow"></div>${def.svg()}</div>`;
     }).join('');
 
+    /* Their gardener, in whatever they last bought and put on. Where they were
+       standing is a per-device thing and is often not synced, so if it did not
+       come through they are simply stood in the middle of their first band. */
+    const hp = (g.heroPos && isFinite(g.heroPos.row) && isFinite(g.heroPos.col)) ? g.heroPos : null;
+    const heroRow = Math.max(0, Math.min(rows - 1, hp ? Number(hp.row) : Math.floor(SECTION_ROWS / 2)));
+    const heroCol = Math.max(0, Math.min(GARDEN_COLS - 1, hp ? Number(hp.col) : Math.floor(GARDEN_COLS / 2)));
+    const heroOutfit = (g.outfits && world.outfits[g.outfits.equipped]) || world.outfits.classic;
+    const heroArt = Worlds.heroSVG(world.id, g.hero === 'female' ? 'female' : 'male',
+                                   (hp && hp.direction) || 'down', heroOutfit);
+    const heroHtml = `<div class="garden-hero garden-preview-hero" style="width:${CELL_SIZE}px; height:${CELL_SIZE}px; transform:translate(${px(heroCol)}px, ${px(heroRow)}px);"><div class="sprite-shadow"></div>${heroArt}</div>`;
+
     return `<div class="garden-plot garden-preview" style="width:${px(GARDEN_COLS)}px; height:${px(rows)}px;">`
       + bandsHtml + dugHtml + cellsHtml + movablesHtml + itemsHtml + saplingsHtml
-      + logsHtml + cabinsHtml + treatsHtml + petsHtml
+      + logsHtml + cabinsHtml + treatsHtml + petsHtml + heroHtml
       + `<div class="garden-effects"></div></div>`;
   }
 
@@ -7002,6 +7069,7 @@ const Garden = (function () {
     if (previewLife.frame != null) cancelAnimationFrame(previewLife.frame);
     if (previewLife.timer) clearInterval(previewLife.timer);
     if (previewLife.petTimer) clearInterval(previewLife.petTimer);
+    if (previewLife.heroTimer) clearInterval(previewLife.heroTimer);
     previewLife = null;
   }
 
@@ -7027,7 +7095,7 @@ const Garden = (function () {
     /* A copy of their pets, so walking them about changes nothing of theirs. */
     const pets = (g.pets || []).map(p => ({ ...p })).filter(p => world.pets[p.type]);
 
-    previewLife = { flyers: [], last: 0, frame: null, timer: null, petTimer: null };
+    previewLife = { flyers: [], last: 0, frame: null, timer: null, petTimer: null, heroTimer: null };
 
     const target = () => {
       const n = Object.keys(layout).filter(id => layout[id] && !layout[id].held).length;
@@ -7120,6 +7188,29 @@ const Garden = (function () {
         }
       } else if (previewLife.flyers.length < want && Math.random() < 0.6) spawn();
     }, 1600);
+
+    /* Their gardener takes a turn about the place too, so a friend's garden is
+       not a photograph. They only ever move on the preview's own element. */
+    const heroEl = plot.querySelector('.garden-preview-hero');
+    if (heroEl) {
+      const start = heroEl.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+      const walker = {
+        row: start ? Math.round(Number(start[2]) / CELL_SIZE) : 0,
+        col: start ? Math.round(Number(start[1]) / CELL_SIZE) : 0,
+        facing: 1
+      };
+      previewLife.heroTimer = setInterval(() => {
+        if (!previewLife || document.hidden || !plot.offsetParent) return;
+        if (Math.random() < 0.35) return;
+        const dirs = [[-1, 0, null], [1, 0, null], [0, -1, -1], [0, 1, 1]];
+        const [dr, dc, face] = dirs[Math.floor(Math.random() * dirs.length)];
+        walker.row = Math.max(0, Math.min(rows - 1, walker.row + dr));
+        walker.col = Math.max(0, Math.min(GARDEN_COLS - 1, walker.col + dc));
+        if (face) walker.facing = face;
+        heroEl.style.transform = 'translate(' + (walker.col * CELL_SIZE) + 'px, '
+          + (walker.row * CELL_SIZE) + 'px) scaleX(' + walker.facing + ')';
+      }, 2200);
+    }
 
     /* Their animals mill about the same way yours do - there is nobody for
        them to follow or shy away from here, so it is the wander alone. */
@@ -11673,6 +11764,10 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'Fifty plants to find in each world. The nineteen you picked have been added to the end of the list, so nothing already growing has changed into something else.',
+      "A friend's garden now opens straight under their name rather than at the foot of the page, and clicking the name again folds it away.",
+      'Every row says how many plants that gardener has, and how many kinds they have found out of fifty.',
+      "You now see their gardener too, wearing whatever outfit they have bought and put on - and they stroll about, along with their animals and their butterflies (fish, in the reef).",
       'Butterflies now wander the garden in every direction and hang about over the flowers, instead of crossing in a straight line from the left.',
       'There are more of them the more you have planted, and none at all on an empty plot.',
       'Picking a plant up no longer sends the butterflies back to the edge and starts them over.',
@@ -12215,55 +12310,73 @@ const App = (function () {
     host.innerHTML = `<div class="friend-list">${sorted.map(f => {
       const plants = plantsIn(f.layout);
       const found = Array.isArray(f.found) ? f.found.length : 0;
-      return `<button type="button" class="friend-row ${openFriendId === f.id ? 'on' : ''}" onclick="App.openFriendGarden('${f.id}')">
-          <span class="friend-avatar">${Util.escapeHtml(friendInitials(f.name))}</span>
-          <span class="friend-name">${Util.escapeHtml(f.name)}${f.isMe ? ' <span class="friend-you">you</span>' : ''}</span>
-          <span class="friend-counts">
-            <b>${plants}</b> ${plants === 1 ? 'plant' : 'plants'}
-            <span class="friend-kinds">&middot; ${found} of ${totalKinds} kinds</span>
-          </span>
-        </button>`;
+      const open = openFriendId === f.id;
+      return `<div class="friend-item ${open ? 'open' : ''}">
+          <button type="button" class="friend-row ${open ? 'on' : ''}" onclick="App.openFriendGarden('${f.id}')">
+            <span class="friend-avatar">${Util.escapeHtml(friendInitials(f.name))}</span>
+            <span class="friend-name">${Util.escapeHtml(f.name)}${f.isMe ? ' <span class="friend-you">you</span>' : ''}</span>
+            <span class="friend-counts">
+              <b>${plants}</b> ${plants === 1 ? 'plant' : 'plants'}
+              <span class="friend-kinds">&middot; ${found} of ${totalKinds} kinds</span>
+            </span>
+          </button>
+          ${open ? friendGardenHtml(f) : ''}
+        </div>`;
     }).join('')}</div>`;
+
+    /* The plot only exists once it has been painted, so its butterflies, fish,
+       animals and gardener are started here rather than in the click. */
+    if (!openFriendId) {
+      if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
+      return;
+    }
+    const openF = friendsCache.find(x => x.id === openFriendId);
+    const plotHost = host.querySelector('.friend-garden-plot');
+    if (openF && plotHost && hasGarden() && Garden.startPreviewLife) Garden.startPreviewLife(plotHost, openF);
   }
 
-  function openFriendGarden(id) {
-    const f = friendsCache.find(x => x.id === id);
-    const panel = document.getElementById('friend-garden-panel');
-    if (!f || !panel) return;
-    openFriendId = id;
-
+  /* The garden itself, folded in under the row it belongs to. */
+  function friendGardenHtml(f) {
     const plants = plantsIn(f.layout);
     const found = Array.isArray(f.found) ? f.found.length : 0;
     const world = Worlds.get(f.world);
-    document.getElementById('friend-garden-title').textContent =
-      (/s$/i.test(f.name) ? f.name + "'" : f.name + "'s") + ' ' + world.terms.place.replace(/^the\s+/i, '');
-    document.getElementById('friend-garden-sub').textContent =
-      `${plants} ${plants === 1 ? world.terms.plant : world.terms.plants} \u00b7 found ${found} of ${world.plants.length} kinds`;
-    const plotHost = document.getElementById('friend-garden-plot');
-    plotHost.innerHTML = hasGarden() ? Garden.previewPlotHTML(f) : '';
-    /* Butterflies and wandering animals, on their plot rather than yours. */
-    if (hasGarden() && Garden.startPreviewLife) Garden.startPreviewLife(plotHost, f);
+    const title = (/s$/i.test(f.name) ? f.name + "'" : f.name + "'s")
+      + ' ' + world.terms.place.replace(/^the\s+/i, '');
+    const sub = `${plants} ${plants === 1 ? world.terms.plant : world.terms.plants}`
+      + ` \u00b7 found ${found} of ${world.plants.length} kinds`;
+    return `<div class="friend-garden-inline">
+        <div class="friend-garden-head">
+          <h2>${Util.escapeHtml(title)}</h2>
+          <button type="button" class="section-toggle-btn" onclick="event.stopPropagation(); App.closeFriendGarden()">Close</button>
+        </div>
+        <p class="friend-garden-sub">${Util.escapeHtml(sub)}</p>
+        <div class="friend-garden-plot">${hasGarden() ? Garden.previewPlotHTML(f) : ''}</div>
+      </div>`;
+  }
 
-    /* Move the highlight first, then show the panel, so the list is its final
-       height before anything is scrolled to. */
+  /* Clicking a name opens it in place; clicking it again folds it away. */
+  function openFriendGarden(id) {
+    const f = friendsCache.find(x => x.id === id);
+    if (!f) return;
+    if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
+    openFriendId = (openFriendId === id) ? null : id;
     paintFriends();
-    panel.hidden = false;
+    if (!openFriendId) return;
 
-    /* And only scroll if it actually opened off-screen - scrolling something
-       already in front of you is just the page lurching for no reason. */
-    const box = panel.getBoundingClientRect();
+    /* Only scroll if the row it opened under is off-screen - the garden appears
+       right where you clicked, so usually there is nothing to scroll to. */
+    const host = document.getElementById('friends-list');
+    const item = host && host.querySelector('.friend-item.open');
+    if (!item) return;
+    const box = item.getBoundingClientRect();
     if (box.top < 0 || box.top > window.innerHeight - 80) {
-      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
 
   function closeFriendGarden() {
     openFriendId = null;
     if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
-    const panel = document.getElementById('friend-garden-panel');
-    if (panel) panel.hidden = true;
-    const plotHost = document.getElementById('friend-garden-plot');
-    if (plotHost) plotHost.innerHTML = '';
     paintFriends();
   }
 

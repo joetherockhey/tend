@@ -11,6 +11,8 @@
 --   * the rest of what stands in the garden: trees they have felled or moved,
 --     soil they have dug, tools they have set down, saplings, logs, cabins and
 --     their animals - so a friend's garden looks like their garden
+--   * their gardener: which one they picked, the outfit they are wearing and
+--     where they were last standing
 --
 -- Tasks, categories, notes, due dates and email addresses stay private: the
 -- policies on `tickets` and `categories` are untouched, and this view names the
@@ -34,6 +36,7 @@ select
   s.user_id,
   coalesce(nullif(s.display_name, ''), 'Gardener')        as display_name,
   coalesce(s.prefs ->> 'world', 'garden')                 as world,
+  s.prefs ->> 'hero'                                      as hero,
   s.garden ->> 'garden-layout-v5'                         as layout,
   s.garden ->> 'garden-sections-v1'                       as sections,
   s.garden ->> 'garden-found-v1'                          as found,
@@ -45,6 +48,8 @@ select
   s.garden ->> 'garden-cabins-v1'                         as cabins,
   s.garden ->> 'garden-dug-v1'                            as dug,
   s.garden ->> 'garden-pets-v1'                           as pets,
+  s.garden ->> 'garden-outfits-v1'                        as outfits,
+  s.garden ->> 'garden-hero-v5'                           as hero_pos,
   s.updated_at
 from public.app_state s;
 
