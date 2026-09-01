@@ -1650,7 +1650,8 @@ const App = (function () {
       'A grown plant can no longer turn back into a seedling when another device syncs. Watering only ever counts up now, whichever device did it.',
       'Picking a plant up no longer risks losing it. Carry one while the app updates or syncs and it goes back where it was instead of vanishing.',
       'The magnifying glass names plants and nothing else now - no more Flower bed, Lawnmower or Dug soil.',
-      'The pale open-hand cursor is gone from the category handles and the task rows; dragging still works.'
+      'The pale open-hand cursor is gone from the category handles and the task rows; dragging still works.',
+      'The garden now counts the kinds you have found - "Found 5 of 31 plants" beside the gardener, and in the shop. Growing a seedling is what reveals a kind, and once found it stays found even if you cash the plant in.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'

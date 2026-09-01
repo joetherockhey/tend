@@ -856,6 +856,53 @@ const Garden = (function () {
   /* identical roses. It runs once per garden and then leaves a marker.  */
   /* ------------------------------------------------------------------ */
 
+  /* ------------------------------------------------------------------ */
+  /* Which kinds you have found.                                          */
+  /* A variety is only revealed when a seedling grows into it, so the      */
+  /* ledger is written there. It only ever counts up: cashing a plant in,  */
+  /* digging it up or switching worlds does not un-find a kind. The two    */
+  /* worlds are paired index for index, so one ledger serves both.         */
+  /* ------------------------------------------------------------------ */
+
+  const FOUND_VARIETIES_KEY = 'garden-found-v1';
+  let foundVarieties = new Set();
+
+  function loadFoundVarieties() {
+    try {
+      const raw = JSON.parse(Store.kv.getItem(FOUND_VARIETIES_KEY));
+      foundVarieties = new Set(Array.isArray(raw) ? raw.filter(n => typeof n === 'number') : []);
+    } catch (e) {
+      foundVarieties = new Set();
+    }
+  }
+
+  function saveFoundVarieties() {
+    Store.kv.setItem(FOUND_VARIETIES_KEY, JSON.stringify([...foundVarieties].sort((a, b) => a - b)));
+  }
+
+  function markFound(variety) {
+    if (typeof variety !== 'number' || foundVarieties.has(variety)) return false;
+    foundVarieties.add(variety);
+    saveFoundVarieties();
+    return true;
+  }
+
+  /* Gardens that predate the ledger are credited with whatever is already
+     grown in them, so nobody starts back at zero. */
+  function creditGrownVarieties() {
+    let added = false;
+    Object.keys(gardenLayout).forEach(id => {
+      const p = gardenLayout[id];
+      if (!p || isSeedling(p) || typeof p.variety !== 'number') return;
+      if (!foundVarieties.has(p.variety)) { foundVarieties.add(p.variety); added = true; }
+    });
+    if (added) saveFoundVarieties();
+  }
+
+  function foundTally() {
+    return { found: foundVarieties.size, total: W().plants.length };
+  }
+
   const VARIETY_MIGRATION_KEY = 'garden-varieties-v2';
   const VARIETY_REMAP = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 10: 7, 12: 8, 14: 9, 15: 10, 19: 11, 20: 12, 22: 13, 23: 14, 24: 15, 25: 16, 26: 17, 27: 18, 28: 19, 29: 20, 30: 21, 31: 22, 32: 23, 33: 24, 34: 25, 35: 26, 36: 27, 37: 28, 38: 29, 40: 30 };
 
@@ -1282,6 +1329,7 @@ const Garden = (function () {
         pos.grown = true;
         justGrew = true;
       }
+      if (justGrew) markFound(pos.variety);
       saveGardenLayout();
       /* Growing something is worth getting to the server now rather than in a
          second's time, in case the tab is closed or updated in between. */
@@ -2094,8 +2142,10 @@ const Garden = (function () {
       const all = plantIds().map(id => gardenLayout[id]);
       const growing = all.filter(isSeedling).length;
       const grown = all.length - growing;
+      const kinds = foundTally();
       const tally = grown + ' ' + (grown === 1 ? terms().plant : terms().plants)
-        + (growing ? ', ' + growing + ' still growing' : '');
+        + (growing ? ', ' + growing + ' still growing' : '')
+        + ' \u00b7 found ' + kinds.found + ' of ' + kinds.total + ' kinds';
       const holding = heldPlantId != null;
       const value = heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE;
       const noRoom = !findPottingSpot();
@@ -2717,9 +2767,14 @@ const Garden = (function () {
     const plantCount = plantIds().length;
     const t = terms();
     const plantWord = plantCount === 1 ? t.plant : t.plants;
-    document.getElementById('garden-status').textContent = plantCount
+    const tally = foundTally();
+    const sentence = plantCount
       ? `${heroName()} is tending ${plantCount} ${plantWord} in ${t.place}.`
       : `${heroName()} has no ${t.plants} yet - finish a task to earn a coin, then buy one.`;
+    document.getElementById('garden-status').innerHTML =
+      Util.escapeHtml(sentence)
+      + ` <span class="garden-found" title="Every kind you have grown at least once">`
+      + `Found ${tally.found} of ${tally.total} ${Util.escapeHtml(t.plants)}.</span>`;
   }
 
 
@@ -2784,6 +2839,8 @@ const Garden = (function () {
     lensLastKey = '';
 
     loadGardenLayout();
+    loadFoundVarieties();
+    creditGrownVarieties();
     loadHeroPos();
     loadMovableLayout();
     loadPurchasedItems();

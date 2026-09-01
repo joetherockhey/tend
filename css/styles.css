@@ -770,6 +770,14 @@ li.task.done .task-title {
   line-height: 1.3;
 }
 
+/* The collection counter, sitting after the status sentence in a quieter
+   weight so the sentence still reads first. */
+.garden-found {
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .garden-coins {
   position: relative;
   font-size: 0.76rem;

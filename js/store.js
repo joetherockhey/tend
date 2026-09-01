@@ -163,6 +163,7 @@ const Store = (function () {
 
   const OWNED_KEYS = {
     'garden-layout-v5': mergePlots,
+    'garden-found-v1': unionOfList,
     'garden-lens-v1': keepFlag,
     'garden-sections-v1': keepMax,
     'coins-spent-v1': keepMax,
@@ -447,6 +448,12 @@ const Store = (function () {
             if (!isDeviceLocal(k) && merged[k] === undefined) delete gardenBag[k];
           });
           mirrorGardenBag();
+          /* The merge just changed what this device holds - a purchase or a
+             kind of plant the other device knew about. Say so, or the repair
+             sits in storage unseen until something else happens to redraw.
+             refresh() cannot catch this one: it snapshots after the flush, by
+             which time the merge has already happened on both sides. */
+          announceChange();
         }
       }
     } catch (e) { /* if we cannot read it, push what we have */ }
