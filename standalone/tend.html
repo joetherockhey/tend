@@ -11444,7 +11444,8 @@ const App = (function () {
       'The garden now counts the kinds you have found - "Found 5 of 31 plants" beside the gardener, and in the shop. Growing a seedling is what reveals a kind, and once found it stays found even if you cash the plant in.',
       'Finishing a task now makes a cash-register sound, to go with the coin.',
       'Undo. There is a button next to Hide Garden, and Ctrl+Z works too. It takes back the last change to your tasks or categories - ticking, deleting, editing, reordering, the lot.',
-      'A Friends tab: everyone with an account, how many plants they have and how many kinds they have found. Click a name to look around their garden. Tasks stay private - only the garden is shared.'
+      'A Friends tab: everyone with an account, how many plants they have and how many kinds they have found. Click a name to look around their garden. Tasks stay private - only the garden is shared.',
+      'Fixed: clicking a friend made the list flicker and the garden jump down the page.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
@@ -11904,21 +11905,37 @@ const App = (function () {
     return Object.keys(layout || {}).filter(id => layout[id] && !layout[id].held).length;
   }
 
+  /* Fetching and painting are separate on purpose. Clicking a name only needs
+     a repaint - to move the highlight - and going back to the server for that
+     replaced the list with "Looking for gardens..." for a moment, which
+     collapsed its height and threw the garden panel up the page and back down
+     again as the rows returned. */
   async function renderFriends() {
     const host = document.getElementById('friends-list');
     if (!host) return;
-    host.innerHTML = '<p class="cat-empty">Looking for gardens&hellip;</p>';
+    /* Only say so when there is nothing to show yet; a refresh over an already
+       painted list happens in place. */
+    if (!friendsCache.length) host.innerHTML = '<p class="cat-empty">Looking for gardens&hellip;</p>';
 
     let list;
     try {
       list = await Store.listGardens();
     } catch (err) {
-      host.innerHTML = '<p class="cat-empty">Could not load the other gardens.'
-        + ' If this is a new install, the one-off <code>supabase/gardens.sql</code> still needs running.</p>';
+      if (!friendsCache.length) {
+        host.innerHTML = '<p class="cat-empty">Could not load the other gardens.'
+          + ' If this is a new install, the one-off <code>supabase/gardens.sql</code> still needs running.</p>';
+      }
       return;
     }
 
     friendsCache = list || [];
+    paintFriends();
+  }
+
+  function paintFriends() {
+    const host = document.getElementById('friends-list');
+    if (!host) return;
+
     if (!friendsCache.length) {
       host.innerHTML = '<p class="cat-empty">Nobody else has a garden yet.</p>';
       return;
@@ -11958,16 +11975,24 @@ const App = (function () {
     document.getElementById('friend-garden-plot').innerHTML =
       hasGarden() ? Garden.previewPlotHTML({ world: f.world, layout: f.layout, sections: f.sections }) : '';
 
+    /* Move the highlight first, then show the panel, so the list is its final
+       height before anything is scrolled to. */
+    paintFriends();
     panel.hidden = false;
-    renderFriends();
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    /* And only scroll if it actually opened off-screen - scrolling something
+       already in front of you is just the page lurching for no reason. */
+    const box = panel.getBoundingClientRect();
+    if (box.top < 0 || box.top > window.innerHeight - 80) {
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }
 
   function closeFriendGarden() {
     openFriendId = null;
     const panel = document.getElementById('friend-garden-panel');
     if (panel) panel.hidden = true;
-    renderFriends();
+    paintFriends();
   }
 
   /* ========================= boot ========================= */
