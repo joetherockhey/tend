@@ -3325,13 +3325,9 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
   #category-sections { grid-template-columns: 1fr; }
 }
 
-/* Inside a category's own group every row would repeat that category's name,
-   which is the noise this view exists to remove. The coloured edge of the row
-   already says which one it is. */
-#category-sections .task-tags .category-tag { display: none; }
-/* ...and if the pill was the only tag on the row, the strip itself goes too,
-   rather than leaving an empty band under the title. */
-#category-sections .task-tags:not(:has(> *:not(.category-tag))) { display: none; }
+/* Priority, when it is lifted out into its own block, runs the full width
+   across the top rather than sharing a row with the first category. */
+.cat-section-wide { grid-column: 1 / -1; }
 
 /* Each category on the overview reads as one block: a tinted spine down its
    left in the category's own colour, so the eye can follow a group without a

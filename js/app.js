@@ -11,6 +11,7 @@
 const App = (function () {
   'use strict';
 
+  const PRIORITY_COLOR = '#eda100';
   const DEFAULT_CATEGORY_COLOR = '#8a8f98';
   const CATEGORY_PALETTE = ['#2a78d6', '#eda100', '#4a3aa7', '#e87ba4', '#eb6834', '#0f9d6a', '#c0392b', '#16a085', '#8e44ad', '#d35400', '#2c3e50', '#c2185b'];
 
@@ -539,15 +540,21 @@ const App = (function () {
     return groups.filter(g => g.list.length);
   }
 
-  /* The task list has two shapes: the usual Priority / Active split, and the
-     same tasks gathered under their category. A button switches between them
-     and the choice is remembered per account. */
+  /* The task list has three shapes, and a button for each. The choice is
+     remembered per account; category is what a new account opens on. */
+  const LIST_GROUPINGS = [
+    ['category', 'By category'],
+    ['priority', 'Priority + category'],
+    ['status', 'By status']
+  ];
+
   function listGrouping() {
-    return Store.prefs().listGroup === 'category' ? 'category' : 'status';
+    const m = Store.prefs().listGroup;
+    return LIST_GROUPINGS.some(g => g[0] === m) ? m : 'category';
   }
 
   function setListGrouping(mode) {
-    Store.prefs().listGroup = mode === 'category' ? 'category' : 'status';
+    Store.prefs().listGroup = LIST_GROUPINGS.some(g => g[0] === mode) ? mode : 'category';
     Store.savePrefs();
     renderList();
   }
@@ -556,7 +563,7 @@ const App = (function () {
     const host = document.getElementById('list-group-toggle');
     if (!host) return;
     const mode = listGrouping();
-    host.innerHTML = [['status', 'By status'], ['category', 'By category']].map(([key, label]) =>
+    host.innerHTML = LIST_GROUPINGS.map(([key, label]) =>
       `<button type="button" class="${mode === key ? 'on' : ''}" onclick="App.setListGrouping('${key}')">${label}</button>`
     ).join('');
   }
@@ -582,17 +589,26 @@ const App = (function () {
     const noCompletedMsg = query ? 'No completed tasks match your search.' : 'Nothing completed yet.';
     const noArchivedMsg = query ? 'No archived tasks match your search.' : 'Archive a task to tuck it away here.';
 
-    activeList.innerHTML = active.length ? active.map(renderTaskItem).join('') : `<li class="empty-note">${noActiveMsg}</li>`;
-    priorityList.innerHTML = priority.length ? priority.map(renderTaskItem).join('') : `<li class="empty-note">${noPriorityMsg}</li>`;
-
     renderListGroupToggle();
-    const byCategory = listGrouping() === 'category';
+    const mode = listGrouping();
+    const grouped = mode !== 'status';
     const statusEl = document.getElementById('status-sections');
     const catEl = document.getElementById('category-sections');
-    if (statusEl) statusEl.style.display = byCategory ? 'none' : '';
-    if (catEl) {
-      catEl.style.display = byCategory ? '' : 'none';
-      if (byCategory) renderListByCategory(activeAll, query);
+    if (statusEl) statusEl.style.display = grouped ? 'none' : '';
+    if (catEl) catEl.style.display = grouped ? '' : 'none';
+
+    /* Only the shape on screen is drawn. Rendering both put every open task in
+       the document twice, and a task row carries ids of its own - so
+       toggleSubtaskList's getElementById found the copy in the hidden half and
+       "Steps" did nothing at all in the category views. */
+    if (grouped) {
+      activeList.innerHTML = '';
+      priorityList.innerHTML = '';
+      renderListByCategory(activeAll, query, mode === 'priority');
+    } else {
+      if (catEl) catEl.innerHTML = '';
+      activeList.innerHTML = active.length ? active.map(renderTaskItem).join('') : `<li class="empty-note">${noActiveMsg}</li>`;
+      priorityList.innerHTML = priority.length ? priority.map(renderTaskItem).join('') : `<li class="empty-note">${noPriorityMsg}</li>`;
     }
 
     if (!completed.length) {
@@ -621,27 +637,43 @@ const App = (function () {
   }
 
   /* The same rows as the Priority / Active lists, gathered under their
-     category. Starred tasks come first inside each one, so the thing you
-     flagged is still the thing you see first. */
-  function renderListByCategory(open, query) {
+     category. In "Priority + category" the starred ones are lifted out into a
+     block of their own across the top, and do not appear again below. */
+  function renderListByCategory(open, query, priorityFirst) {
     const host = document.getElementById('category-sections');
     if (!host) return;
 
-    const groups = groupByCategory(open);
-    if (!groups.length) {
+    const section = (headHtml, list, opts) =>
+      `<section class="list-section${opts && opts.wide ? ' cat-section-wide' : ''}">
+        <div class="cat-section-head">${headHtml}</div>
+        <ul class="task-list">${list.map(t => renderTaskItem(t, opts)).join('')}</ul>
+      </section>`;
+
+    const starred = priorityFirst ? open.filter(t => t.priority) : [];
+    const rest = priorityFirst ? open.filter(t => !t.priority) : open;
+    const groups = groupByCategory(rest);
+
+    if (!starred.length && !groups.length) {
       host.innerHTML = `<section class="list-section"><ul class="task-list"><li class="empty-note">${
         query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.'
       }</li></ul></section>`;
       return;
     }
 
-    host.innerHTML = groups.map(g => {
-      const sorted = g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
-      return `<section class="list-section">
-        <div class="cat-section-head">${categoryPill(g.name, g.color)}</div>
-        <ul class="task-list">${sorted.map(renderTaskItem).join('')}</ul>
-      </section>`;
-    }).join('');
+    const blocks = [];
+    if (starred.length) {
+      /* Priority keeps its rows' category pills - which category a starred
+         task came from is the one thing this block would otherwise lose. */
+      blocks.push(section(categoryPill('Priority', PRIORITY_COLOR), starred, { wide: true }));
+    }
+    groups.forEach(g => {
+      /* Inside a category's own group, repeating that category on every row is
+         the noise this view exists to remove. */
+      const sorted = priorityFirst ? g.list
+        : g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
+      blocks.push(section(categoryPill(g.name, g.color), sorted, { hideCategory: true }));
+    });
+    host.innerHTML = blocks.join('');
   }
 
   /* A click anywhere on the row that is not one of its own controls opens the
@@ -652,14 +684,17 @@ const App = (function () {
     showTaskDetail(id);
   }
 
-  function renderTaskItem(t) {
+  function renderTaskItem(t, opts) {
     const done = !!t.completedAt;
+    /* Called straight from .map in places, where the second argument is an
+       index - so only an object counts as options. */
+    const o = (opts && typeof opts === 'object') ? opts : {};
 
     const notesHtml = t.notes ? `<div class="task-notes">${Util.escapeHtml(t.notes)}</div>` : '';
     const catColor = categoryColor(t.category);
 
     const tags = [];
-    if (t.category) {
+    if (t.category && !o.hideCategory) {
       tags.push(categoryPill(t.category, catColor));
     }
     const prog = subtaskProgress(t);
@@ -1603,7 +1638,10 @@ const App = (function () {
       'The task list has a By category button now, next to By status. It remembers which you last used.',
       'Tasks by category on the Overview page is tidier: categories you have nothing in are no longer listed, starred tasks come first, and due dates sit on the right.',
       'By category lays the groups out side by side on a wide screen, the way Priority and Active do - three columns across with the garden hidden.',
-      'Drag your categories into the order you want them on the Overview page - grab the handle to the left of one. That order is used everywhere: both category views and the dropdown when you add a task.'
+      'Drag your categories into the order you want them on the Overview page - grab the handle to the left of one. That order is used everywhere: both category views and the dropdown when you add a task.',
+      'Fixed: in the category view, Steps would not open and the row would not expand.',
+      'By category is now what the task list opens on.',
+      'A third view, Priority + category: everything you have starred sits in its own block across the top, and the categories follow underneath without it.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
