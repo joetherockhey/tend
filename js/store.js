@@ -136,7 +136,33 @@ const Store = (function () {
     return JSON.stringify({ owned: owned, equipped: x.equipped || y.equipped || 'classic' });
   }
 
+  /* The plot itself is last-write-wins - where a plant stands is a fact only
+     the device that moved it knows. But how far a seedling has come is not:
+     watering only ever counts up, and a device with an older copy of the plot
+     used to hand somebody their grown plant back as a seedling. So for a plant
+     both sides know about, growth takes the better of the two. The fresher
+     side still decides which plants exist, so cashing one in still removes it. */
+  function mergePlots(a, b) {
+    const fresh = parseJson(a, null), other = parseJson(b, null);
+    if (!fresh || typeof fresh !== 'object') return b;
+    if (!other || typeof other !== 'object') return a;
+
+    const out = {};
+    Object.keys(fresh).forEach(id => {
+      const f = fresh[id], o = other[id];
+      out[id] = f;
+      if (!f || !o || typeof f !== 'object' || typeof o !== 'object') return;
+      const waters = Math.max(Number(f.waterCount) || 0, Number(o.waterCount) || 0);
+      /* grown is absent on plants from before seedlings existed, and absent
+         means grown - so only an explicit false counts as "not yet". */
+      const grown = (f.grown !== false) || (o.grown !== false);
+      out[id] = Object.assign({}, f, { waterCount: waters, grown: grown });
+    });
+    return JSON.stringify(out);
+  }
+
   const OWNED_KEYS = {
+    'garden-layout-v5': mergePlots,
     'garden-lens-v1': keepFlag,
     'garden-sections-v1': keepMax,
     'coins-spent-v1': keepMax,

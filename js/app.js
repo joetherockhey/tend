@@ -1645,7 +1645,10 @@ const App = (function () {
       'Fixed: in the category view, Steps would not open and the row would not expand.',
       'By category is now what the task list opens on.',
       'A third view, Priority + category: everything you have starred sits in its own block across the top, and the categories follow underneath without it.',
-      'Fixed: the mouse pointer turning white and disappearing over the dark header, and over selected text.'
+      'Fixed: the mouse pointer turning white and disappearing over the dark header, and over selected text.',
+      'Watering works properly again. It counts every six seconds rather than once a minute, and each watering says how far along the seedling is - "Watered 3 of 5".',
+      'A grown plant can no longer turn back into a seedling when another device syncs. Watering only ever counts up now, whichever device did it.',
+      'Picking a plant up no longer risks losing it. Carry one while the app updates or syncs and it goes back where it was instead of vanishing.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'

@@ -53,7 +53,11 @@ const Garden = (function () {
      cost, a grown one is worth the waiting. */
   const SEEDLING_VALUE = 1;
   const PLANT_VALUE = 2;
-  const WATER_COOLDOWN_MS = 60000;
+  /* Long enough that walking into a plant twice in one step does not count
+     twice, short enough that watering something five times is a thing you can
+     actually do in one visit. It was a full minute, which made growing a single
+     seedling a four-minute job and read as "watering does nothing". */
+  const WATER_COOLDOWN_MS = 6000;
   const SECTIONS_SHOWN_AHEAD = 1;
 
 
@@ -824,6 +828,22 @@ const Garden = (function () {
       gardenLayout = {};
     }
     migrateVarieties();
+    releaseHeldPlants();
+  }
+
+  /* A plant is only ever flagged held while somebody is carrying it, and that
+     lasts one session. So anything still flagged when the garden loads was
+     interrupted - a reload, an update, a sync landing mid-carry - and is put
+     back down where it was picked up rather than left invisible. */
+  function releaseHeldPlants() {
+    let changed = false;
+    Object.keys(gardenLayout).forEach(id => {
+      if (gardenLayout[id] && gardenLayout[id].held) {
+        delete gardenLayout[id].held;
+        changed = true;
+      }
+    });
+    if (changed) saveGardenLayout();
   }
 
   /* ------------------------------------------------------------------ */
@@ -912,12 +932,20 @@ const Garden = (function () {
     return POT_COLORS[hashStr(String(id)) % POT_COLORS.length];
   }
 
+  /* A plant in your hands is still a plant: it stays in the layout with
+     held: true rather than being deleted, so a reload or a sync landing while
+     you carry it cannot destroy it. Nothing that looks at the ground sees it. */
   function findPlantAt(row, col) {
     for (const id in gardenLayout) {
       const p = gardenLayout[id];
+      if (p.held) continue;
       if (p.row === row && p.col === col) return id;
     }
     return null;
+  }
+
+  function plantIds() {
+    return Object.keys(gardenLayout).filter(id => !gardenLayout[id].held);
   }
 
   function focusGarden() {
@@ -1255,11 +1283,19 @@ const Garden = (function () {
         justGrew = true;
       }
       saveGardenLayout();
+      /* Growing something is worth getting to the server now rather than in a
+         second's time, in case the tab is closed or updated in between. */
+      if (justGrew && Store.flush) Store.flush();
       renderGarden();
     }
 
     /* After the redraw, never before it. */
     spawnSparkleAt(row, col);
+    /* Counting up out loud. Watering used to give a sparkle and nothing else,
+       so a watering that had not counted and one that had looked identical. */
+    if (!justGrew && isSeedling(pos) && isOnDirt(row, col)) {
+      showThought('Watered ' + pos.waterCount + ' of ' + PLANT_WATERS_NEEDED);
+    }
     if (justGrew) {
       spawnSparkleAt(row, col - 1);
       spawnSparkleAt(row, col + 1);
@@ -1508,7 +1544,7 @@ const Garden = (function () {
         row: heroPos.row, col: heroPos.col,
         variety: heldPlantVariety, potColor: heldPlantPot,
         grown: heldPlantGrown, waterCount: heldPlantWaters
-      };
+      };   /* no held flag - it is back in the ground */
       heldPlantId = null;
       heldPlantVariety = null;
       heldPlantPot = null;
@@ -1675,7 +1711,7 @@ const Garden = (function () {
     heldPlantGrown = !isSeedling(gardenLayout[taskId]);
     heldPlantWaters = gardenLayout[taskId].waterCount || 0;
     heldPlantId = taskId;
-    delete gardenLayout[taskId];
+    gardenLayout[taskId].held = true;
     saveGardenLayout();
     renderShop();
     playPickupSound();
@@ -1985,6 +2021,8 @@ const Garden = (function () {
     if (heldPlantId == null) return;
     const value = heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE;
     earnCoins(value);
+    /* Cashing in is the one thing that really removes a plant. */
+    delete gardenLayout[heldPlantId];
     heldPlantId = null;
     heldPlantVariety = null;
     heldPlantPot = null;
@@ -2090,7 +2128,7 @@ const Garden = (function () {
 
     const plantsWrap = document.getElementById('shop-plants');
     if (plantsWrap) {
-      const all = Object.values(gardenLayout);
+      const all = plantIds().map(id => gardenLayout[id]);
       const growing = all.filter(isSeedling).length;
       const grown = all.length - growing;
       const tally = grown + ' ' + (grown === 1 ? terms().plant : terms().plants)
@@ -2295,7 +2333,7 @@ const Garden = (function () {
   /* How many the garden deserves. An empty plot gets none at all; the fuller
      it is the more there are, capped so it never becomes a swarm. */
   function ambientTarget() {
-    const plants = Object.keys(gardenLayout).length;
+    const plants = plantIds().length;
     if (plants > 15) return 3;
     if (plants > 10) return 2;
     if (plants > 5) return 1;
@@ -2306,7 +2344,7 @@ const Garden = (function () {
      is worth a passing look but not a long hover. */
   function ambientFlowers() {
     const out = [];
-    Object.keys(gardenLayout).forEach(id => {
+    plantIds().forEach(id => {
       const p = gardenLayout[id];
       if (!p || p.row == null || p.row > gardenMaxUnlockedRow) return;
       out.push({
@@ -2627,7 +2665,7 @@ const Garden = (function () {
     ).join('');
 
     let cellsHtml = '';
-    Object.keys(gardenLayout).forEach(id => {
+    plantIds().forEach(id => {
       const pos = gardenLayout[id];
       const variety = W().plants[pos.variety] || W().plants[0];
       const potColor = pos.potColor || potColorFor(id);
@@ -2713,7 +2751,7 @@ const Garden = (function () {
 
     document.getElementById('garden-gardener').innerHTML = heroSVG('down', getEquippedOutfit());
 
-    const plantCount = Object.keys(gardenLayout).length;
+    const plantCount = plantIds().length;
     const t = terms();
     const plantWord = plantCount === 1 ? t.plant : t.plants;
     document.getElementById('garden-status').textContent = plantCount
