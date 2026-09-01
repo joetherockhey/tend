@@ -1789,54 +1789,17 @@ const Garden = (function () {
     if (lensOn) showThought('Naming things again');
   }
 
-  function decorName(key) {
-    const names = W().decorNames || {};
-    return names[key] || null;
-  }
-
   /* What is standing on this square, in plain words - or null if nothing is. */
+  /* Plants, and nothing else. The glass used to name the flower bed, the dug
+     soil, the mower, the fence - everything you walked past - which buried the
+     one thing it is for. */
   function describeAt(row, col) {
     const plantId = findPlantAt(row, col);
-    if (plantId) {
-      const pos = gardenLayout[plantId];
-      if (isSeedling(pos)) return seedlingLabel(pos);
-      const variety = W().plants[pos.variety] || W().plants[0];
-      return variety.name;
-    }
-
-    const pet = ownedPets.find(p => p.row === row && p.col === col);
-    if (pet) {
-      const def = W().pets[pet.type];
-      return def ? def.label : null;
-    }
-
-    const sapling = saplings.find(x => x.planted && x.row === row && x.col === col);
-    if (sapling) return decorName(isSaplingGrown(sapling) ? 'tree' : 'sapling');
-
-    const log = groundLogs.find(l => l.row === row && l.col === col);
-    if (log) return decorName('log');
-
-    const cabin = cabinSites.find(c => c.row === row && c.col === col);
-    if (cabin) return decorName('cabin');
-
-    const food = pendingTreats.find(t => t.row === row && t.col === col);
-    if (food) return W().food.label;
-
-    const item = purchasedItems.find(it => it.row === row && it.col === col);
-    if (item) {
-      const def = W().items[item.kind];
-      if (def) return def.label;
-    }
-
-    const decor = placedDecorations.find(d =>
-      row >= d.row && row < d.row + d.height &&
-      col >= d.col && col < d.col + d.width);
-    if (decor) {
-      if (decor.kind && W().items[decor.kind]) return W().items[decor.kind].label;
-      return decorName(decor.art || decor.kind);
-    }
-
-    return null;
+    if (!plantId) return null;
+    const pos = gardenLayout[plantId];
+    if (isSeedling(pos)) return seedlingLabel(pos);
+    const variety = W().plants[pos.variety] || W().plants[0];
+    return variety.name;
   }
 
   /* The square in front plus the four around it - whatever you have walked up

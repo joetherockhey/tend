@@ -1648,7 +1648,9 @@ const App = (function () {
       'Fixed: the mouse pointer turning white and disappearing over the dark header, and over selected text.',
       'Watering works properly again. It counts every six seconds rather than once a minute, and each watering says how far along the seedling is - "Watered 3 of 5".',
       'A grown plant can no longer turn back into a seedling when another device syncs. Watering only ever counts up now, whichever device did it.',
-      'Picking a plant up no longer risks losing it. Carry one while the app updates or syncs and it goes back where it was instead of vanishing.'
+      'Picking a plant up no longer risks losing it. Carry one while the app updates or syncs and it goes back where it was instead of vanishing.',
+      'The magnifying glass names plants and nothing else now - no more Flower bed, Lawnmower or Dug soil.',
+      'The pale open-hand cursor is gone from the category handles and the task rows; dragging still works.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'

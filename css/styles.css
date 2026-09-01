@@ -1217,6 +1217,9 @@ li.task.archived {
   gap: 8px;
 }
 
+/* `move`, not `grab`: Chrome draws grab and grabbing as a pale open hand that
+   all but disappears on a light panel - the same complaint as the white
+   I-beam. The four-way arrow is dark, and says "reorder" just as plainly. */
 .key-grip {
   display: inline-flex;
   align-items: center;
@@ -1224,12 +1227,11 @@ li.task.archived {
   padding: 2px;
   border-radius: 4px;
   color: var(--border);
-  cursor: grab;
+  cursor: move;
   touch-action: none;
 }
 
 .key-grip:hover { color: var(--muted); background: var(--bg); }
-.key-grip:active { cursor: grabbing; }
 
 /* The pill takes the slack, so the handle sits left and the remove button
    right rather than all three spreading across the row. */
@@ -1237,7 +1239,7 @@ li.task.archived {
 
 .cat-sortable-item.dragging {
   opacity: 0.55;
-  cursor: grabbing;
+  cursor: move;
 }
 
 .person-remove-btn {
@@ -1335,13 +1337,15 @@ li.task.archived {
   flex-wrap: wrap;
 }
 
+/* A row is a click target first and a drag handle second, so it shows the
+   pointer rather than the pale open hand. Dragging still works. */
 li.task[draggable="true"] {
-  cursor: grab;
+  cursor: pointer;
 }
 
 li.task.dragging {
   opacity: 0.55;
-  cursor: grabbing;
+  cursor: move;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
 }
 
@@ -3636,6 +3640,6 @@ input:disabled,
 li.task[draggable="false"] { cursor: pointer; }
 
 /* The drag handles keep their own. */
-.key-grip { cursor: grab; }
+.key-grip,
 .key-grip:active,
-.cat-sortable-item.dragging { cursor: grabbing; }
+.cat-sortable-item.dragging { cursor: move; }

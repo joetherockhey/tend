@@ -1233,6 +1233,9 @@ li.task.archived {
   gap: 8px;
 }
 
+/* `move`, not `grab`: Chrome draws grab and grabbing as a pale open hand that
+   all but disappears on a light panel - the same complaint as the white
+   I-beam. The four-way arrow is dark, and says "reorder" just as plainly. */
 .key-grip {
   display: inline-flex;
   align-items: center;
@@ -1240,12 +1243,11 @@ li.task.archived {
   padding: 2px;
   border-radius: 4px;
   color: var(--border);
-  cursor: grab;
+  cursor: move;
   touch-action: none;
 }
 
 .key-grip:hover { color: var(--muted); background: var(--bg); }
-.key-grip:active { cursor: grabbing; }
 
 /* The pill takes the slack, so the handle sits left and the remove button
    right rather than all three spreading across the row. */
@@ -1253,7 +1255,7 @@ li.task.archived {
 
 .cat-sortable-item.dragging {
   opacity: 0.55;
-  cursor: grabbing;
+  cursor: move;
 }
 
 .person-remove-btn {
@@ -1351,13 +1353,15 @@ li.task.archived {
   flex-wrap: wrap;
 }
 
+/* A row is a click target first and a drag handle second, so it shows the
+   pointer rather than the pale open hand. Dragging still works. */
 li.task[draggable="true"] {
-  cursor: grab;
+  cursor: pointer;
 }
 
 li.task.dragging {
   opacity: 0.55;
-  cursor: grabbing;
+  cursor: move;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
 }
 
@@ -3632,9 +3636,9 @@ input:disabled,
 li.task[draggable="false"] { cursor: pointer; }
 
 /* The drag handles keep their own. */
-.key-grip { cursor: grab; }
+.key-grip,
 .key-grip:active,
-.cat-sortable-item.dragging { cursor: grabbing; }
+.cat-sortable-item.dragging { cursor: move; }
 
 </style>
 </head>
@@ -8242,54 +8246,17 @@ const Garden = (function () {
     if (lensOn) showThought('Naming things again');
   }
 
-  function decorName(key) {
-    const names = W().decorNames || {};
-    return names[key] || null;
-  }
-
   /* What is standing on this square, in plain words - or null if nothing is. */
+  /* Plants, and nothing else. The glass used to name the flower bed, the dug
+     soil, the mower, the fence - everything you walked past - which buried the
+     one thing it is for. */
   function describeAt(row, col) {
     const plantId = findPlantAt(row, col);
-    if (plantId) {
-      const pos = gardenLayout[plantId];
-      if (isSeedling(pos)) return seedlingLabel(pos);
-      const variety = W().plants[pos.variety] || W().plants[0];
-      return variety.name;
-    }
-
-    const pet = ownedPets.find(p => p.row === row && p.col === col);
-    if (pet) {
-      const def = W().pets[pet.type];
-      return def ? def.label : null;
-    }
-
-    const sapling = saplings.find(x => x.planted && x.row === row && x.col === col);
-    if (sapling) return decorName(isSaplingGrown(sapling) ? 'tree' : 'sapling');
-
-    const log = groundLogs.find(l => l.row === row && l.col === col);
-    if (log) return decorName('log');
-
-    const cabin = cabinSites.find(c => c.row === row && c.col === col);
-    if (cabin) return decorName('cabin');
-
-    const food = pendingTreats.find(t => t.row === row && t.col === col);
-    if (food) return W().food.label;
-
-    const item = purchasedItems.find(it => it.row === row && it.col === col);
-    if (item) {
-      const def = W().items[item.kind];
-      if (def) return def.label;
-    }
-
-    const decor = placedDecorations.find(d =>
-      row >= d.row && row < d.row + d.height &&
-      col >= d.col && col < d.col + d.width);
-    if (decor) {
-      if (decor.kind && W().items[decor.kind]) return W().items[decor.kind].label;
-      return decorName(decor.art || decor.kind);
-    }
-
-    return null;
+    if (!plantId) return null;
+    const pos = gardenLayout[plantId];
+    if (isSeedling(pos)) return seedlingLabel(pos);
+    const variety = W().plants[pos.variety] || W().plants[0];
+    return variety.name;
   }
 
   /* The square in front plus the four around it - whatever you have walked up
@@ -11055,7 +11022,9 @@ const App = (function () {
       'Fixed: the mouse pointer turning white and disappearing over the dark header, and over selected text.',
       'Watering works properly again. It counts every six seconds rather than once a minute, and each watering says how far along the seedling is - "Watered 3 of 5".',
       'A grown plant can no longer turn back into a seedling when another device syncs. Watering only ever counts up now, whichever device did it.',
-      'Picking a plant up no longer risks losing it. Carry one while the app updates or syncs and it goes back where it was instead of vanishing.'
+      'Picking a plant up no longer risks losing it. Carry one while the app updates or syncs and it goes back where it was instead of vanishing.',
+      'The magnifying glass names plants and nothing else now - no more Flower bed, Lawnmower or Dug soil.',
+      'The pale open-hand cursor is gone from the category handles and the task rows; dragging still works.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
