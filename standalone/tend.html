@@ -3545,6 +3545,97 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
   .garden-ambient { display: none; }
 }
 
+/* ---------------------------------------------------------------------------
+   The mouse pointer.
+
+   Chrome draws the text I-beam white wherever the pixels under it are dark, so
+   over the app's dark header ribbon - and over a stretch of selected text - the
+   pointer all but vanished. None of the furniture here is text anybody needs to
+   select: the header, the tabs, headings, pills, counts and empty notes now get
+   the ordinary arrow instead. Anything worth copying out, and every field you
+   type into, keeps its I-beam.
+
+   This block sits last on purpose. `cursor` inherits, so a container set to
+   `default` covers everything inside it that does not say otherwise, and the
+   re-assertions below have to come after it.
+   --------------------------------------------------------------------------- */
+
+header,
+.auth-screen,
+nav.tabs,
+h1, h2, h3,
+.subtitle,
+.section-header,
+.shop-section-title,
+.shop-info,
+.list-toolbar,
+.cat-toggle,
+.cal-legend-row,
+.cal-toggle-group,
+.cat-group-head,
+.cat-section-head,
+.completed-day-heading,
+.category-hint,
+.empty-note,
+.key-item,
+.tag {
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Selected text keeps a light highlight, so the I-beam over it stays dark
+   rather than inverting to white against the browser's own dark blue. */
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Fields, and the places worth copying from, keep the I-beam and stay
+   selectable. */
+input, textarea, select,
+.task-notes,
+.detail-value,
+.modal-body {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+input[type="text"], input[type="search"], input[type="email"],
+input[type="password"], input[type="number"], input[type="date"],
+textarea {
+  cursor: text;
+}
+
+/* Anything that reacts to a click says so, and anything that cannot be clicked
+   says that too. */
+button,
+select,
+label,
+input[type="checkbox"],
+input[type="color"],
+[onclick] {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+.shop-tile:disabled,
+.cat-toggle button:disabled {
+  cursor: not-allowed;
+}
+
+/* Rows only offer the hand where dragging actually reorders something: the
+   Priority / Active lists. The grouped views take their order from the
+   categories, so their rows are marked undraggable and stay a plain pointer. */
+li.task[draggable="false"] { cursor: pointer; }
+
+/* The drag handles keep their own. */
+.key-grip { cursor: grab; }
+.key-grip:active,
+.cat-sortable-item.dragging { cursor: grabbing; }
+
 </style>
 </head>
 <body class="gated">
@@ -9916,14 +10007,14 @@ const App = (function () {
     if (starred.length) {
       /* Priority keeps its rows' category pills - which category a starred
          task came from is the one thing this block would otherwise lose. */
-      blocks.push(section(categoryPill('Priority', PRIORITY_COLOR), starred, { wide: true }));
+      blocks.push(section(categoryPill('Priority', PRIORITY_COLOR), starred, { wide: true, noDrag: true }));
     }
     groups.forEach(g => {
       /* Inside a category's own group, repeating that category on every row is
          the noise this view exists to remove. */
       const sorted = priorityFirst ? g.list
         : g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
-      blocks.push(section(categoryPill(g.name, g.color), sorted, { hideCategory: true }));
+      blocks.push(section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true }));
     });
     host.innerHTML = blocks.join('');
   }
@@ -9968,7 +10059,10 @@ const App = (function () {
     const archiveIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"></rect><path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"></path><path d="M9.5 12h5"></path></svg>';
     const archiveBtn = `<button class="archive-btn ${t.archived ? 'active' : ''}" title="${t.archived ? 'Unarchive (restore task)' : 'Archive task'}" onclick="App.toggleArchive('${t.id}')">${archiveIcon}</button>`;
 
-    const draggable = (!done || t.archived) ? 'true' : 'false';
+    /* Only the Priority / Active lists reorder by dragging. In the grouped
+       views the order comes from the categories, so a row there is not
+       draggable and does not offer the open-hand cursor. */
+    const draggable = (o.noDrag || (done && !t.archived)) ? 'false' : 'true';
 
     return `
       <li class="task ${done ? 'done' : ''} ${t.archived ? 'archived' : ''}"${borderStyle} data-id="${t.id}" draggable="${draggable}"
@@ -10893,7 +10987,8 @@ const App = (function () {
       'Drag your categories into the order you want them on the Overview page - grab the handle to the left of one. That order is used everywhere: both category views and the dropdown when you add a task.',
       'Fixed: in the category view, Steps would not open and the row would not expand.',
       'By category is now what the task list opens on.',
-      'A third view, Priority + category: everything you have starred sits in its own block across the top, and the categories follow underneath without it.'
+      'A third view, Priority + category: everything you have starred sits in its own block across the top, and the categories follow underneath without it.',
+      'Fixed: the mouse pointer turning white and disappearing over the dark header, and over selected text.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'

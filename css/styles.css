@@ -3548,3 +3548,94 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
 @media (prefers-reduced-motion: reduce) {
   .garden-ambient { display: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   The mouse pointer.
+
+   Chrome draws the text I-beam white wherever the pixels under it are dark, so
+   over the app's dark header ribbon - and over a stretch of selected text - the
+   pointer all but vanished. None of the furniture here is text anybody needs to
+   select: the header, the tabs, headings, pills, counts and empty notes now get
+   the ordinary arrow instead. Anything worth copying out, and every field you
+   type into, keeps its I-beam.
+
+   This block sits last on purpose. `cursor` inherits, so a container set to
+   `default` covers everything inside it that does not say otherwise, and the
+   re-assertions below have to come after it.
+   --------------------------------------------------------------------------- */
+
+header,
+.auth-screen,
+nav.tabs,
+h1, h2, h3,
+.subtitle,
+.section-header,
+.shop-section-title,
+.shop-info,
+.list-toolbar,
+.cat-toggle,
+.cal-legend-row,
+.cal-toggle-group,
+.cat-group-head,
+.cat-section-head,
+.completed-day-heading,
+.category-hint,
+.empty-note,
+.key-item,
+.tag {
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Selected text keeps a light highlight, so the I-beam over it stays dark
+   rather than inverting to white against the browser's own dark blue. */
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Fields, and the places worth copying from, keep the I-beam and stay
+   selectable. */
+input, textarea, select,
+.task-notes,
+.detail-value,
+.modal-body {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+input[type="text"], input[type="search"], input[type="email"],
+input[type="password"], input[type="number"], input[type="date"],
+textarea {
+  cursor: text;
+}
+
+/* Anything that reacts to a click says so, and anything that cannot be clicked
+   says that too. */
+button,
+select,
+label,
+input[type="checkbox"],
+input[type="color"],
+[onclick] {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+.shop-tile:disabled,
+.cat-toggle button:disabled {
+  cursor: not-allowed;
+}
+
+/* Rows only offer the hand where dragging actually reorders something: the
+   Priority / Active lists. The grouped views take their order from the
+   categories, so their rows are marked undraggable and stay a plain pointer. */
+li.task[draggable="false"] { cursor: pointer; }
+
+/* The drag handles keep their own. */
+.key-grip { cursor: grab; }
+.key-grip:active,
+.cat-sortable-item.dragging { cursor: grabbing; }

@@ -664,14 +664,14 @@ const App = (function () {
     if (starred.length) {
       /* Priority keeps its rows' category pills - which category a starred
          task came from is the one thing this block would otherwise lose. */
-      blocks.push(section(categoryPill('Priority', PRIORITY_COLOR), starred, { wide: true }));
+      blocks.push(section(categoryPill('Priority', PRIORITY_COLOR), starred, { wide: true, noDrag: true }));
     }
     groups.forEach(g => {
       /* Inside a category's own group, repeating that category on every row is
          the noise this view exists to remove. */
       const sorted = priorityFirst ? g.list
         : g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
-      blocks.push(section(categoryPill(g.name, g.color), sorted, { hideCategory: true }));
+      blocks.push(section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true }));
     });
     host.innerHTML = blocks.join('');
   }
@@ -716,7 +716,10 @@ const App = (function () {
     const archiveIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"></rect><path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"></path><path d="M9.5 12h5"></path></svg>';
     const archiveBtn = `<button class="archive-btn ${t.archived ? 'active' : ''}" title="${t.archived ? 'Unarchive (restore task)' : 'Archive task'}" onclick="App.toggleArchive('${t.id}')">${archiveIcon}</button>`;
 
-    const draggable = (!done || t.archived) ? 'true' : 'false';
+    /* Only the Priority / Active lists reorder by dragging. In the grouped
+       views the order comes from the categories, so a row there is not
+       draggable and does not offer the open-hand cursor. */
+    const draggable = (o.noDrag || (done && !t.archived)) ? 'false' : 'true';
 
     return `
       <li class="task ${done ? 'done' : ''} ${t.archived ? 'archived' : ''}"${borderStyle} data-id="${t.id}" draggable="${draggable}"
@@ -1641,7 +1644,8 @@ const App = (function () {
       'Drag your categories into the order you want them on the Overview page - grab the handle to the left of one. That order is used everywhere: both category views and the dropdown when you add a task.',
       'Fixed: in the category view, Steps would not open and the row would not expand.',
       'By category is now what the task list opens on.',
-      'A third view, Priority + category: everything you have starred sits in its own block across the top, and the categories follow underneath without it.'
+      'A third view, Priority + category: everything you have starred sits in its own block across the top, and the categories follow underneath without it.',
+      'Fixed: the mouse pointer turning white and disappearing over the dark header, and over selected text.'
     ]},
     { date: '2026-09-03', items: [
       'On a phone, the gardener now walks in two straight legs - one direction then the other - instead of cutting a diagonal, following the way you dragged.'
