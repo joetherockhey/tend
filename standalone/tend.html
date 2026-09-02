@@ -933,48 +933,51 @@ li.task.done .task-title {
 .garden-ctl-btn:disabled { opacity: 0.38; cursor: default; }
 
 /* The key legend is the desktop half of the same idea. */
-html[data-mode="phone"] .garden-stage {
-  display: flex;
-  align-items: flex-start;
-  /* Every pixel the rail takes is a pixel of plot that scrolls off the right,
-     so it is kept as narrow as a thumb will still hit. */
-  gap: 6px;
-}
-
-/* The plot's side margins carry the fence posts drawn by ::before/::after.
-   They can be halved on a phone without losing them. */
-html[data-mode="phone"] .garden-plot { margin: 0 6px; }
-
-html[data-mode="phone"] .garden-stage .garden-plot-wrap {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-x: auto;
-  scroll-behavior: smooth;
-  /* The plot pans itself to follow the gardener, so the scrollbar is noise. */
-  scrollbar-width: none;
-}
-
-html[data-mode="phone"] .garden-stage .garden-plot-wrap::-webkit-scrollbar { display: none; }
-
+/* On a phone the controls sit in a row UNDER the plot. They were tried down
+   the right-hand side first, which cost about 40px of a garden that only just
+   fit a 390px screen - the last column went off the edge. Under it, the plot
+   keeps its full width and the buttons get to be thumb-sized. */
 html[data-mode="phone"] .garden-controls {
-  flex: none;
-  width: 66px;
-  flex-direction: column;
-  align-items: stretch;
-  margin-top: 0;
+  gap: 8px;
+  margin-top: 8px;
+  /* The plot is taller than a phone screen, so a row that simply followed it
+     would sit below the fold - which is the one place controls must never be.
+     Sticky keeps it just above the bottom bar while the plot is in view, and
+     lets it settle back into the page once you scroll past the garden. */
+  position: sticky;
+  bottom: calc(98px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgba(20, 24, 40, 0.16);
 }
 
-/* On a phone it stands up into a small square at the top of the rail. */
-html[data-mode="phone"] .garden-holding {
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-  min-height: 74px;
-  padding: 5px 3px;
-  gap: 2px;
+html[data-mode="phone"] .garden-ctl-btns {
+  display: flex;
+  flex: 1;
+  gap: 8px;
 }
-html[data-mode="phone"] .garden-ctl-btn { padding: 10px 2px; }
-html[data-mode="phone"] .garden-ctl-btns { display: flex; flex-direction: column; gap: 8px; }
+
+html[data-mode="phone"] .garden-ctl-btn {
+  flex: 1 1 0;
+  flex-direction: row;
+  justify-content: center;
+  gap: 6px;
+  padding: 13px 6px;
+}
+
+html[data-mode="phone"] .garden-ctl-btn span {
+  font-size: 0.76rem;
+  /* "Put down" wrapping onto two lines made the row jump a line taller the
+     moment anything was picked up. */
+  white-space: nowrap;
+}
+
+/* The chip gives up whatever room the buttons need. */
+html[data-mode="phone"] .garden-holding { padding: 4px 8px 4px 6px; gap: 6px; }
+html[data-mode="phone"] .garden-holding-label { font-size: 0.54rem; }
+html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: nowrap; }
 
 .garden-plot-wrap {
   display: flex;
@@ -3203,6 +3206,9 @@ html[data-mode="phone"] .bottom-nav {
   border-top: 1px solid var(--border);
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -2px 14px rgba(20, 24, 40, 0.07);
+  /* The raised disc and the New badge both lift above the bar's top edge. */
+  overflow: visible;
+  align-items: flex-end;
 }
 
 .bnav-btn {
@@ -3231,6 +3237,52 @@ html[data-mode="phone"] .bottom-nav {
 }
 
 .bnav-btn.active { color: var(--accent); }
+
+/* The garden is the reason most people open Tend, so it takes the middle seat
+   and is drawn as a raised disc rather than a fifth flat icon. The button keeps
+   its normal flex share - only the disc grows - so the five stay evenly
+   spaced and nothing shifts when it is the active one. */
+.bnav-hero { position: relative; }
+
+.bnav-disc {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-top: -16px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(20, 24, 40, 0.22);
+  border: 3px solid var(--panel);
+}
+
+.bnav-hero svg { width: 26px; height: 26px; }
+
+/* The disc carries the accent already, so the label does not need to change
+   colour when it is active - it just gets a little weight. */
+.bnav-hero.active .bnav-label { color: var(--accent); }
+.bnav-hero:active .bnav-disc { transform: translateY(1px); }
+
+/* "New" until Friends has been opened once, then it is gone for good. */
+.bnav-new {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #2f7ce0;
+  color: #fff;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.bnav-btn { position: relative; }
 
 .bnav-label {
   overflow: hidden;
@@ -4275,6 +4327,16 @@ li.task[draggable="false"] { cursor: pointer; }
     </svg>
     <span class="bnav-label">Calendar</span>
   </button>
+  <button type="button" class="bnav-btn bnav-hero" id="bnav-garden" onclick="App.switchView('garden')">
+    <span class="bnav-disc">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 20.5 V12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        <path d="M12 12.6 C12 8.9 9.4 6.8 6 6.8 C6 10.5 8.6 12.6 12 12.6 Z" fill="currentColor"/>
+        <path d="M12 14.1 C12 10.7 14.6 8.6 18 8.6 C18 12 15.4 14.1 12 14.1 Z" fill="currentColor" opacity="0.55"/>
+      </svg>
+    </span>
+    <span class="bnav-label" id="bnav-garden-label">Garden</span>
+  </button>
   <button type="button" class="bnav-btn" id="bnav-overview" onclick="App.switchView('overview')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
@@ -4287,14 +4349,7 @@ li.task[draggable="false"] { cursor: pointer; }
       <path d="M16.5 5.6a3.2 3.2 0 0 1 0 4.8"/><path d="M18 14.4A6 6 0 0 1 21 20"/>
     </svg>
     <span class="bnav-label">Friends</span>
-  </button>
-  <button type="button" class="bnav-btn" id="bnav-garden" onclick="App.switchView('garden')">
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 20.5 V12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-      <path d="M12 12.6 C12 8.9 9.4 6.8 6 6.8 C6 10.5 8.6 12.6 12 12.6 Z" fill="currentColor"/>
-      <path d="M12 14.1 C12 10.7 14.6 8.6 18 8.6 C18 12 15.4 14.1 12 14.1 Z" fill="currentColor" opacity="0.55"/>
-    </svg>
-    <span class="bnav-label" id="bnav-garden-label">Garden</span>
+    <span class="bnav-new" id="bnav-friends-new">New</span>
   </button>
 </nav>
 
@@ -8503,11 +8558,10 @@ const Garden = (function () {
     keepHeroInView();
   }
 
-  /* In phone view the rail beside the plot takes about 40px, which is just
-     enough to push the last column off the right of a narrow screen. Rather
-     than shrink the tiles - the art is drawn at 34px and does not survive being
-     scaled - the plot pans to follow the gardener, so the square they are on is
-     always on screen and the scroll is never anything to think about. */
+  /* The plot fits a 390px phone exactly and scrolls on anything narrower.
+     Rather than shrink the tiles - the art is drawn at 34px and does not
+     survive being scaled - the plot pans to keep the gardener's square on
+     screen. On a screen where nothing overflows this does nothing at all. */
   function keepHeroInView() {
     const wrap = document.querySelector('.garden-stage .garden-plot-wrap');
     if (!wrap) return;
@@ -10101,7 +10155,7 @@ const Garden = (function () {
       cashin: { icon: '\u{1F4B0}', title: 'Cashing in', body: 'Changed your mind about a ' + t.plant + '? Pick it up, then use Cash in at the top of the shop. A seedling gives back the coin it cost; one you have grown is worth two.' },
       coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
-      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk up to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' and tap Pick up beside the ' + t.place.replace(/^the\\s+/i, '') + '. Tap Put down to set it somewhere empty - or Use it, if it is a tool. The box above the buttons always shows what you are carrying.' : 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool. The box beside the plot shows what you are carrying.') },
+      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk up to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' and tap Pick up under the ' + t.place.replace(/^the\\s+/i, '') + '. Tap Put down to set it somewhere empty - or Use it, if it is a tool. The box beside the buttons always shows what you are carrying.' : 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool. The box beside the plot shows what you are carrying.') },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
       shovel: { icon: W().items.shovel.icon, title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
@@ -10192,8 +10246,8 @@ const Garden = (function () {
       return 'Press E to pick up whatever you are facing. Press E again to put it'
         + ' down - or to use it, if it is a tool.';
     }
-    return 'Use the Pick up and Put down buttons beside the ' + terms().place.replace(/^the\s+/i, '')
-      + ' - the box above them shows what you are carrying.';
+    return 'Use the Pick up and Put down buttons under the ' + terms().place.replace(/^the\s+/i, '')
+      + ' - the box beside them shows what you are carrying.';
   }
 
   /* The hint list, the held-item window and the two buttons all say the same
@@ -11254,6 +11308,26 @@ const App = (function () {
 
   function isAppMode() { return phoneView; }
 
+  /* The Friends tab is new, so the bar says so until it has been opened once.
+     Kept in plain localStorage rather than Store.kv on purpose: it is about
+     this browser having seen the tab, not about the account, and it has no
+     business riding along in the synced garden bag. */
+  const FRIENDS_BADGE_KEY = 'tend:friends-badge-seen';
+
+  function friendsBadgeSeen() {
+    try { return localStorage.getItem(FRIENDS_BADGE_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function markFriendsBadgeSeen() {
+    try { localStorage.setItem(FRIENDS_BADGE_KEY, '1'); } catch (e) { /* private mode */ }
+    renderFriendsBadge();
+  }
+
+  function renderFriendsBadge() {
+    const tag = document.getElementById('bnav-friends-new');
+    if (tag) tag.hidden = friendsBadgeSeen();
+  }
+
   function applyLayoutMode() {
     const was = phoneView;
     phoneView = detectPhoneView();
@@ -11284,6 +11358,7 @@ const App = (function () {
     }
 
     updateAppTitle(currentView);
+    renderFriendsBadge();
     if (hasGarden() && Garden.applyVisibility) Garden.applyVisibility();
     /* Buttons or keys - the garden is told which set of instructions applies
        now, because the window can be dragged across the threshold at any
@@ -11351,7 +11426,7 @@ const App = (function () {
 
     if (view === 'calendar') renderCalendar();
     if (view === 'overview') renderOverview();
-    if (view === 'friends') renderFriends();
+    if (view === 'friends') { markFriendsBadgeSeen(); renderFriends(); }
     else if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
     if (view === 'garden' && hasGarden()) Garden.render();
     applyCalendarWidth();
@@ -12018,6 +12093,9 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'On a phone the Pick up and Put down buttons now sit in a bar under the garden rather than down its side, so the garden gets its full width back. The bar floats just above the tabs so it is always in reach.',
+      'The Garden now sits in the middle of the bottom bar as a raised round button, since it is the reason most people open Tend.',
+      'Friends is marked New in the bottom bar until you have opened it once.',
       'A Holding box beside the plot now shows what the gardener is carrying, by name - a Sapling, a Hoe, a Rose - so you are never guessing.',
       'On a phone there are now Pick up and Put down buttons next to the garden. Whichever one is not what would happen next is greyed out, and it says Use it rather than Put down when you are holding a tool.',
       'The instructions now match the thing you are actually using: a phone is told about tapping and the buttons, a computer is told about W A S D and E. Neither is told about the other.',

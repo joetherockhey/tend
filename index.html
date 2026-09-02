@@ -363,6 +363,16 @@
     </svg>
     <span class="bnav-label">Calendar</span>
   </button>
+  <button type="button" class="bnav-btn bnav-hero" id="bnav-garden" onclick="App.switchView('garden')">
+    <span class="bnav-disc">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 20.5 V12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        <path d="M12 12.6 C12 8.9 9.4 6.8 6 6.8 C6 10.5 8.6 12.6 12 12.6 Z" fill="currentColor"/>
+        <path d="M12 14.1 C12 10.7 14.6 8.6 18 8.6 C18 12 15.4 14.1 12 14.1 Z" fill="currentColor" opacity="0.55"/>
+      </svg>
+    </span>
+    <span class="bnav-label" id="bnav-garden-label">Garden</span>
+  </button>
   <button type="button" class="bnav-btn" id="bnav-overview" onclick="App.switchView('overview')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
@@ -375,14 +385,7 @@
       <path d="M16.5 5.6a3.2 3.2 0 0 1 0 4.8"/><path d="M18 14.4A6 6 0 0 1 21 20"/>
     </svg>
     <span class="bnav-label">Friends</span>
-  </button>
-  <button type="button" class="bnav-btn" id="bnav-garden" onclick="App.switchView('garden')">
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 20.5 V12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-      <path d="M12 12.6 C12 8.9 9.4 6.8 6 6.8 C6 10.5 8.6 12.6 12 12.6 Z" fill="currentColor"/>
-      <path d="M12 14.1 C12 10.7 14.6 8.6 18 8.6 C18 12 15.4 14.1 12 14.1 Z" fill="currentColor" opacity="0.55"/>
-    </svg>
-    <span class="bnav-label" id="bnav-garden-label">Garden</span>
+    <span class="bnav-new" id="bnav-friends-new">New</span>
   </button>
 </nav>
 

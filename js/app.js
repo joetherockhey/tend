@@ -936,6 +936,26 @@ const App = (function () {
 
   function isAppMode() { return phoneView; }
 
+  /* The Friends tab is new, so the bar says so until it has been opened once.
+     Kept in plain localStorage rather than Store.kv on purpose: it is about
+     this browser having seen the tab, not about the account, and it has no
+     business riding along in the synced garden bag. */
+  const FRIENDS_BADGE_KEY = 'tend:friends-badge-seen';
+
+  function friendsBadgeSeen() {
+    try { return localStorage.getItem(FRIENDS_BADGE_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function markFriendsBadgeSeen() {
+    try { localStorage.setItem(FRIENDS_BADGE_KEY, '1'); } catch (e) { /* private mode */ }
+    renderFriendsBadge();
+  }
+
+  function renderFriendsBadge() {
+    const tag = document.getElementById('bnav-friends-new');
+    if (tag) tag.hidden = friendsBadgeSeen();
+  }
+
   function applyLayoutMode() {
     const was = phoneView;
     phoneView = detectPhoneView();
@@ -966,6 +986,7 @@ const App = (function () {
     }
 
     updateAppTitle(currentView);
+    renderFriendsBadge();
     if (hasGarden() && Garden.applyVisibility) Garden.applyVisibility();
     /* Buttons or keys - the garden is told which set of instructions applies
        now, because the window can be dragged across the threshold at any
@@ -1033,7 +1054,7 @@ const App = (function () {
 
     if (view === 'calendar') renderCalendar();
     if (view === 'overview') renderOverview();
-    if (view === 'friends') renderFriends();
+    if (view === 'friends') { markFriendsBadgeSeen(); renderFriends(); }
     else if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
     if (view === 'garden' && hasGarden()) Garden.render();
     applyCalendarWidth();
@@ -1700,6 +1721,9 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'On a phone the Pick up and Put down buttons now sit in a bar under the garden rather than down its side, so the garden gets its full width back. The bar floats just above the tabs so it is always in reach.',
+      'The Garden now sits in the middle of the bottom bar as a raised round button, since it is the reason most people open Tend.',
+      'Friends is marked New in the bottom bar until you have opened it once.',
       'A Holding box beside the plot now shows what the gardener is carrying, by name - a Sapling, a Hoe, a Rose - so you are never guessing.',
       'On a phone there are now Pick up and Put down buttons next to the garden. Whichever one is not what would happen next is greyed out, and it says Use it rather than Put down when you are holding a tool.',
       'The instructions now match the thing you are actually using: a phone is told about tapping and the buttons, a computer is told about W A S D and E. Neither is told about the other.',

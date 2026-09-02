@@ -1608,11 +1608,10 @@ const Garden = (function () {
     keepHeroInView();
   }
 
-  /* In phone view the rail beside the plot takes about 40px, which is just
-     enough to push the last column off the right of a narrow screen. Rather
-     than shrink the tiles - the art is drawn at 34px and does not survive being
-     scaled - the plot pans to follow the gardener, so the square they are on is
-     always on screen and the scroll is never anything to think about. */
+  /* The plot fits a 390px phone exactly and scrolls on anything narrower.
+     Rather than shrink the tiles - the art is drawn at 34px and does not
+     survive being scaled - the plot pans to keep the gardener's square on
+     screen. On a screen where nothing overflows this does nothing at all. */
   function keepHeroInView() {
     const wrap = document.querySelector('.garden-stage .garden-plot-wrap');
     if (!wrap) return;
@@ -3207,7 +3206,7 @@ const Garden = (function () {
       cashin: { icon: '\u{1F4B0}', title: 'Cashing in', body: 'Changed your mind about a ' + t.plant + '? Pick it up, then use Cash in at the top of the shop. A seedling gives back the coin it cost; one you have grown is worth two.' },
       coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
-      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk up to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' and tap Pick up beside the ' + t.place.replace(/^the\\s+/i, '') + '. Tap Put down to set it somewhere empty - or Use it, if it is a tool. The box above the buttons always shows what you are carrying.' : 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool. The box beside the plot shows what you are carrying.') },
+      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk up to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' and tap Pick up under the ' + t.place.replace(/^the\\s+/i, '') + '. Tap Put down to set it somewhere empty - or Use it, if it is a tool. The box beside the buttons always shows what you are carrying.' : 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool. The box beside the plot shows what you are carrying.') },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
       shovel: { icon: W().items.shovel.icon, title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
@@ -3298,8 +3297,8 @@ const Garden = (function () {
       return 'Press E to pick up whatever you are facing. Press E again to put it'
         + ' down - or to use it, if it is a tool.';
     }
-    return 'Use the Pick up and Put down buttons beside the ' + terms().place.replace(/^the\s+/i, '')
-      + ' - the box above them shows what you are carrying.';
+    return 'Use the Pick up and Put down buttons under the ' + terms().place.replace(/^the\s+/i, '')
+      + ' - the box beside them shows what you are carrying.';
   }
 
   /* The hint list, the held-item window and the two buttons all say the same
