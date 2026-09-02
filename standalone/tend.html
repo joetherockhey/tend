@@ -844,13 +844,146 @@ li.task.done .task-title {
   100% { opacity: 0; transform: translateY(-14px); }
 }
 
+/* The plot and its controls.
+
+   On a desktop there are no buttons - the two actions are one key - so the rail
+   is a quiet strip UNDER the plot holding what you are carrying and the keys
+   that do it. Beside the plot it would not fit: the garden column is about
+   360px and the plot alone is nearly 300 of them, so a side rail there simply
+   got painted over by the plot overflowing its wrap.
+
+   In phone view it turns into a real rail down the right-hand side, because
+   that is where the thumb is. It sits OUTSIDE the scrolling wrap on purpose:
+   the plot is wider than a phone, and a rail inside the wrap would scroll away
+   exactly when it is wanted. */
+.garden-stage { display: block; }
+
+.garden-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* What the gardener has in their hands. It keeps its size when empty so
+   nothing shifts about every time something is picked up or set down. */
+.garden-holding {
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 4px 10px 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.garden-holding-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.garden-holding-art {
+  height: 30px;
+  display: grid;
+  place-items: center;
+}
+
+.garden-holding-art svg { image-rendering: pixelated; }
+
+.garden-holding-name {
+  font-size: 0.66rem;
+  line-height: 1.2;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.garden-holding.empty .garden-holding-name { color: var(--muted); }
+
+/* Buttons are a phone thing. On a desktop the two actions are the same key,
+   and a pair of buttons for it is clutter next to "Press E". */
+.garden-ctl-btns { display: none; }
+
+.garden-ctl-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 12px 4px;
+  font: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.garden-ctl-btn span {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.garden-ctl-btn:active { background: var(--accent-soft); border-color: var(--accent); }
+.garden-ctl-btn:disabled { opacity: 0.38; cursor: default; }
+
+/* The key legend is the desktop half of the same idea. */
+html[data-mode="phone"] .garden-stage {
+  display: flex;
+  align-items: flex-start;
+  /* Every pixel the rail takes is a pixel of plot that scrolls off the right,
+     so it is kept as narrow as a thumb will still hit. */
+  gap: 6px;
+}
+
+/* The plot's side margins carry the fence posts drawn by ::before/::after.
+   They can be halved on a phone without losing them. */
+html[data-mode="phone"] .garden-plot { margin: 0 6px; }
+
+html[data-mode="phone"] .garden-stage .garden-plot-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  /* The plot pans itself to follow the gardener, so the scrollbar is noise. */
+  scrollbar-width: none;
+}
+
+html[data-mode="phone"] .garden-stage .garden-plot-wrap::-webkit-scrollbar { display: none; }
+
+html[data-mode="phone"] .garden-controls {
+  flex: none;
+  width: 66px;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 0;
+}
+
+/* On a phone it stands up into a small square at the top of the rail. */
+html[data-mode="phone"] .garden-holding {
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  min-height: 74px;
+  padding: 5px 3px;
+  gap: 2px;
+}
+html[data-mode="phone"] .garden-ctl-btn { padding: 10px 2px; }
+html[data-mode="phone"] .garden-ctl-btns { display: flex; flex-direction: column; gap: 8px; }
+
 .garden-plot-wrap {
   display: flex;
   align-items: flex-start;
-  /* Nothing sits beside the plot any more, so it takes the middle. `safe`
-     matters: on a narrow screen the plot is wider than its panel, and a plain
-     centre overflows equally both ways, putting the left edge somewhere no
-     scrollbar can reach. Safe centring falls back to the left edge instead. */
+  /* The plot takes the middle of its wrap. `safe` matters: on a narrow screen
+     the plot is wider than the wrap, and a plain centre overflows equally both
+     ways, putting the left edge somewhere no scrollbar can reach. Safe centring
+     falls back to the left edge instead - which is also what lets the plot pan
+     to follow the gardener in phone view. */
   justify-content: center;
   justify-content: safe center;
   gap: 8px;
@@ -3855,12 +3988,26 @@ li.task[draggable="false"] { cursor: pointer; }
       <div class="garden-status" id="garden-status"></div>
       <div class="garden-coins" id="garden-coins">0</div>
     </div>
-    <div class="garden-plot-wrap">
-      <div class="garden-plot" id="garden-plot" tabindex="0"
-           onkeydown="handleGardenKeydown(event)" onclick="focusGarden()"
-           ontouchstart="handleGardenTouchStart(event)"
-           ontouchmove="handleGardenTouchMove(event)"
-           ontouchend="handleGardenTouchEnd(event)"></div>
+    <div class="garden-stage">
+      <div class="garden-plot-wrap">
+        <div class="garden-plot" id="garden-plot" tabindex="0"
+             onkeydown="handleGardenKeydown(event)" onclick="focusGarden()"
+             ontouchstart="handleGardenTouchStart(event)"
+             ontouchmove="handleGardenTouchMove(event)"
+             ontouchend="handleGardenTouchEnd(event)"></div>
+      </div>
+      <aside class="garden-controls">
+        <!-- What is in your hands, on every device. -->
+        <div class="garden-holding" id="garden-holding"></div>
+        <!-- Buttons on a phone; on a desktop the same two actions are one key,
+             so it gets the key told to it plainly instead. -->
+        <div class="garden-ctl-btns">
+          <button type="button" class="garden-ctl-btn" id="garden-pickup-btn"
+                  onclick="gardenPickUp()">&#x270B;<span>Pick up</span></button>
+          <button type="button" class="garden-ctl-btn" id="garden-putdown-btn"
+                  onclick="gardenPutDown()">&#x1F44C;<span>Put down</span></button>
+        </div>
+      </aside>
     </div>
     <ul class="garden-hint">
       <li id="garden-move-hint">Click the garden, then move with WASD or the arrow keys.</li>
@@ -5602,7 +5749,7 @@ const Worlds = (function () {
       chopTarget: 'a tree or a grown sapling',
       digTarget: 'a bush',
       hero: 'gardener',
-      moveHint: 'Click the garden, then move with WASD or the arrow keys.'
+      moveHint: 'Click the garden once to take control, then walk with W, A, S, D or the arrow keys.'
     },
     sections: SECTIONS,
     themeColors: THEME_COLORS,
@@ -5654,7 +5801,7 @@ const Worlds = (function () {
       chopTarget: 'a kelp stalk or a grown sprout',
       digTarget: 'a sponge',
       hero: 'merfolk',
-      moveHint: 'Click the reef, then swim with WASD or the arrow keys.'
+      moveHint: 'Click the reef once to take control, then swim with W, A, S, D or the arrow keys.'
     },
     sections: OCEAN_SECTIONS,
     themeColors: OCEAN_THEME_COLORS,
@@ -8279,6 +8426,62 @@ const Garden = (function () {
     return '';
   }
 
+  /* The name of whatever is in the gardener's hands, for the little window
+     beside the plot. Same order of tests as heldItemPreviewHtml, so the picture
+     and the words can never disagree. */
+  function heldItemName() {
+    if (heldPlantId != null && heldPlantVariety != null) {
+      if (!heldPlantGrown) return 'Seedling';
+      const variety = W().plants[heldPlantVariety] || W().plants[0];
+      return variety.name;
+    }
+    if (heldDecoration) {
+      const item = W().items[heldDecoration.kind];
+      if (item) return item.label;
+      return cap(heldDecoration.kind || 'decoration');
+    }
+    if (heldTreat) return W().id === 'ocean' ? 'Fish food' : 'Animal feed';
+    if (heldLog) return cap(terms().log);
+    if (heldSapling) return cap(terms().sprout);
+    return '';
+  }
+
+  /* A tool is used where you stand rather than set down, so the second button
+     has to say so - "Put down" on a hoe would be a lie. */
+  function heldIsTool() {
+    return !!(heldDecoration && (heldDecoration.kind === 'hoe'
+      || heldDecoration.kind === 'axe' || heldDecoration.kind === 'shovel'));
+  }
+
+  function isHoldingSomething() {
+    return heldPlantId != null || !!heldDecoration || !!heldTreat || !!heldLog || !!heldSapling;
+  }
+
+  /* The rail beside the plot: what is held, the two buttons on a phone, and on
+     a desktop the keys that do the same two things. */
+  function renderControls() {
+    const box = document.getElementById('garden-holding');
+    if (box) {
+      const art = heldItemPreviewHtml();
+      const name = heldItemName();
+      box.className = 'garden-holding' + (art ? '' : ' empty');
+      box.innerHTML = '<span class="garden-holding-label">Holding</span>'
+        + '<span class="garden-holding-art">' + (art || '') + '</span>'
+        + '<span class="garden-holding-name">' + Util.escapeHtml(art ? name : 'Nothing') + '</span>';
+    }
+
+    const holding = isHoldingSomething();
+    const pickBtn = document.getElementById('garden-pickup-btn');
+    const dropBtn = document.getElementById('garden-putdown-btn');
+    if (pickBtn) pickBtn.disabled = holding;
+    if (dropBtn) {
+      dropBtn.disabled = !holding;
+      const label = dropBtn.querySelector('span');
+      if (label) label.textContent = heldIsTool() ? 'Use it' : 'Put down';
+    }
+
+  }
+
   function positionHero() {
     const x = heroPos.col * CELL_SIZE;
     const y = heroPos.row * CELL_SIZE;
@@ -8295,6 +8498,28 @@ const Garden = (function () {
       const thought = activeThought
         ? `<div class="garden-thought${heroFacing < 0 ? ' mirrored' : ''}"><span>${Util.escapeHtml(activeThought)}</span></div>` : '';
       heroEl.innerHTML = `${thought}${heldWrap}<div class="sprite-shadow"></div>${heroSVG(heroDirection, getEquippedOutfit())}`;
+    }
+    renderControls();
+    keepHeroInView();
+  }
+
+  /* In phone view the rail beside the plot takes about 40px, which is just
+     enough to push the last column off the right of a narrow screen. Rather
+     than shrink the tiles - the art is drawn at 34px and does not survive being
+     scaled - the plot pans to follow the gardener, so the square they are on is
+     always on screen and the scroll is never anything to think about. */
+  function keepHeroInView() {
+    const wrap = document.querySelector('.garden-stage .garden-plot-wrap');
+    if (!wrap) return;
+    const slack = wrap.scrollWidth - wrap.clientWidth;
+    if (slack <= 0) return;
+    const plot = document.getElementById('garden-plot');
+    const left = (plot ? plot.offsetLeft : 0) + heroPos.col * CELL_SIZE;
+    const margin = CELL_SIZE;
+    if (left - margin < wrap.scrollLeft) {
+      wrap.scrollLeft = Math.max(0, left - margin);
+    } else if (left + CELL_SIZE + margin > wrap.scrollLeft + wrap.clientWidth) {
+      wrap.scrollLeft = Math.min(slack, left + CELL_SIZE + margin - wrap.clientWidth);
     }
   }
 
@@ -9876,7 +10101,7 @@ const Garden = (function () {
       cashin: { icon: '\u{1F4B0}', title: 'Cashing in', body: 'Changed your mind about a ' + t.plant + '? Pick it up, then use Cash in at the top of the shop. A seedling gives back the coin it cost; one you have grown is worth two.' },
       coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
-      pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool.' },
+      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk up to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' and tap Pick up beside the ' + t.place.replace(/^the\\s+/i, '') + '. Tap Put down to set it somewhere empty - or Use it, if it is a tool. The box above the buttons always shows what you are carrying.' : 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool. The box beside the plot shows what you are carrying.') },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
       shovel: { icon: W().items.shovel.icon, title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
@@ -9947,21 +10172,44 @@ const Garden = (function () {
     stateLoaded = true;
   }
 
-  /* The keyboard hint is no use on a phone, so each device is told how it
-     actually moves. */
+  /* A phone has no keys and a desktop has no buttons, so neither is ever told
+     about the other's controls. Phone view is the test rather than "is this a
+     touchscreen", because a touchscreen laptop in the wide layout has both the
+     keyboard and the desktop hints. */
+  function phoneControls() {
+    if (typeof App !== 'undefined' && App.isAppMode) return App.isAppMode();
+    return isTouchDevice();
+  }
+
   function moveHintText() {
-    return isTouchDevice()
-      ? 'Tap a square to walk there, or drag from yourself. Tap yourself to pick up or use.'
-      : terms().moveHint;
+    if (!phoneControls()) return terms().moveHint;
+    const verb = W().id === 'ocean' ? 'swim' : 'walk';
+    return 'Tap any square to ' + verb + ' there, or drag from where you are standing.';
+  }
+
+  function useHintText() {
+    if (!phoneControls()) {
+      return 'Press E to pick up whatever you are facing. Press E again to put it'
+        + ' down - or to use it, if it is a tool.';
+    }
+    return 'Use the Pick up and Put down buttons beside the ' + terms().place.replace(/^the\s+/i, '')
+      + ' - the box above them shows what you are carrying.';
+  }
+
+  /* The hint list, the held-item window and the two buttons all say the same
+     thing in three places, so they are set together. */
+  function refreshControlHints() {
+    const hint = document.getElementById('garden-move-hint');
+    if (hint) hint.textContent = moveHintText();
+    const useHint = document.getElementById('garden-use-hint');
+    if (useHint) { useHint.hidden = false; useHint.textContent = useHintText(); }
+    renderControls();
   }
 
   function start() {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
-    const hint = document.getElementById('garden-move-hint');
-    if (hint) hint.textContent = moveHintText();
-    const useHint = document.getElementById('garden-use-hint');
-    if (useHint) useHint.hidden = isTouchDevice();
+    refreshControlHints();
     const coinHelp = document.querySelector('.coin-help-btn');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
@@ -9981,10 +10229,7 @@ const Garden = (function () {
   function reskin() {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
-    const hint = document.getElementById('garden-move-hint');
-    if (hint) hint.textContent = moveHintText();
-    const useHint = document.getElementById('garden-use-hint');
-    if (useHint) useHint.hidden = isTouchDevice();
+    refreshControlHints();
     const coinHelp = document.querySelector('.coin-help-btn');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
@@ -10025,6 +10270,10 @@ const Garden = (function () {
   window.handleGardenTouchStart = handleGardenTouchStart;
   window.handleGardenTouchMove = handleGardenTouchMove;
   window.handleGardenTouchEnd = handleGardenTouchEnd;
+  /* Both buttons do what E does - the pair only exists so the phone says out
+     loud which of the two E would do next; whichever is not it is disabled. */
+  window.gardenPickUp = function () { if (!isHoldingSomething()) togglePickup(); };
+  window.gardenPutDown = function () { if (isHoldingSomething()) togglePickup(); };
   window.focusGarden = focusGarden;
   window.toggleGardenVisibility = toggleGardenVisibility;
 
@@ -10044,6 +10293,7 @@ const Garden = (function () {
 
   return {
     applyVisibility: applyGardenVisibility,
+    refreshControls: refreshControlHints,
     __testWater: testWater,
     __walkTo: (r, c, axis) => walkTo(r, c, axis),
     __heroPos: () => ({ row: heroPos.row, col: heroPos.col }),
@@ -11035,6 +11285,10 @@ const App = (function () {
 
     updateAppTitle(currentView);
     if (hasGarden() && Garden.applyVisibility) Garden.applyVisibility();
+    /* Buttons or keys - the garden is told which set of instructions applies
+       now, because the window can be dragged across the threshold at any
+       moment and the pinned setting can be changed at any moment too. */
+    if (hasGarden() && Garden.refreshControls) Garden.refreshControls();
   }
 
   /* The window can be resized across the threshold at any moment. */
@@ -11764,6 +12018,10 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'A Holding box beside the plot now shows what the gardener is carrying, by name - a Sapling, a Hoe, a Rose - so you are never guessing.',
+      'On a phone there are now Pick up and Put down buttons next to the garden. Whichever one is not what would happen next is greyed out, and it says Use it rather than Put down when you are holding a tool.',
+      'The instructions now match the thing you are actually using: a phone is told about tapping and the buttons, a computer is told about W A S D and E. Neither is told about the other.',
+      'On a phone the garden now slides sideways to keep the gardener on screen, so the buttons do not cost you the right-hand column.',
       'Fifty plants to find in each world. The nineteen you picked have been added to the end of the list, so nothing already growing has changed into something else.',
       "A friend's garden now opens straight under their name rather than at the foot of the page, and clicking the name again folds it away.",
       'Every row says how many plants that gardener has, and how many kinds they have found out of fifty.',

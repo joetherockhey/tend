@@ -967,6 +967,10 @@ const App = (function () {
 
     updateAppTitle(currentView);
     if (hasGarden() && Garden.applyVisibility) Garden.applyVisibility();
+    /* Buttons or keys - the garden is told which set of instructions applies
+       now, because the window can be dragged across the threshold at any
+       moment and the pinned setting can be changed at any moment too. */
+    if (hasGarden() && Garden.refreshControls) Garden.refreshControls();
   }
 
   /* The window can be resized across the threshold at any moment. */
@@ -1696,6 +1700,10 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'A Holding box beside the plot now shows what the gardener is carrying, by name - a Sapling, a Hoe, a Rose - so you are never guessing.',
+      'On a phone there are now Pick up and Put down buttons next to the garden. Whichever one is not what would happen next is greyed out, and it says Use it rather than Put down when you are holding a tool.',
+      'The instructions now match the thing you are actually using: a phone is told about tapping and the buttons, a computer is told about W A S D and E. Neither is told about the other.',
+      'On a phone the garden now slides sideways to keep the gardener on screen, so the buttons do not cost you the right-hand column.',
       'Fifty plants to find in each world. The nineteen you picked have been added to the end of the list, so nothing already growing has changed into something else.',
       "A friend's garden now opens straight under their name rather than at the foot of the page, and clicking the name again folds it away.",
       'Every row says how many plants that gardener has, and how many kinds they have found out of fifty.',

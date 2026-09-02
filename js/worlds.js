@@ -826,7 +826,7 @@ const Worlds = (function () {
       chopTarget: 'a tree or a grown sapling',
       digTarget: 'a bush',
       hero: 'gardener',
-      moveHint: 'Click the garden, then move with WASD or the arrow keys.'
+      moveHint: 'Click the garden once to take control, then walk with W, A, S, D or the arrow keys.'
     },
     sections: SECTIONS,
     themeColors: THEME_COLORS,
@@ -878,7 +878,7 @@ const Worlds = (function () {
       chopTarget: 'a kelp stalk or a grown sprout',
       digTarget: 'a sponge',
       hero: 'merfolk',
-      moveHint: 'Click the reef, then swim with WASD or the arrow keys.'
+      moveHint: 'Click the reef once to take control, then swim with W, A, S, D or the arrow keys.'
     },
     sections: OCEAN_SECTIONS,
     themeColors: OCEAN_THEME_COLORS,

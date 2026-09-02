@@ -1531,6 +1531,62 @@ const Garden = (function () {
     return '';
   }
 
+  /* The name of whatever is in the gardener's hands, for the little window
+     beside the plot. Same order of tests as heldItemPreviewHtml, so the picture
+     and the words can never disagree. */
+  function heldItemName() {
+    if (heldPlantId != null && heldPlantVariety != null) {
+      if (!heldPlantGrown) return 'Seedling';
+      const variety = W().plants[heldPlantVariety] || W().plants[0];
+      return variety.name;
+    }
+    if (heldDecoration) {
+      const item = W().items[heldDecoration.kind];
+      if (item) return item.label;
+      return cap(heldDecoration.kind || 'decoration');
+    }
+    if (heldTreat) return W().id === 'ocean' ? 'Fish food' : 'Animal feed';
+    if (heldLog) return cap(terms().log);
+    if (heldSapling) return cap(terms().sprout);
+    return '';
+  }
+
+  /* A tool is used where you stand rather than set down, so the second button
+     has to say so - "Put down" on a hoe would be a lie. */
+  function heldIsTool() {
+    return !!(heldDecoration && (heldDecoration.kind === 'hoe'
+      || heldDecoration.kind === 'axe' || heldDecoration.kind === 'shovel'));
+  }
+
+  function isHoldingSomething() {
+    return heldPlantId != null || !!heldDecoration || !!heldTreat || !!heldLog || !!heldSapling;
+  }
+
+  /* The rail beside the plot: what is held, the two buttons on a phone, and on
+     a desktop the keys that do the same two things. */
+  function renderControls() {
+    const box = document.getElementById('garden-holding');
+    if (box) {
+      const art = heldItemPreviewHtml();
+      const name = heldItemName();
+      box.className = 'garden-holding' + (art ? '' : ' empty');
+      box.innerHTML = '<span class="garden-holding-label">Holding</span>'
+        + '<span class="garden-holding-art">' + (art || '') + '</span>'
+        + '<span class="garden-holding-name">' + Util.escapeHtml(art ? name : 'Nothing') + '</span>';
+    }
+
+    const holding = isHoldingSomething();
+    const pickBtn = document.getElementById('garden-pickup-btn');
+    const dropBtn = document.getElementById('garden-putdown-btn');
+    if (pickBtn) pickBtn.disabled = holding;
+    if (dropBtn) {
+      dropBtn.disabled = !holding;
+      const label = dropBtn.querySelector('span');
+      if (label) label.textContent = heldIsTool() ? 'Use it' : 'Put down';
+    }
+
+  }
+
   function positionHero() {
     const x = heroPos.col * CELL_SIZE;
     const y = heroPos.row * CELL_SIZE;
@@ -1547,6 +1603,28 @@ const Garden = (function () {
       const thought = activeThought
         ? `<div class="garden-thought${heroFacing < 0 ? ' mirrored' : ''}"><span>${Util.escapeHtml(activeThought)}</span></div>` : '';
       heroEl.innerHTML = `${thought}${heldWrap}<div class="sprite-shadow"></div>${heroSVG(heroDirection, getEquippedOutfit())}`;
+    }
+    renderControls();
+    keepHeroInView();
+  }
+
+  /* In phone view the rail beside the plot takes about 40px, which is just
+     enough to push the last column off the right of a narrow screen. Rather
+     than shrink the tiles - the art is drawn at 34px and does not survive being
+     scaled - the plot pans to follow the gardener, so the square they are on is
+     always on screen and the scroll is never anything to think about. */
+  function keepHeroInView() {
+    const wrap = document.querySelector('.garden-stage .garden-plot-wrap');
+    if (!wrap) return;
+    const slack = wrap.scrollWidth - wrap.clientWidth;
+    if (slack <= 0) return;
+    const plot = document.getElementById('garden-plot');
+    const left = (plot ? plot.offsetLeft : 0) + heroPos.col * CELL_SIZE;
+    const margin = CELL_SIZE;
+    if (left - margin < wrap.scrollLeft) {
+      wrap.scrollLeft = Math.max(0, left - margin);
+    } else if (left + CELL_SIZE + margin > wrap.scrollLeft + wrap.clientWidth) {
+      wrap.scrollLeft = Math.min(slack, left + CELL_SIZE + margin - wrap.clientWidth);
     }
   }
 
@@ -3129,7 +3207,7 @@ const Garden = (function () {
       cashin: { icon: '\u{1F4B0}', title: 'Cashing in', body: 'Changed your mind about a ' + t.plant + '? Pick it up, then use Cash in at the top of the shop. A seedling gives back the coin it cost; one you have grown is worth two.' },
       coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
-      pickup: { icon: '\u{270B}', title: 'Picking things up', body: 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool.' },
+      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk up to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' and tap Pick up beside the ' + t.place.replace(/^the\\s+/i, '') + '. Tap Put down to set it somewhere empty - or Use it, if it is a tool. The box above the buttons always shows what you are carrying.' : 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool. The box beside the plot shows what you are carrying.') },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
       shovel: { icon: W().items.shovel.icon, title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
@@ -3200,21 +3278,44 @@ const Garden = (function () {
     stateLoaded = true;
   }
 
-  /* The keyboard hint is no use on a phone, so each device is told how it
-     actually moves. */
+  /* A phone has no keys and a desktop has no buttons, so neither is ever told
+     about the other's controls. Phone view is the test rather than "is this a
+     touchscreen", because a touchscreen laptop in the wide layout has both the
+     keyboard and the desktop hints. */
+  function phoneControls() {
+    if (typeof App !== 'undefined' && App.isAppMode) return App.isAppMode();
+    return isTouchDevice();
+  }
+
   function moveHintText() {
-    return isTouchDevice()
-      ? 'Tap a square to walk there, or drag from yourself. Tap yourself to pick up or use.'
-      : terms().moveHint;
+    if (!phoneControls()) return terms().moveHint;
+    const verb = W().id === 'ocean' ? 'swim' : 'walk';
+    return 'Tap any square to ' + verb + ' there, or drag from where you are standing.';
+  }
+
+  function useHintText() {
+    if (!phoneControls()) {
+      return 'Press E to pick up whatever you are facing. Press E again to put it'
+        + ' down - or to use it, if it is a tool.';
+    }
+    return 'Use the Pick up and Put down buttons beside the ' + terms().place.replace(/^the\s+/i, '')
+      + ' - the box above them shows what you are carrying.';
+  }
+
+  /* The hint list, the held-item window and the two buttons all say the same
+     thing in three places, so they are set together. */
+  function refreshControlHints() {
+    const hint = document.getElementById('garden-move-hint');
+    if (hint) hint.textContent = moveHintText();
+    const useHint = document.getElementById('garden-use-hint');
+    if (useHint) { useHint.hidden = false; useHint.textContent = useHintText(); }
+    renderControls();
   }
 
   function start() {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
-    const hint = document.getElementById('garden-move-hint');
-    if (hint) hint.textContent = moveHintText();
-    const useHint = document.getElementById('garden-use-hint');
-    if (useHint) useHint.hidden = isTouchDevice();
+    refreshControlHints();
     const coinHelp = document.querySelector('.coin-help-btn');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
@@ -3234,10 +3335,7 @@ const Garden = (function () {
   function reskin() {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
-    const hint = document.getElementById('garden-move-hint');
-    if (hint) hint.textContent = moveHintText();
-    const useHint = document.getElementById('garden-use-hint');
-    if (useHint) useHint.hidden = isTouchDevice();
+    refreshControlHints();
     const coinHelp = document.querySelector('.coin-help-btn');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
@@ -3278,6 +3376,10 @@ const Garden = (function () {
   window.handleGardenTouchStart = handleGardenTouchStart;
   window.handleGardenTouchMove = handleGardenTouchMove;
   window.handleGardenTouchEnd = handleGardenTouchEnd;
+  /* Both buttons do what E does - the pair only exists so the phone says out
+     loud which of the two E would do next; whichever is not it is disabled. */
+  window.gardenPickUp = function () { if (!isHoldingSomething()) togglePickup(); };
+  window.gardenPutDown = function () { if (isHoldingSomething()) togglePickup(); };
   window.focusGarden = focusGarden;
   window.toggleGardenVisibility = toggleGardenVisibility;
 
@@ -3297,6 +3399,7 @@ const Garden = (function () {
 
   return {
     applyVisibility: applyGardenVisibility,
+    refreshControls: refreshControlHints,
     __testWater: testWater,
     __walkTo: (r, c, axis) => walkTo(r, c, axis),
     __heroPos: () => ({ row: heroPos.row, col: heroPos.col }),

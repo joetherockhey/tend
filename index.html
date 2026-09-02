@@ -76,12 +76,26 @@
       <div class="garden-status" id="garden-status"></div>
       <div class="garden-coins" id="garden-coins">0</div>
     </div>
-    <div class="garden-plot-wrap">
-      <div class="garden-plot" id="garden-plot" tabindex="0"
-           onkeydown="handleGardenKeydown(event)" onclick="focusGarden()"
-           ontouchstart="handleGardenTouchStart(event)"
-           ontouchmove="handleGardenTouchMove(event)"
-           ontouchend="handleGardenTouchEnd(event)"></div>
+    <div class="garden-stage">
+      <div class="garden-plot-wrap">
+        <div class="garden-plot" id="garden-plot" tabindex="0"
+             onkeydown="handleGardenKeydown(event)" onclick="focusGarden()"
+             ontouchstart="handleGardenTouchStart(event)"
+             ontouchmove="handleGardenTouchMove(event)"
+             ontouchend="handleGardenTouchEnd(event)"></div>
+      </div>
+      <aside class="garden-controls">
+        <!-- What is in your hands, on every device. -->
+        <div class="garden-holding" id="garden-holding"></div>
+        <!-- Buttons on a phone; on a desktop the same two actions are one key,
+             so it gets the key told to it plainly instead. -->
+        <div class="garden-ctl-btns">
+          <button type="button" class="garden-ctl-btn" id="garden-pickup-btn"
+                  onclick="gardenPickUp()">&#x270B;<span>Pick up</span></button>
+          <button type="button" class="garden-ctl-btn" id="garden-putdown-btn"
+                  onclick="gardenPutDown()">&#x1F44C;<span>Put down</span></button>
+        </div>
+      </aside>
     </div>
     <ul class="garden-hint">
       <li id="garden-move-hint">Click the garden, then move with WASD or the arrow keys.</li>

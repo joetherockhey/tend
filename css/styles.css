@@ -826,13 +826,146 @@ li.task.done .task-title {
   100% { opacity: 0; transform: translateY(-14px); }
 }
 
+/* The plot and its controls.
+
+   On a desktop there are no buttons - the two actions are one key - so the rail
+   is a quiet strip UNDER the plot holding what you are carrying and the keys
+   that do it. Beside the plot it would not fit: the garden column is about
+   360px and the plot alone is nearly 300 of them, so a side rail there simply
+   got painted over by the plot overflowing its wrap.
+
+   In phone view it turns into a real rail down the right-hand side, because
+   that is where the thumb is. It sits OUTSIDE the scrolling wrap on purpose:
+   the plot is wider than a phone, and a rail inside the wrap would scroll away
+   exactly when it is wanted. */
+.garden-stage { display: block; }
+
+.garden-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* What the gardener has in their hands. It keeps its size when empty so
+   nothing shifts about every time something is picked up or set down. */
+.garden-holding {
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 4px 10px 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.garden-holding-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.garden-holding-art {
+  height: 30px;
+  display: grid;
+  place-items: center;
+}
+
+.garden-holding-art svg { image-rendering: pixelated; }
+
+.garden-holding-name {
+  font-size: 0.66rem;
+  line-height: 1.2;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.garden-holding.empty .garden-holding-name { color: var(--muted); }
+
+/* Buttons are a phone thing. On a desktop the two actions are the same key,
+   and a pair of buttons for it is clutter next to "Press E". */
+.garden-ctl-btns { display: none; }
+
+.garden-ctl-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 12px 4px;
+  font: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.garden-ctl-btn span {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.garden-ctl-btn:active { background: var(--accent-soft); border-color: var(--accent); }
+.garden-ctl-btn:disabled { opacity: 0.38; cursor: default; }
+
+/* The key legend is the desktop half of the same idea. */
+html[data-mode="phone"] .garden-stage {
+  display: flex;
+  align-items: flex-start;
+  /* Every pixel the rail takes is a pixel of plot that scrolls off the right,
+     so it is kept as narrow as a thumb will still hit. */
+  gap: 6px;
+}
+
+/* The plot's side margins carry the fence posts drawn by ::before/::after.
+   They can be halved on a phone without losing them. */
+html[data-mode="phone"] .garden-plot { margin: 0 6px; }
+
+html[data-mode="phone"] .garden-stage .garden-plot-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  /* The plot pans itself to follow the gardener, so the scrollbar is noise. */
+  scrollbar-width: none;
+}
+
+html[data-mode="phone"] .garden-stage .garden-plot-wrap::-webkit-scrollbar { display: none; }
+
+html[data-mode="phone"] .garden-controls {
+  flex: none;
+  width: 66px;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 0;
+}
+
+/* On a phone it stands up into a small square at the top of the rail. */
+html[data-mode="phone"] .garden-holding {
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  min-height: 74px;
+  padding: 5px 3px;
+  gap: 2px;
+}
+html[data-mode="phone"] .garden-ctl-btn { padding: 10px 2px; }
+html[data-mode="phone"] .garden-ctl-btns { display: flex; flex-direction: column; gap: 8px; }
+
 .garden-plot-wrap {
   display: flex;
   align-items: flex-start;
-  /* Nothing sits beside the plot any more, so it takes the middle. `safe`
-     matters: on a narrow screen the plot is wider than its panel, and a plain
-     centre overflows equally both ways, putting the left edge somewhere no
-     scrollbar can reach. Safe centring falls back to the left edge instead. */
+  /* The plot takes the middle of its wrap. `safe` matters: on a narrow screen
+     the plot is wider than the wrap, and a plain centre overflows equally both
+     ways, putting the left edge somewhere no scrollbar can reach. Safe centring
+     falls back to the left edge instead - which is also what lets the plot pan
+     to follow the gardener in phone view. */
   justify-content: center;
   justify-content: safe center;
   gap: 8px;
