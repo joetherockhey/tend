@@ -4042,6 +4042,25 @@ li.task[draggable="false"] { cursor: pointer; }
   margin-left: 6px;
 }
 
+/* Garden or Reef, on the row. */
+.friend-world {
+  flex: none;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.friend-world.garden { background: rgba(63, 145, 66, 0.14); border-color: rgba(63, 145, 66, 0.4); color: #2c6b30; }
+.friend-world.ocean { background: rgba(58, 140, 178, 0.16); border-color: rgba(58, 140, 178, 0.45); color: #1f5d7a; }
+
+@media (max-width: 560px) {
+  .friend-world { display: none; }
+}
+
 .friend-counts {
   flex: none;
   font-size: 0.8rem;

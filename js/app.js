@@ -1929,6 +1929,8 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'Fixed: signing in on a new device while the connection was down could quietly overwrite which world you are in, turning a reef into a garden - for you and for everyone looking at you in Friends.',
+      'Each row in Friends now says whether that person is in a Garden or an Ocean.',
       'The category picker is colour-coded: every category shows its own colour in the list, and the box wears the colour of whatever you have chosen.',
       'A new By date view groups your tasks into Overdue, Today, Tomorrow, Rest of this week, Later and No date.',
       'Task rows are tidier: the checkbox and the star stay put, and Edit, Archive and Delete moved behind the \u22ef button - so Delete is no longer sitting next to Edit under your thumb.',
@@ -2485,19 +2487,25 @@ const App = (function () {
 
     /* Biggest gardens first - it is a list you scroll to compare. */
     const sorted = friendsCache.slice().sort((a, b) => plantsIn(b.layout) - plantsIn(a.layout));
-    const totalKinds = Worlds.get(Worlds.DEFAULT_WORLD).plants.length;
 
     host.innerHTML = `<div class="friend-list">${sorted.map(f => {
       const plants = plantsIn(f.layout);
       const found = Array.isArray(f.found) ? f.found.length : 0;
       const open = openFriendId === f.id;
+      /* Which world they are in, on the row. It reads as a nice touch and it is
+         one - but it is here because a reef that draws as a garden and a reef
+         that is recorded as a garden look identical until something says which
+         the server actually thinks it is. */
+      const theirWorld = Worlds.get(f.world);
+      const worldTag = `<span class="friend-world ${theirWorld.id}">${Util.escapeHtml(theirWorld.label)}</span>`;
       return `<div class="friend-item ${open ? 'open' : ''}">
           <button type="button" class="friend-row ${open ? 'on' : ''}" onclick="App.openFriendGarden('${f.id}')">
             <span class="friend-avatar">${Util.escapeHtml(friendInitials(f.name))}</span>
             <span class="friend-name">${Util.escapeHtml(f.name)}${f.isMe ? ' <span class="friend-you">you</span>' : ''}</span>
+            ${worldTag}
             <span class="friend-counts">
               <b>${plants}</b> ${plants === 1 ? 'plant' : 'plants'}
-              <span class="friend-kinds">&middot; ${found} of ${totalKinds} kinds</span>
+              <span class="friend-kinds">&middot; ${found} of ${theirWorld.plants.length} kinds</span>
             </span>
           </button>
           ${open ? friendGardenHtml(f) : ''}

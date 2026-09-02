@@ -152,10 +152,20 @@ const Auth = (function () {
   }
 
   /* A brand new account starts in the world its owner picked; an existing one
-     keeps whatever it already had. */
-  function applyChoiceIfNew(meta) {
+     keeps whatever it already had.
+
+     The second argument is what Store.open() returned. It matters: "this
+     account has no world yet" is only true if the server was actually read.
+     Sign in on a new device while the connection is down and the cache is
+     empty, and an existing reef account looked brand new - so this wrote the
+     chooser's default (garden) over it, marked the state dirty, and pushed
+     that over their real world the moment the connection came back. Nothing in
+     the app ever said what had happened; the reef just quietly became a garden,
+     for them and for everyone looking at them in Friends. */
+  function applyChoiceIfNew(meta, openResult) {
     const prefs = Store.prefs();
     if (prefs.world) return;                       /* an existing account keeps its own */
+    if (openResult && openResult.fromCache) return; /* we never saw the server: assume nothing */
     const m = meta || {};
     prefs.world = m.world || pickedWorld;
     prefs.hero = m.hero || pickedHero;
@@ -163,15 +173,15 @@ const Auth = (function () {
   }
 
   async function enterCloud(user) {
-    await Store.open({ id: user.id, name: displayNameFor(user), email: user.email || '' });
-    applyChoiceIfNew(user.user_metadata);
+    const opened = await Store.open({ id: user.id, name: displayNameFor(user), email: user.email || '' });
+    applyChoiceIfNew(user.user_metadata, opened);
     hideGate();
     onReady();
   }
 
   async function enterLocal(profile) {
-    await Store.open({ id: profile.id, name: profile.name, email: '' });
-    applyChoiceIfNew(null);
+    const opened = await Store.open({ id: profile.id, name: profile.name, email: '' });
+    applyChoiceIfNew(null, opened);
     hideGate();
     onReady();
   }
