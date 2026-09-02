@@ -59,6 +59,9 @@ const Garden = (function () {
      seedling a four-minute job and read as "watering does nothing". */
   const WATER_COOLDOWN_MS = 6000;
   const SECTIONS_SHOWN_AHEAD = 1;
+  /* How much of that locked band is actually shown - enough for its gate and a
+     glimpse of what is behind it, not a whole empty panel. */
+  const LOCKED_PEEK_ROWS = 3;
 
 
 
@@ -1015,6 +1018,18 @@ const Garden = (function () {
     if (shopEl) shopEl.textContent = coins;
     renderShop();
   }
+
+  /* What the coins in hand are actually good for, in a few words - the line
+     that turns "+1" into a reason to open the shop. */
+  function coinHint() {
+    const t = terms();
+    if (coins >= SECTION_COST) return 'enough to open new ground';
+    if (coins >= SAPLING_COST) return 'enough for a ' + t.sprout;
+    if (coins >= PLANT_COST) return 'enough for a seedling';
+    return (PLANT_COST - coins) + ' more for a seedling';
+  }
+
+  function coinBalance() { return coins; }
 
   function bumpCoinDisplay(amount) {
     [document.getElementById('garden-coins'), document.getElementById('shop-coins-row')].forEach(el => {
@@ -3045,6 +3060,19 @@ const Garden = (function () {
     plot.style.width = (GARDEN_COLS * CELL_SIZE) + 'px';
     plot.style.height = (gardenRows * CELL_SIZE) + 'px';
 
+    /* The band you have not bought yet is drawn in full so its gate and its
+       scenery are in the right places, but only the top of it is shown. A whole
+       extra panel of grey was the single biggest thing on a new account's
+       screen, and none of it was anything you could do. The wrap does the
+       cropping, not the plot, so a thought bubble above the gardener still has
+       somewhere to go. */
+    const wrap = plot.parentElement;
+    if (wrap && wrap.classList.contains('garden-plot-wrap')) {
+      const shown = (maxUnlockedRow + 1 + LOCKED_PEEK_ROWS) * CELL_SIZE;
+      wrap.style.maxHeight = (shown < gardenRows * CELL_SIZE) ? (shown + 4) + 'px' : '';
+      wrap.classList.toggle('has-peek', shown < gardenRows * CELL_SIZE);
+    }
+
     let bandsHtml = '';
     let gateHtml = '';
     for (let i = 0; i < bandsToRender; i++) {
@@ -3416,6 +3444,9 @@ const Garden = (function () {
     stopPreviewLife: stopPreviewLife,
     shortLabel: shortLabel,
     renderCoins: renderCoins,
-    renderShop: renderShop
+    renderShop: renderShop,
+    coinHint: coinHint,
+    coinBalance: coinBalance,
+    coinSVG: coinSVG
   };
 })();

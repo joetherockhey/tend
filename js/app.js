@@ -222,11 +222,39 @@ const App = (function () {
       if (!sel) return;
       const current = sel.value;
       const opts = ['<option value="">-- Select --</option>'];
-      categories().forEach(c => opts.push(`<option value="${Util.escapeHtml(c.name)}">${Util.escapeHtml(c.name)}</option>`));
+      /* Each option carries its category's colour twice over: as a tint behind
+         it and as a bullet in front of it. Desktop browsers paint the tint;
+         phones mostly ignore option styling and show a plain list, which is why
+         the bullet is there as well - and why the select itself is tinted when
+         a category is chosen, since that much every browser will draw. */
+      categories().forEach(c => {
+        const col = c.color || DEFAULT_CATEGORY_COLOR;
+        opts.push(`<option value="${Util.escapeHtml(c.name)}" data-color="${col}"`
+          + ` style="background:${Util.hexToRgba(col, 0.16)};color:${Util.inkShade(col, 0.35)}">`
+          + `\u25CF ${Util.escapeHtml(c.name)}</option>`);
+      });
       opts.push('<option value="other">Other&hellip;</option>');
       sel.innerHTML = opts.join('');
       if (current && (categories().some(c => c.name === current) || current === 'other')) sel.value = current;
+      tintCategorySelect(sel);
     });
+  }
+
+  /* The picker wears the colour of whatever is picked, so the choice is
+     visible without opening it. */
+  function tintCategorySelect(sel) {
+    if (!sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    const col = opt && opt.dataset ? opt.dataset.color : '';
+    if (col) {
+      sel.style.borderLeft = '6px solid ' + col;
+      sel.style.background = Util.hexToRgba(col, 0.1);
+      sel.style.color = Util.inkShade(col, 0.35);
+    } else {
+      sel.style.borderLeft = '';
+      sel.style.background = '';
+      sel.style.color = '';
+    }
   }
 
   /* ========================= tasks ========================= */
@@ -234,11 +262,13 @@ const App = (function () {
   function onCategoryChange() {
     const select = document.getElementById('new-task-category');
     document.getElementById('category-other-row').style.display = select.value === 'other' ? 'flex' : 'none';
+    tintCategorySelect(select);
   }
 
   function onEditCategoryChange() {
     const select = document.getElementById('edit-task-category');
     document.getElementById('edit-category-other-row').style.display = select.value === 'other' ? 'flex' : 'none';
+    tintCategorySelect(select);
   }
 
   function addTask() {
@@ -370,6 +400,50 @@ const App = (function () {
       }
     }
     renderAll();
+    /* After the render, so the counter it flies to is the new one. */
+    if (nowCompleting) rewardEarned(elm);
+  }
+
+  /* The coin was the quietest thing on the screen: a sound, and a number
+     changing in a panel you were not looking at. Now it leaves the checkbox you
+     just ticked and lands on the counter, and the toast says what it is worth -
+     which is the sentence that sends anyone to the shop. */
+  function coinTarget() {
+    /* Wherever the count actually is right now: beside the garden on the web,
+       and on the Garden tab when the garden is a section of its own or hidden. */
+    const candidates = ['garden-coins', 'shop-coins-row', 'bnav-garden', 'account-btn'];
+    for (const id of candidates) {
+      const el = document.getElementById(id);
+      if (el && el.offsetParent !== null) return el;
+    }
+    return null;
+  }
+
+  function flyCoin(fromEl, toEl) {
+    if (!fromEl || !toEl) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const a = fromEl.getBoundingClientRect();
+    const b = toEl.getBoundingClientRect();
+    const coin = document.createElement('div');
+    coin.className = 'coin-fly';
+    coin.innerHTML = (hasGarden() && Garden.coinSVG) ? Garden.coinSVG() : '\u{1FA99}';
+    coin.style.left = (a.left + a.width / 2 - 11) + 'px';
+    coin.style.top = (a.top + a.height / 2 - 11) + 'px';
+    document.body.appendChild(coin);
+    const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
+    const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+    requestAnimationFrame(() => {
+      coin.style.transform = `translate(${dx}px, ${dy}px) scale(0.55)`;
+      coin.style.opacity = '0.2';
+    });
+    setTimeout(() => coin.remove(), 900);
+  }
+
+  function rewardEarned(fromEl) {
+    if (!hasGarden()) return;
+    flyCoin(fromEl, coinTarget());
+    const hint = Garden.coinHint ? Garden.coinHint() : '';
+    showToast('+1 coin' + (hint ? ' \u2014 ' + hint : ''));
   }
 
   function togglePriority(id) {
@@ -385,22 +459,29 @@ const App = (function () {
     const t = tickets().find(x => x.id === id);
     if (t) snapshot((t.archived ? 'unarchiving "' : 'archiving "') + t.title + '"');
     if (!t) return;
-    t.archived = !t.archived;
+    const nowArchived = !t.archived;
+    t.archived = nowArchived;
     if (t.archived) t.priority = false;
     Store.saveTickets();
     renderList();
+    showUndoToast(nowArchived
+      ? 'Archived \u201c' + t.title + '\u201d \u2014 find it under Show archived'
+      : 'Restored \u201c' + t.title + '\u201d');
   }
 
+  /* No confirm box. A dialog for something that is one keystroke to undo is a
+     tax on every deliberate delete to catch the rare accidental one; the toast
+     puts the way back where the mistake happens. */
   function deleteTask(id) {
     const t = tickets().find(x => x.id === id);
     if (!t) return;
-    if (!confirm(`Delete "${t.title}"?`)) return;
     snapshot('deleting "' + t.title + '"');
     const list = tickets();
     const i = list.findIndex(x => x.id === id);
     if (i !== -1) list.splice(i, 1);
     Store.saveTickets();
     renderAll();
+    showUndoToast('Deleted \u201c' + t.title + '\u201d');
   }
 
   /* ---------------------------------------------------------------
@@ -618,6 +699,7 @@ const App = (function () {
      remembered per account; category is what a new account opens on. */
   const LIST_GROUPINGS = [
     ['category', 'By category'],
+    ['due', 'By date'],
     ['priority', 'Priority + category'],
     ['status', 'By status']
   ];
@@ -678,7 +760,8 @@ const App = (function () {
     if (grouped) {
       activeList.innerHTML = '';
       priorityList.innerHTML = '';
-      renderListByCategory(activeAll, query, mode === 'priority');
+      if (mode === 'due') renderListByDate(activeAll, query);
+      else renderListByCategory(activeAll, query, mode === 'priority');
     } else {
       if (catEl) catEl.innerHTML = '';
       activeList.innerHTML = active.length ? active.map(renderTaskItem).join('') : `<li class="empty-note">${noActiveMsg}</li>`;
@@ -750,6 +833,62 @@ const App = (function () {
     host.innerHTML = blocks.join('');
   }
 
+  /* The same rows again, gathered by when they are due rather than by what
+     they are about - the view you want on a Monday morning. Buckets with
+     nothing in them are left out, the same rule the category view follows. */
+  const DUE_BUCKETS = [
+    ['overdue', 'Overdue', '#d0353a'],
+    ['today', 'Today', '#eb6834'],
+    ['tomorrow', 'Tomorrow', '#eb9c34'],
+    ['week', 'Rest of this week', '#3f9142'],
+    ['later', 'Later', '#4361ee'],
+    ['none', 'No date', DEFAULT_CATEGORY_COLOR]
+  ];
+
+  function dueBucket(t) {
+    if (!t.dueDate) return 'none';
+    const today = Util.todayStr();
+    if (t.dueDate < today) return 'overdue';
+    if (t.dueDate === today) return 'today';
+    const d = new Date(today + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    const tomorrow = d.toISOString().slice(0, 10);
+    if (t.dueDate === tomorrow) return 'tomorrow';
+    /* "This week" runs to Sunday, so on a Friday it means the weekend and on a
+       Monday it means the whole week - which is how people say it. */
+    const end = new Date(today + 'T00:00:00');
+    end.setDate(end.getDate() + ((7 - end.getDay()) % 7));
+    return t.dueDate <= end.toISOString().slice(0, 10) ? 'week' : 'later';
+  }
+
+  function renderListByDate(open, query) {
+    const host = document.getElementById('category-sections');
+    if (!host) return;
+
+    const bins = {};
+    open.forEach(t => { (bins[dueBucket(t)] = bins[dueBucket(t)] || []).push(t); });
+
+    if (!open.length) {
+      host.innerHTML = `<section class="list-section"><ul class="task-list"><li class="empty-note">${
+        query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.'
+      }</li></ul></section>`;
+      return;
+    }
+
+    host.innerHTML = DUE_BUCKETS.filter(([key]) => (bins[key] || []).length).map(([key, label, color]) => {
+      /* Inside a date group the dates are the heading, so a row only repeats
+         its own date when it is overdue and the exact day matters. */
+      const list = bins[key].slice().sort((a, b) => {
+        if (!!b.priority !== !!a.priority) return b.priority ? 1 : -1;
+        return (a.dueDate || '9999') < (b.dueDate || '9999') ? -1 : 1;
+      });
+      return `<section class="list-section cat-section-wide">
+        <div class="cat-section-head">${categoryPill(label, color)}</div>
+        <ul class="task-list">${list.map(t => renderTaskItem(t, { noDrag: true, hideDue: key !== 'overdue' })).join('')}</ul>
+      </section>`;
+    }).join('');
+  }
+
   /* A click anywhere on the row that is not one of its own controls opens the
      task's details. That is where the dates now live - the collapsed row
      carries only what you need to scan the list. */
@@ -777,7 +916,7 @@ const App = (function () {
         onclick="event.stopPropagation();App.toggleSubtaskList('${t.id}')"
         title="Show the steps">&#9744; ${prog.done}/${prog.total}</button>`);
     }
-    if (t.dueDate) {
+    if (t.dueDate && !o.hideDue) {
       const overdue = !done && t.dueDate < Util.todayStr();
       tags.push(`<span class="tag ${overdue ? 'overdue' : ''}">Due ${Util.formatDate(t.dueDate)}${overdue ? ' (overdue)' : ''}</span>`);
     }
@@ -788,8 +927,6 @@ const App = (function () {
       `<button class="star-btn ${t.priority ? 'active' : ''}" title="${t.priority ? 'Unstar (move back to Active)' : 'Star as priority'}" onclick="App.togglePriority('${t.id}')">${t.priority ? '★' : '☆'}</button>`;
 
     const archiveIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"></rect><path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"></path><path d="M9.5 12h5"></path></svg>';
-    const archiveBtn = `<button class="archive-btn ${t.archived ? 'active' : ''}" title="${t.archived ? 'Unarchive (restore task)' : 'Archive task'}" onclick="App.toggleArchive('${t.id}')">${archiveIcon}</button>`;
-
     /* Only the Priority / Active lists reorder by dragging. In the grouped
        views the order comes from the categories, so a row there is not
        draggable and does not offer the open-hand cursor. */
@@ -807,11 +944,58 @@ const App = (function () {
         </div>
         <div class="task-actions">
           ${starBtn}
-          ${archiveBtn}
-          <button class="edit-btn" title="Edit" onclick="App.openEditModal('${t.id}')">&#9998;</button>
-          <button class="delete-btn" title="Delete" onclick="App.deleteTask('${t.id}')">&times;</button>
+          <div class="row-menu-wrap">
+            <button class="row-menu-btn" title="More" aria-haspopup="true" aria-expanded="false"
+                    onclick="App.toggleRowMenu('${t.id}', event)">&#8943;</button>
+            <div class="row-menu" id="row-menu-${t.id}" hidden>
+              <button type="button" onclick="App.rowMenuAction('edit','${t.id}',event)">&#9998; Edit</button>
+              <button type="button" onclick="App.rowMenuAction('archive','${t.id}',event)">${archiveIcon} ${t.archived ? 'Unarchive' : 'Archive'}</button>
+              <button type="button" class="danger" onclick="App.rowMenuAction('delete','${t.id}',event)">&times; Delete</button>
+            </div>
+          </div>
         </div>
       </li>`;
+  }
+
+  /* Four unlabelled icons on every row put Delete a thumb's width from the
+     paperclip. Star and the checkbox stay where they are - they are the two
+     things you do while scanning - and the rest moved behind one button, where
+     they get words rather than glyphs. */
+  let openRowMenu = null;
+
+  function closeRowMenu() {
+    if (!openRowMenu) return;
+    const el = document.getElementById('row-menu-' + openRowMenu);
+    if (el) {
+      el.hidden = true;
+      const btn = el.parentElement && el.parentElement.querySelector('.row-menu-btn');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+    openRowMenu = null;
+  }
+
+  function toggleRowMenu(id, ev) {
+    if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+    const wasOpen = openRowMenu === id;
+    closeRowMenu();
+    if (wasOpen) return;
+    const el = document.getElementById('row-menu-' + id);
+    if (!el) return;
+    el.hidden = false;
+    const btn = el.parentElement && el.parentElement.querySelector('.row-menu-btn');
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+    openRowMenu = id;
+    /* Near the bottom of the window it opens upwards instead of off-screen. */
+    const box = el.getBoundingClientRect();
+    el.classList.toggle('drop-up', box.bottom > window.innerHeight - 8);
+  }
+
+  function rowMenuAction(what, id, ev) {
+    if (ev) ev.stopPropagation();
+    closeRowMenu();
+    if (what === 'edit') openEditModal(id);
+    else if (what === 'archive') toggleArchive(id);
+    else if (what === 'delete') deleteTask(id);
   }
 
   /* ========================= stats ========================= */
@@ -1490,11 +1674,35 @@ const App = (function () {
 
   /* ========================= account menu + header ========================= */
 
+  /* The subtitle used to be a sentence explaining the app, which after day one
+     nobody reads. It says the state of play instead - and only falls back to
+     the explanation on an account with nothing in it yet. */
+  function renderHeaderSubtitle() {
+    const el = document.getElementById('page-subtitle');
+    if (!el) return;
+    const list = tickets();
+    const open = list.filter(t => !t.completedAt && !t.archived).length;
+    if (!list.length) {
+      el.textContent = 'Every task you finish earns a coin. Coins buy plants for the garden.';
+      return;
+    }
+    const bits = [];
+    const late = overdueTickets().length;
+    const due = dueToday().length;
+    if (late) bits.push(`<b class="sub-late">${late} overdue</b>`);
+    if (due) bits.push(`<b>${due} due today</b>`);
+    bits.push(`${open} open`);
+    const coins = (hasGarden() && Garden.coinBalance) ? Garden.coinBalance() : null;
+    if (coins !== null) bits.push(`${coins} ${coins === 1 ? 'coin' : 'coins'}`);
+    el.innerHTML = bits.join(' \u00b7 ');
+  }
+
   function renderHeader() {
     const name = Store.displayName() || 'Your';
     const possessive = /s$/i.test(name) ? name + "'" : name + "'s";
     document.getElementById('page-title').textContent = `${possessive} Tasks`;
     document.title = `${possessive} Tasks · ${(Store.config.APP_NAME || 'Tend')}`;
+    renderHeaderSubtitle();
 
     const btn = document.getElementById('account-btn');
     btn.innerHTML = `
@@ -1721,6 +1929,14 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'The category picker is colour-coded: every category shows its own colour in the list, and the box wears the colour of whatever you have chosen.',
+      'A new By date view groups your tasks into Overdue, Today, Tomorrow, Rest of this week, Later and No date.',
+      'Task rows are tidier: the checkbox and the star stay put, and Edit, Archive and Delete moved behind the \u22ef button - so Delete is no longer sitting next to Edit under your thumb.',
+      'Deleting no longer asks "are you sure". It just deletes, and the message that appears has an Undo button in it. Ctrl+Z still works too.',
+      'Finishing a task now sends a coin flying from the checkbox to your coin counter, and tells you what it is worth.',
+      'The line under your name is live now: overdue, due today, still open and coins in hand.',
+      'A brand new account starts with two tasks that show you how the whole thing works, rather than an empty list.',
+      'The part of the garden you have not unlocked yet is now a strip at the bottom rather than a whole empty panel, so the garden takes up less of the page.',
       'On a phone the Pick up and Put down buttons now sit in a bar under the garden rather than down its side, so the garden gets its full width back. The bar floats just above the tabs so it is always in reach.',
       'The Garden now sits in the middle of the bottom bar as a raised round button, since it is the reason most people open Tend.',
       'Friends is marked New in the bottom bar until you have opened it once.',
@@ -2357,6 +2573,8 @@ const App = (function () {
     renderStats();
     renderByCategory();
     Garden.render();
+    /* Last: the coin count in it is only right once the garden has recounted. */
+    renderHeaderSubtitle();
   }
 
   function renderOverview() {
@@ -2453,7 +2671,69 @@ const App = (function () {
     }, 2200);
   }
 
+  /* The same toast, with the way back in it. Ctrl+Z already did this; the
+     button is for the hand that is nowhere near a keyboard. */
+  function showUndoToast(text) {
+    let el = document.getElementById('sync-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'sync-toast';
+      el.className = 'sync-toast';
+      document.body.appendChild(el);
+    }
+    el.innerHTML = '<span>' + Util.escapeHtml(text) + '</span>'
+      + '<button type="button" class="toast-undo" onclick="App.undoLast()">Undo</button>';
+    el.classList.add('show');
+    if (syncedFlashTimer) clearTimeout(syncedFlashTimer);
+    syncedFlashTimer = setTimeout(function () {
+      el.classList.remove('show');
+      syncedFlashTimer = null;
+    }, 5000);
+  }
+
   function flashSynced() { showToast('Updated from your other device'); }
+
+  /* A new account used to open on an empty list, a locked garden and three
+     bullet points about which keys to press. Two tasks demonstrate the whole
+     loop in about ten seconds instead - and the first one is the demonstration.
+
+     The flag is per account and lives in this browser: it is "has this person
+     been shown the starter tasks", not part of their data, and it must not come
+     back from the cloud and re-seed a list they have deliberately emptied. */
+  function seedFirstRun() {
+    const id = Store.accountId();
+    if (!id) return;
+    const key = 'tend:seeded:' + id;
+    try { if (localStorage.getItem(key) === '1') return; } catch (e) { return; }
+    /* Only ever on a genuinely empty list - never over an account whose tasks
+       simply have not synced down yet on a fresh device. */
+    if (tickets().length) {
+      try { localStorage.setItem(key, '1'); } catch (e) { /* private mode */ }
+      return;
+    }
+
+    const today = Util.todayStr();
+    const starters = [
+      { title: 'Tick this box to earn your first coin',
+        notes: 'Every task you finish pays one coin. Coins buy plants in the shop below the garden.' },
+      { title: 'Spend that coin on a seedling, then water it',
+        notes: 'Walk into a seedling five times to grow it. Grown plants can be cashed in for more coins.' }
+    ];
+    starters.reverse().forEach(st => tickets().unshift({
+      id: Util.uid(),
+      title: st.title,
+      notes: st.notes,
+      category: '',
+      priority: false,
+      archived: false,
+      dueDate: null,
+      createdAt: today,
+      completedAt: null,
+      subtasks: []
+    }));
+    try { localStorage.setItem(key, '1'); } catch (e) { /* private mode */ }
+    Store.saveTickets();
+  }
 
   function boot() {
     loadViewPrefs();
@@ -2466,6 +2746,7 @@ const App = (function () {
 
     renderHeader();
     Garden.loadAll();   /* hydrate the garden before anything renders or saves it */
+    seedFirstRun();
     renderAll();
     Garden.start();
     switchView(currentView);   /* sets the bar, the sections and the widths */
@@ -2477,6 +2758,16 @@ const App = (function () {
 
       window.addEventListener('resize', onResize);
       window.addEventListener('orientationchange', onResize);
+
+      /* The row menu closes the way every menu should: click anywhere else, or
+         press Escape. Scrolling closes it too - it is anchored to a row that
+         moves. */
+      document.addEventListener('click', function (e) {
+        if (e.target && e.target.closest && e.target.closest('.row-menu-wrap')) return;
+        closeRowMenu();
+      });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeRowMenu(); });
+      window.addEventListener('scroll', closeRowMenu, true);
 
       /* Something changed on another device: take the new state and redraw,
          garden included. */
@@ -2534,6 +2825,7 @@ const App = (function () {
     boot, renderAll, renderList, renderStats, renderCalendar, renderHeader,
     tickets, categories, categoryColor, DEFAULT_CATEGORY_COLOR,
     addTask, toggleTask, togglePriority, toggleArchive, deleteTask,
+    toggleRowMenu, rowMenuAction,
     openNewTaskModal, closeNewTaskModal, closeNewTaskModalOnBackdrop,
     taskRowClick,
     openEditModal, saveEditedTask, closeEditModal, closeEditModalOnBackdrop,

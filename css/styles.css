@@ -154,7 +154,7 @@ main {
    the page with a dead strip of nothing beside the garden. */
 .app-layout {
   display: grid;
-  grid-template-columns: 364px minmax(0, 1fr) 240px;
+  grid-template-columns: 324px minmax(0, 1fr) 240px;
   grid-template-areas: "garden content sidebar";
   gap: 24px;
   align-items: start;
@@ -167,7 +167,7 @@ main {
 /* Not enough width for three: the sidebar drops under the tickets. */
 @media (max-width: 1275px) {
   .app-layout {
-    grid-template-columns: 364px minmax(0, 1fr);
+    grid-template-columns: 324px minmax(0, 1fr);
     grid-template-areas:
       "garden content"
       "garden sidebar";
@@ -1290,6 +1290,96 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
 .help-explanation p {
   margin: 0;
   color: var(--muted);
+}
+
+/* Star and the checkbox are the two things you press while scanning a list, so
+   they stay on the row. Edit, Archive and Delete moved in here, where they get
+   words instead of glyphs and Delete is no longer a thumb's width from Edit. */
+.row-menu-wrap { position: relative; }
+
+.row-menu-btn {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.row-menu-btn:hover { background: var(--hover); color: var(--text); }
+
+.row-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 60;
+  min-width: 148px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 26px rgba(20, 24, 40, 0.18);
+  display: flex;
+  flex-direction: column;
+}
+
+.row-menu.drop-up { top: auto; bottom: calc(100% + 4px); }
+
+.row-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.84rem;
+  color: var(--text);
+  text-align: left;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.row-menu button:hover { background: var(--hover); }
+.row-menu button.danger { color: #c0272d; }
+.row-menu button.danger:hover { background: rgba(208, 53, 58, 0.12); }
+.row-menu svg { flex: none; }
+
+/* A coin leaving the checkbox you just ticked, on its way to the counter. */
+.coin-fly {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  z-index: 300;
+  pointer-events: none;
+  transition: transform 0.75s cubic-bezier(0.3, 0.9, 0.4, 1), opacity 0.75s ease;
+}
+
+.coin-fly svg { width: 22px; height: 22px; display: block; }
+
+/* The header subtitle carries live numbers now, so overdue gets to shout. */
+.subtitle b { font-weight: 700; color: var(--header-strong, #ffffff); }
+.subtitle b.sub-late { color: #ffc9a3; }
+
+/* Only the top of the band you have not bought yet is shown - enough for its
+   gate, not a whole panel of grey. The fade is what says there is more. */
+.garden-plot-wrap.has-peek {
+  overflow-y: hidden;
+  position: relative;
+}
+
+.garden-plot-wrap.has-peek::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bg));
 }
 
 .task-actions {
@@ -2982,12 +3072,35 @@ body {
   border-radius: 999px;
   box-shadow: 0 6px 20px rgba(20, 24, 40, 0.28);
   opacity: 0;
+  /* It has an Undo button in it now, so it has to be clickable while shown -
+     and unclickable while hidden, or an invisible pill sits over the page. */
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
   z-index: 200;
   max-width: calc(100vw - 32px);
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
 }
+
+.sync-toast.show { pointer-events: auto; }
+
+.toast-undo {
+  flex: none;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 3px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.toast-undo:hover { background: rgba(255, 255, 255, 0.28); }
 
 .sync-toast.show {
   opacity: 1;
@@ -3305,7 +3418,17 @@ html[data-mode="phone"] .new-task-btn-row {
    and the ribbon shrinks to a title bar. Search is moved up beside the
    account chip by applyAppMode(). */
 html[data-mode="phone"] nav.tabs { display: none; }
-html[data-mode="phone"] .subtitle { display: none; }
+/* The subtitle used to be a sentence about how the app works and was hidden
+   here to save the room. Now that it is the live count, it is the most useful
+   line on a phone screen - so it stays, one line, quietly. */
+html[data-mode="phone"] .subtitle {
+  display: block;
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 html[data-mode="phone"] .header-inner { padding-bottom: 14px; }
 html[data-mode="phone"] h1 { font-size: 1.35rem; }
@@ -3443,7 +3566,7 @@ html[data-mode="phone"] .garden-col .panel {
    columns alone - which left the garden placed in a phantom third column and
    pushed to the right. */
 .app-layout.no-sidebar:not(.view-garden) {
-  grid-template-columns: 364px minmax(0, 1fr);
+  grid-template-columns: 324px minmax(0, 1fr);
   grid-template-areas: "garden content";
 }
 
@@ -3456,7 +3579,7 @@ html[data-mode="phone"] .garden-col .panel {
 
 @media (max-width: 1275px) {
   .app-layout.no-sidebar:not(.view-garden) {
-    grid-template-columns: 364px minmax(0, 1fr);
+    grid-template-columns: 324px minmax(0, 1fr);
     grid-template-areas: "garden content";
   }
 }
@@ -3482,6 +3605,18 @@ html[data-mode="phone"] .app-layout.no-sidebar.no-garden:not(.view-garden) {
   overflow: hidden;
   margin-bottom: 14px;
 }
+
+/* Four options do not fit a phone's width, and wrapping turned each one into
+   two stacked words. It scrolls sideways instead, labels intact. */
+html[data-mode="phone"] .cat-toggle {
+  display: flex;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+html[data-mode="phone"] .cat-toggle::-webkit-scrollbar { display: none; }
+html[data-mode="phone"] .cat-toggle button { white-space: nowrap; flex: none; }
 
 .cat-toggle button {
   border: none;
