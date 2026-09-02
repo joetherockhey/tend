@@ -53,15 +53,42 @@ const App = (function () {
     return true;
   }
 
+  /* Removing a category never removes what was in it. The tasks keep their
+     place in the list and simply become uncategorised, which is what Other is.
+
+     They already *showed* under Other, because groupByCategory sends anything
+     whose category is not a real one there - but each task still carried the
+     dead name. That meant a stale pill on the row, a search that matched a
+     category nobody could see, and tasks that silently rejoined the category if
+     one was ever created with the same name again. So the name is cleared for
+     real. The snapshot above covers tickets as well as categories, so one Undo
+     puts the category back and its tasks back into it. */
   function removeCategoryByIndex(i) {
     const list = categories();
     if (i < 0 || i >= list.length) return;
-    snapshot('removing the ' + list[i].name + ' category');
+    const name = list[i].name;
+    snapshot('removing the ' + name + ' category');
+
+    const key = (name || '').trim().toLowerCase();
+    let moved = 0;
+    tickets().forEach(t => {
+      if ((t.category || '').trim().toLowerCase() !== key) return;
+      t.category = '';
+      moved++;
+    });
+
     list.splice(i, 1);
     Store.saveCategories();
+    if (moved) Store.saveTickets();
     renderCategoryKey();
     populateCategorySelects();
-    renderList();
+    renderAll();
+
+    if (moved) {
+      showUndoToast(`Removed ${name} \u2014 ${moved} ${moved === 1 ? 'task' : 'tasks'} moved to Other`);
+    } else {
+      showUndoToast('Removed ' + name);
+    }
   }
 
   /* ========================= view preferences ========================= */
@@ -1929,6 +1956,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'Deleting a category no longer leaves its tasks carrying a name that no longer exists - they move to Other, and the message says how many did. Undo puts the category back with its tasks in it.',
       'Fixed: signing in on a new device while the connection was down could quietly overwrite which world you are in, turning a reef into a garden - for you and for everyone looking at you in Friends.',
       'Each row in Friends now says whether that person is in a Garden or an Ocean.',
       'The category picker is colour-coded: every category shows its own colour in the list, and the box wears the colour of whatever you have chosen.',
