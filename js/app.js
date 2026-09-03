@@ -838,26 +838,31 @@ const App = (function () {
     const groups = groupByCategory(rest);
 
     if (!starred.length && !groups.length) {
-      host.innerHTML = `<section class="list-section"><ul class="task-list"><li class="empty-note">${
+      host.innerHTML = `<div class="cat-wide"><section class="list-section"><ul class="task-list"><li class="empty-note">${
         query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.'
-      }</li></ul></section>`;
+      }</li></ul></section></div>`;
       return;
     }
 
-    const blocks = [];
+    /* Priority, when it is lifted out, runs the full width across the top; the
+       categories flow underneath it. They are two containers rather than one
+       because the categories are laid out in newspaper columns, and nothing can
+       span a column. */
+    const wide = [];
     if (starred.length) {
       /* Priority keeps its rows' category pills - which category a starred
          task came from is the one thing this block would otherwise lose. */
-      blocks.push(section(categoryPill('Priority', PRIORITY_COLOR), starred, { wide: true, noDrag: true }));
+      wide.push(section(categoryPill('Priority', PRIORITY_COLOR), starred, { wide: true, noDrag: true }));
     }
-    groups.forEach(g => {
+    const blocks = groups.map(g => {
       /* Inside a category's own group, repeating that category on every row is
          the noise this view exists to remove. */
       const sorted = priorityFirst ? g.list
         : g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
-      blocks.push(section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true }));
+      return section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true });
     });
-    host.innerHTML = blocks.join('');
+    host.innerHTML = (wide.length ? `<div class="cat-wide">${wide.join('')}</div>` : '')
+      + `<div class="cat-columns">${blocks.join('')}</div>`;
   }
 
   /* The same rows again, gathered by when they are due rather than by what
@@ -896,13 +901,13 @@ const App = (function () {
     open.forEach(t => { (bins[dueBucket(t)] = bins[dueBucket(t)] || []).push(t); });
 
     if (!open.length) {
-      host.innerHTML = `<section class="list-section"><ul class="task-list"><li class="empty-note">${
+      host.innerHTML = `<div class="cat-wide"><section class="list-section"><ul class="task-list"><li class="empty-note">${
         query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.'
-      }</li></ul></section>`;
+      }</li></ul></section></div>`;
       return;
     }
 
-    host.innerHTML = DUE_BUCKETS.filter(([key]) => (bins[key] || []).length).map(([key, label, color]) => {
+    host.innerHTML = '<div class="cat-wide">' + DUE_BUCKETS.filter(([key]) => (bins[key] || []).length).map(([key, label, color]) => {
       /* Inside a date group the dates are the heading, so a row only repeats
          its own date when it is overdue and the exact day matters. */
       const list = bins[key].slice().sort((a, b) => {
@@ -913,7 +918,7 @@ const App = (function () {
         <div class="cat-section-head">${categoryPill(label, color)}</div>
         <ul class="task-list">${list.map(t => renderTaskItem(t, { noDrag: true, hideDue: key !== 'overdue' })).join('')}</ul>
       </section>`;
-    }).join('');
+    }).join('') + '</div>';
   }
 
   /* A click anywhere on the row that is not one of its own controls opens the
@@ -1956,6 +1961,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'Categories no longer line up in rows. A short category now starts right under the one above it instead of waiting for the tall one beside it to finish, so there are no more empty gaps down the page.',
       'Deleting a category no longer leaves its tasks carrying a name that no longer exists - they move to Other, and the message says how many did. Undo puts the category back with its tasks in it.',
       'Fixed: signing in on a new device while the connection was down could quietly overwrite which world you are in, turning a reef into a garden - for you and for everyone looking at you in Friends.',
       'Each row in Friends now says whether that person is in a Garden or an Ocean.',

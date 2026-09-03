@@ -3648,26 +3648,43 @@ html[data-mode="phone"] .cat-toggle button { white-space: nowrap; flex: none; }
   margin-bottom: 10px;
 }
 
-/* Side by side, the same way Priority and Active sit - and for the same
-   reason: as the window widens, or the garden is hidden, another column fits
-   rather than the list running further down the page. */
-#category-sections {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px 24px;
-  align-items: start;
+#category-sections { display: block; }
+
+/* Newspaper columns, not a grid.
+
+   A grid lines every category up on a row, so one tall category leaves a hole
+   beside it the height of the difference - four tasks under Projects meant an
+   empty half-column under Uni. In columns each category starts wherever the one
+   above it finished, and the browser picks the split that balances the columns.
+   The order is preserved: it reads down the first column, then down the next,
+   which is also the order the categories are ranked in.
+
+   Nothing can span a CSS column, which is why the full-width blocks - Priority,
+   the date buckets, the empty state - are rendered in .cat-wide above this
+   rather than inside it. */
+.cat-columns {
+  column-width: 310px;
+  column-gap: 24px;
 }
+
+.cat-columns > .list-section {
+  /* Without this a category can be sliced in half across a column break. */
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 0 0 20px;
+}
+
+.cat-wide > .list-section { margin-bottom: 20px; }
 
 /* One column on a phone. This has to sit after the rule above, not up with the
    other small-screen rules, or the later declaration wins and a 390px screen
    gets two columns. */
 @media (max-width: 900px) {
-  #category-sections { grid-template-columns: 1fr; }
+  .cat-columns { column-width: auto; column-count: 1; }
 }
 
-/* Priority, when it is lifted out into its own block, runs the full width
-   across the top rather than sharing a row with the first category. */
-.cat-section-wide { grid-column: 1 / -1; }
+/* Kept for the full-width blocks, which are still laid out as blocks. */
+.cat-section-wide { width: 100%; }
 
 /* Each category on the overview reads as one block: a tinted spine down its
    left in the category's own colour, so the eye can follow a group without a
@@ -11395,26 +11412,31 @@ const App = (function () {
     const groups = groupByCategory(rest);
 
     if (!starred.length && !groups.length) {
-      host.innerHTML = `<section class="list-section"><ul class="task-list"><li class="empty-note">${
+      host.innerHTML = `<div class="cat-wide"><section class="list-section"><ul class="task-list"><li class="empty-note">${
         query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.'
-      }</li></ul></section>`;
+      }</li></ul></section></div>`;
       return;
     }
 
-    const blocks = [];
+    /* Priority, when it is lifted out, runs the full width across the top; the
+       categories flow underneath it. They are two containers rather than one
+       because the categories are laid out in newspaper columns, and nothing can
+       span a column. */
+    const wide = [];
     if (starred.length) {
       /* Priority keeps its rows' category pills - which category a starred
          task came from is the one thing this block would otherwise lose. */
-      blocks.push(section(categoryPill('Priority', PRIORITY_COLOR), starred, { wide: true, noDrag: true }));
+      wide.push(section(categoryPill('Priority', PRIORITY_COLOR), starred, { wide: true, noDrag: true }));
     }
-    groups.forEach(g => {
+    const blocks = groups.map(g => {
       /* Inside a category's own group, repeating that category on every row is
          the noise this view exists to remove. */
       const sorted = priorityFirst ? g.list
         : g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
-      blocks.push(section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true }));
+      return section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true });
     });
-    host.innerHTML = blocks.join('');
+    host.innerHTML = (wide.length ? `<div class="cat-wide">${wide.join('')}</div>` : '')
+      + `<div class="cat-columns">${blocks.join('')}</div>`;
   }
 
   /* The same rows again, gathered by when they are due rather than by what
@@ -11453,13 +11475,13 @@ const App = (function () {
     open.forEach(t => { (bins[dueBucket(t)] = bins[dueBucket(t)] || []).push(t); });
 
     if (!open.length) {
-      host.innerHTML = `<section class="list-section"><ul class="task-list"><li class="empty-note">${
+      host.innerHTML = `<div class="cat-wide"><section class="list-section"><ul class="task-list"><li class="empty-note">${
         query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.'
-      }</li></ul></section>`;
+      }</li></ul></section></div>`;
       return;
     }
 
-    host.innerHTML = DUE_BUCKETS.filter(([key]) => (bins[key] || []).length).map(([key, label, color]) => {
+    host.innerHTML = '<div class="cat-wide">' + DUE_BUCKETS.filter(([key]) => (bins[key] || []).length).map(([key, label, color]) => {
       /* Inside a date group the dates are the heading, so a row only repeats
          its own date when it is overdue and the exact day matters. */
       const list = bins[key].slice().sort((a, b) => {
@@ -11470,7 +11492,7 @@ const App = (function () {
         <div class="cat-section-head">${categoryPill(label, color)}</div>
         <ul class="task-list">${list.map(t => renderTaskItem(t, { noDrag: true, hideDue: key !== 'overdue' })).join('')}</ul>
       </section>`;
-    }).join('');
+    }).join('') + '</div>';
   }
 
   /* A click anywhere on the row that is not one of its own controls opens the
@@ -12513,6 +12535,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'Categories no longer line up in rows. A short category now starts right under the one above it instead of waiting for the tall one beside it to finish, so there are no more empty gaps down the page.',
       'Deleting a category no longer leaves its tasks carrying a name that no longer exists - they move to Other, and the message says how many did. Undo puts the category back with its tasks in it.',
       'Fixed: signing in on a new device while the connection was down could quietly overwrite which world you are in, turning a reef into a garden - for you and for everyone looking at you in Friends.',
       'Each row in Friends now says whether that person is in a Garden or an Ocean.',
