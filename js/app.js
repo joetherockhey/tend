@@ -1989,6 +1989,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      "Butterflies now appear the moment you open a friend's garden, already on the plot, instead of drifting in from off the edge half a minute later. Any garden with a plant in it gets at least one - fish, in the reef.",
       'Every cabin you finish building raises what a task is worth. No cabins pays 1 coin, one pays 2, two pay 3, and so on. The shop shows your current rate.',
       'The rate is fixed at the moment you tick a task, so finishing a cabin does not reprice work you have already done - and un-ticking an old task refunds exactly what it paid, not what it would pay today.',
       'The Priority + category view has been removed. Starred tasks still rise to the top of their own category.',

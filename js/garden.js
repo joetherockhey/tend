@@ -284,9 +284,13 @@ const Garden = (function () {
 
     previewLife = { flyers: [], last: 0, frame: null, timer: null, petTimer: null, heroTimer: null };
 
+    /* Your own garden uses 5/10/15 as the thresholds, because you sit in it and
+       a slow build-up reads as the place waking up. A visit is a glance - so any
+       planted garden gets at least one, or a friend with four plants looks dead
+       and the whole point of showing their plot is lost. */
     const target = () => {
       const n = Object.keys(layout).filter(id => layout[id] && !layout[id].held).length;
-      return n > 15 ? 3 : n > 10 ? 2 : n > 5 ? 1 : 0;
+      return n > 15 ? 3 : n > 10 ? 2 : n > 0 ? 1 : 0;
     };
 
     const pick = f => {
@@ -308,16 +312,26 @@ const Garden = (function () {
       f.hover = close ? (500 + Math.random() * 1100) : (1600 + Math.random() * 2600);
     };
 
-    const spawn = () => {
+    /* `settled` puts one straight onto the plot instead of flying it in from
+       off the edge. Waiting for the spawner to roll its dice and then watching
+       something drift in took five seconds for the first and nine for the
+       second, which is longer than anyone looks at a friend's garden - so they
+       were, in practice, never there. */
+    const spawn = (settled) => {
       const el = document.createElement('div');
       el.className = 'garden-ambient';
       el.innerHTML = ambientArt(world);
       layer.appendChild(el);
       const side = Math.floor(Math.random() * 4);
+      const start = settled
+        ? { x: 20 + Math.random() * Math.max(10, bounds.w - 40),
+            y: 16 + Math.random() * Math.max(10, bounds.h - 32) }
+        : { x: side === 0 ? -18 : side === 1 ? bounds.w + 18 : Math.random() * bounds.w,
+            y: side === 2 ? -16 : side === 3 ? bounds.h + 16 : Math.random() * bounds.h };
       const f = {
         el: el,
-        x: side === 0 ? -18 : side === 1 ? bounds.w + 18 : Math.random() * bounds.w,
-        y: side === 2 ? -16 : side === 3 ? bounds.h + 16 : Math.random() * bounds.h,
+        x: start.x,
+        y: start.y,
         vx: 0, vy: 0, tx: 0, ty: 0, hover: 0, age: 0, flower: null,
         dir: Math.random() < 0.5 ? -1 : 1,
         speed: 0.34 + Math.random() * 0.26,
@@ -362,11 +376,16 @@ const Garden = (function () {
       }
     };
 
+    /* Seeded up front, already on the plot, so a friend's garden has its
+       butterflies (or fish) the moment it opens rather than a minute later. */
+    previewLife.reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (!previewLife.reduced) {
+      const want = target();
+      for (let i = 0; i < want; i++) spawn(true);
+    }
+
     previewLife.timer = setInterval(() => {
       if (!previewLife || document.hidden || !plot.offsetParent) return;
-      if (previewLife.reduced === undefined) {
-        previewLife.reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-      }
       if (previewLife.reduced) return;
       const want = target();
       if (previewLife.flyers.length > want) {
