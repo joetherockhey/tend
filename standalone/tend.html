@@ -9683,21 +9683,27 @@ const Garden = (function () {
       return false;
     }
 
-    /* Nothing stops you any more. Trees, beds, tables, plants, the cabin - you
-       walk over all of it. Working round the scenery a square at a time was the
-       fiddliest part of the garden, and the game underneath is watering things
-       and carrying them about, not navigating a maze.
-
-       Walking onto a plant still waters it, which is the one thing the old wall
-       was carrying: you had to bump into a plant to water it, and now you step
-       onto it instead. */
-    const plantId = findPlantAt(targetRow, targetCol);
-    if (plantId && mayWater) waterCheck(targetRow, targetCol, plantId);
+    /* Plants you bought are the one thing you walk over. Everything else stops
+       you again: saplings and the trees they become, blocking scenery, and a
+       finished cabin. Walking onto a plant waters it; bumping into a sapling
+       waters that, which is what the wall was always carrying. */
+    const blocked = () => { saveHeroPos(); positionHero(); return false; };
 
     const saplingHere = saplings.find(s => s.planted && s.row === targetRow && s.col === targetCol);
-    if (saplingHere && !isSaplingGrown(saplingHere) && mayWater) {
-      waterSaplingCheck(targetRow, targetCol, saplingHere);
+    if (saplingHere) {
+      if (!isSaplingGrown(saplingHere) && mayWater) {
+        waterSaplingCheck(targetRow, targetCol, saplingHere);
+      }
+      return blocked();
     }
+
+    if (findDecorationAt(targetRow, targetCol)) return blocked();
+
+    const cabinHere = cabinSites.find(s => s.row === targetRow && s.col === targetCol);
+    if (cabinHere && cabinHere.complete) return blocked();
+
+    const plantId = findPlantAt(targetRow, targetCol);
+    if (plantId && mayWater) waterCheck(targetRow, targetCol, plantId);
 
     heroPos = { row: targetRow, col: targetCol };
     saveHeroPos();
@@ -10960,7 +10966,7 @@ const Garden = (function () {
       cashin: { icon: '\u{1F4B0}', title: 'Cashing in', body: 'Changed your mind about a ' + t.plant + '? Pick it up, then use Cash in at the top of the shop. A seedling gives back the coin it cost; one you have grown is worth two.' },
       coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns gold coins - ' + coinsPerTask() + ' at the moment, because every finished ' + t.build + ' adds one to the rate. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coins go back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
-      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - nothing blocks you - and tap Pick up. Tap Put down to set it on a free square, or Use it if it is a tool. The box beside the buttons always shows what you are carrying.' : 'Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - nothing blocks you - and press E to pick it up. Standing on it counts first, then whatever you are facing. Press E again to put it down on a free square, or use it if it is a tool. The box beside the plot shows what you are carrying.') },
+      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - or stand next to it - and tap Pick up. Tap Put down to set it on a free square, or Use it if it is a tool. The box beside the buttons always shows what you are carrying.' : 'Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - or stand next to it - and press E to pick it up. Standing on it counts first, then whatever you are facing. Press E again to put it down on a free square, or use it if it is a tool. The box beside the plot shows what you are carrying.') },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
       shovel: { icon: W().items.shovel.icon, title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
@@ -11049,10 +11055,12 @@ const Garden = (function () {
 
   function useHintText() {
     if (!phoneControls()) {
-      return 'Walk anywhere - nothing is in your way. Press E to pick up whatever'
-        + ' you are standing on or facing, and E again to put it down.';
+      return 'Walk over your own ' + terms().plants + ' - everything else stops you.'
+        + ' Press E to pick up whatever you are standing on or facing, and E again'
+        + ' to put it down.';
     }
-    return 'Walk anywhere - nothing is in your way. Pick up and Put down are under the '
+    return 'Walk over your own ' + terms().plants + ' - everything else stops you.'
+      + ' Pick up and Put down are under the '
       + terms().place.replace(/^the\s+/i, '')
       + ', and the box beside them shows what you are carrying.';
   }
@@ -13182,8 +13190,11 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-09-05', items: [
+      'You can walk over the plants you buy - and only those. Trees, saplings, beds of scenery, tables and a finished cabin stop you again.',
+    ] },
     { date: '2026-09-04', items: [
-      'You can now walk over everything - trees, beds, tables, the cabin, your own plants. Nothing blocks you.',
+      'You can now walk over your own plants.',
       'Press E on whatever you are standing on, or whatever you are facing. Walking onto a plant still waters it, and putting something down uses the square under your feet unless it is taken.',
       'The garden never scrolls sideways now. It scales down to fit whatever room it has, so the whole plot is always on screen at once.',
       'The Friends tab only lists people who have actually planted something.',

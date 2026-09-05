@@ -1993,8 +1993,11 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-09-05', items: [
+      'You can walk over the plants you buy - and only those. Trees, saplings, beds of scenery, tables and a finished cabin stop you again.',
+    ] },
     { date: '2026-09-04', items: [
-      'You can now walk over everything - trees, beds, tables, the cabin, your own plants. Nothing blocks you.',
+      'You can now walk over your own plants.',
       'Press E on whatever you are standing on, or whatever you are facing. Walking onto a plant still waters it, and putting something down uses the square under your feet unless it is taken.',
       'The garden never scrolls sideways now. It scales down to fit whatever room it has, so the whole plot is always on screen at once.',
       'The Friends tab only lists people who have actually planted something.',
