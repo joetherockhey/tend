@@ -1360,9 +1360,29 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
 
 .coin-fly svg { width: 22px; height: 22px; display: block; }
 
-/* The header subtitle carries live numbers now, so overdue gets to shout. */
-.subtitle b { font-weight: 700; color: var(--header-strong, #ffffff); }
-.subtitle b.sub-late { color: #ffc9a3; }
+/* The header subtitle is the day's fun fact: a small label, then the fact
+   itself in the ordinary subtitle weight so it reads as a sentence rather than
+   as another number to act on. */
+.subtitle {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fact-label {
+  flex: none;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.fact-text { flex: 1 1 240px; min-width: 0; }
 
 /* Only the top of the band you have not bought yet is shown - enough for its
    gate, not a whole panel of grey. The fade is what says there is more. */
@@ -3421,13 +3441,19 @@ html[data-mode="phone"] nav.tabs { display: none; }
 /* The subtitle used to be a sentence about how the app works and was hidden
    here to save the room. Now that it is the live count, it is the most useful
    line on a phone screen - so it stays, one line, quietly. */
+/* A fact is a sentence, so on a phone it wraps rather than being cut off with
+   an ellipsis the way the old one-line counts were. Two lines is the cap. */
 html[data-mode="phone"] .subtitle {
-  display: block;
-  margin: 2px 0 0;
-  font-size: 0.78rem;
-  white-space: nowrap;
+  margin: 4px 0 0;
+  font-size: 0.74rem;
+  gap: 8px;
+}
+
+html[data-mode="phone"] .fact-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 html[data-mode="phone"] .header-inner { padding-bottom: 14px; }

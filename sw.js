@@ -15,7 +15,7 @@
    through, so your data is never served from a stale cache.
    ============================================================================ */
 
-const VERSION = 'tend-v45';
+const VERSION = 'tend-v48';
 const APP_SHELL = [
   './',
   './index.html',
@@ -23,6 +23,7 @@ const APP_SHELL = [
   './js/config.js',
   './js/util.js',
   './js/qr.js',
+  './js/facts.js',
   './js/worlds.js',
   './js/store.js',
   './js/garden.js',

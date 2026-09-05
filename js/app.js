@@ -1706,27 +1706,26 @@ const App = (function () {
 
   /* ========================= account menu + header ========================= */
 
-  /* The subtitle used to be a sentence explaining the app, which after day one
-     nobody reads. It says the state of play instead - and only falls back to
-     the explanation on an account with nothing in it yet. */
+  /* The line under the name is the day's fun fact.
+
+     It briefly carried the live counts instead - overdue, due today, open,
+     coins - and they were accurate and useful and nobody was ever pleased to
+     see them. The counts that actually matter have their own homes: Due today
+     is a card of its own and the coins sit on the garden. This is the one line
+     on the page that is not about work, so it gets to not be about work.
+
+     Facts.today() picks by the day of the year in the reader's own timezone, so
+     it turns over at their midnight and everybody signed in gets the same one
+     on the same date - which is the point of it. */
   function renderHeaderSubtitle() {
     const el = document.getElementById('page-subtitle');
     if (!el) return;
-    const list = tickets();
-    const open = list.filter(t => !t.completedAt && !t.archived).length;
-    if (!list.length) {
+    if (typeof Facts === 'undefined' || !Facts.today) {
       el.textContent = 'Every task you finish earns a coin. Coins buy plants for the garden.';
       return;
     }
-    const bits = [];
-    const late = overdueTickets().length;
-    const due = dueToday().length;
-    if (late) bits.push(`<b class="sub-late">${late} overdue</b>`);
-    if (due) bits.push(`<b>${due} due today</b>`);
-    bits.push(`${open} open`);
-    const coins = (hasGarden() && Garden.coinBalance) ? Garden.coinBalance() : null;
-    if (coins !== null) bits.push(`${coins} ${coins === 1 ? 'coin' : 'coins'}`);
-    el.innerHTML = bits.join(' \u00b7 ');
+    el.innerHTML = '<span class="fact-label">Fun fact</span>'
+      + '<span class="fact-text">' + Util.escapeHtml(Facts.today()) + '</span>';
   }
 
   function renderHeader() {
@@ -1961,6 +1960,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'There is a fun fact at the top of the page now, a different one every day, on a loop of 365. Every one of them is about animals, plants or the ocean. It replaces the counts that were there - Due today has its own card and the coins sit on the garden.',
       'Categories no longer line up in rows. A short category now starts right under the one above it instead of waiting for the tall one beside it to finish, so there are no more empty gaps down the page.',
       'Deleting a category no longer leaves its tasks carrying a name that no longer exists - they move to Other, and the message says how many did. Undo puts the category back with its tasks in it.',
       'Fixed: signing in on a new device while the connection was down could quietly overwrite which world you are in, turning a reef into a garden - for you and for everyone looking at you in Friends.',
@@ -2615,7 +2615,8 @@ const App = (function () {
     renderStats();
     renderByCategory();
     Garden.render();
-    /* Last: the coin count in it is only right once the garden has recounted. */
+    /* Cheap, and it means a page left open overnight picks up the new day's
+       fact the first time anything is touched. */
     renderHeaderSubtitle();
   }
 
