@@ -1528,16 +1528,46 @@ li.task.archived {
   margin-top: 10px;
 }
 
-.person-add-row input[type="color"] {
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: none;
-  cursor: pointer;
-  flex-shrink: 0;
+/* Suggested colours for a new category, in place of the colour input that used
+   to sit here. A native picker opens an OS dialog and offers sixteen million
+   options for a decision that wants about twelve. */
+.swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
 }
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+  flex: none;
+  /* The ring sits outside the colour rather than over it, so the colour is
+     never obscured by its own selected state. */
+  box-shadow: 0 0 0 1px var(--border);
+  transition: transform 0.1s ease;
+}
+
+.swatch:hover { transform: scale(1.12); }
+
+.swatch.on {
+  border-color: var(--panel);
+  box-shadow: 0 0 0 2px var(--swatch);
+}
+
+/* Still selectable - two categories may legitimately want similar colours -
+   but marked, so an accidental repeat is a choice rather than a surprise. */
+.swatch.used { opacity: 0.4; }
+.swatch.used.on { opacity: 1; }
+
+/* 22px is a comfortable target for a mouse and a poor one for a thumb. */
+html[data-mode="phone"] .swatch-row { gap: 9px; }
+html[data-mode="phone"] .swatch { width: 30px; height: 30px; }
 
 .person-add-row input[type="text"] {
   flex: 1;

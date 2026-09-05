@@ -13,7 +13,21 @@ const App = (function () {
 
   const PRIORITY_COLOR = '#eda100';
   const DEFAULT_CATEGORY_COLOR = '#8a8f98';
-  const CATEGORY_PALETTE = ['#2a78d6', '#eda100', '#4a3aa7', '#e87ba4', '#eb6834', '#0f9d6a', '#c0392b', '#16a085', '#8e44ad', '#d35400', '#2c3e50', '#c2185b'];
+  /* Suggestions, not a colour picker. Picking a category colour out of the
+     full 16-million is a decision nobody wants to make about "Errands", and the
+     native colour input opens an OS dialog to make it. These are chosen to stay
+     distinct from each other at pill size, which a free pick does not.
+     Appending to this list is safe: a category stores its own hex, so nothing
+     already made can change. */
+  const CATEGORY_PALETTE = [
+    '#2a78d6', '#eda100', '#4a3aa7', '#e87ba4', '#eb6834', '#0f9d6a',
+    '#c0392b', '#16a085', '#8e44ad', '#d35400', '#2c3e50', '#c2185b',
+    '#00838f', '#7cb342', '#5d4037', '#546e7a'
+  ];
+
+  /* Which suggestion is armed for the next category. Null means "whichever is
+     not in use yet", which is what it falls back to after each add. */
+  let pendingCategoryColor = null;
 
   let calYear, calMonth;              // calMonth is 0-indexed
   let showCompleted = false;
@@ -138,12 +152,21 @@ const App = (function () {
         <button class="person-remove-btn" title="Remove ${Util.escapeHtml(c.name)}" onclick="App.removeCategoryByIndex(${i})">&times;</button>
       </div>`
     );
+    const chosen = pendingCategoryColor || nextCategoryColor();
+    const used = new Set(categories().map(c => c.color));
+    const swatches = CATEGORY_PALETTE.map(c =>
+      `<button type="button" class="swatch${c === chosen ? ' on' : ''}${used.has(c) ? ' used' : ''}"
+               style="--swatch:${c}" data-color="${c}"
+               title="${used.has(c) ? 'Already used by another category' : c}"
+               aria-label="Use ${c}"${c === chosen ? ' aria-pressed="true"' : ''}
+               onclick="App.pickCategoryColor('${c}')"></button>`).join('');
+
     const addForm = `
       <div class="person-add-row">
-        <input type="color" id="category-add-color" value="${nextCategoryColor()}" title="Pick a colour">
         <input type="text" id="category-add-name" placeholder="Add category&hellip;" maxlength="100" onkeydown="if(event.key==='Enter')App.submitAddCategory()">
         <button class="person-add-btn" onclick="App.submitAddCategory()">Add</button>
-      </div>`;
+      </div>
+      <div class="swatch-row" id="category-swatches" role="group" aria-label="Colour for the new category">${swatches}</div>`;
     /* Only the real categories are draggable; Other is not a category anybody
        owns, so it stays pinned at the bottom outside the sortable block. */
     document.getElementById('category-key').innerHTML =
@@ -227,14 +250,31 @@ const App = (function () {
     host.addEventListener('pointercancel', finish);
   }
 
+  /* Arming a colour must not redraw the panel: renderCategoryKey replaces the
+     whole thing, which would throw away the name being typed and the caret with
+     it. So the classes are moved by hand. */
+  function pickCategoryColor(color) {
+    pendingCategoryColor = color;
+    const host = document.getElementById('category-swatches');
+    if (!host) return;
+    host.querySelectorAll('.swatch').forEach(el => {
+      const on = el.dataset.color === color;
+      el.classList.toggle('on', on);
+      if (on) el.setAttribute('aria-pressed', 'true');
+      else el.removeAttribute('aria-pressed');
+    });
+  }
+
   function submitAddCategory() {
     const nameInput = document.getElementById('category-add-name');
-    const colorInput = document.getElementById('category-add-color');
     const name = nameInput.value.trim();
     if (!name) { nameInput.focus(); return; }
     snapshot('adding the ' + name + ' category');
-    if (addCategory(name, colorInput.value)) {
+    if (addCategory(name, pendingCategoryColor || nextCategoryColor())) {
       nameInput.value = '';
+      /* Back to "next unused" so the following one does not silently reuse the
+         colour just taken. */
+      pendingCategoryColor = null;
       renderCategoryKey();
       populateCategorySelects();
       renderList();
@@ -1960,6 +2000,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'Adding a category now offers a row of suggested colours to click, instead of a colour picker with sixteen million options in it. Colours already taken by another category are dimmed.',
       'There is a fun fact at the top of the page now, a different one every day, on a loop of 365. Every one of them is about animals, plants or the ocean. It replaces the counts that were there - Due today has its own card and the coins sit on the garden.',
       'Categories no longer line up in rows. A short category now starts right under the one above it instead of waiting for the tall one beside it to finish, so there are no more empty gaps down the page.',
       'Deleting a category no longer leaves its tasks carrying a name that no longer exists - they move to Other, and the message says how many did. Undo puts the category back with its tasks in it.',
@@ -2879,7 +2920,7 @@ const App = (function () {
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
     clearSearch, toggleSearch, setTheme, isAppMode, setViewMode, setCategoryScope,
-    setListGrouping, undoLast,
+    setListGrouping, undoLast, pickCategoryColor,
     renderFriends, openFriendGarden, closeFriendGarden,
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived,
