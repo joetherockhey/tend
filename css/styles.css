@@ -965,6 +965,9 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
 .garden-plot-wrap {
   display: flex;
   align-items: flex-start;
+  /* A garden you have to drag left and right to see is not a garden. It is
+     scaled down to fit by fitPlot(), so there is never anything to scroll to. */
+  overflow-x: hidden;
   /* The plot takes the middle of its wrap. `safe` matters: on a narrow screen
      the plot is wider than the wrap, and a plain centre overflows equally both
      ways, putting the left edge somewhere no scrollbar can reach. Safe centring
@@ -977,6 +980,8 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
   border: 1px solid var(--border);
   background: var(--bg);
   padding: 2px;
+  /* The height is set by fitPlot, since a transform does not move layout. */
+  overflow-y: hidden;
 }
 
 .garden-plot {
@@ -2393,7 +2398,8 @@ body.gated { overflow: hidden; }
 
   /* The plot is a fixed pixel grid, so let the whole thing scroll sideways
      inside its panel rather than stretching the page. */
-  .garden-plot-wrap { overflow-x: auto; }
+  /* Never. The plot is scaled to fit its column instead - see fitPlot(). */
+  .garden-plot-wrap { overflow-x: hidden; }
 
   .new-task-btn-row { position: fixed; right: 16px; bottom: 16px; z-index: 40; margin: 0; }
   .new-task-btn {

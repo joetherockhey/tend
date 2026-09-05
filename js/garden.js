@@ -1483,12 +1483,74 @@ const Garden = (function () {
     }, WALK_STEP_MS);
   }
 
+  /* How many rows are worth showing: everything unlocked, plus a glimpse of the
+     band you have not bought. Set by the last render. */
+  let plotVisibleRows = SECTION_ROWS;
+  /* What the plot is currently scaled by, so a tap can be turned back into a
+     square. 1 whenever it fits at full size, which is most of the time. */
+  let plotScale = 1;
+
+  /* The plot is 8 tiles of 34px, and the column it lives in is not always 272px
+     wide - so it used to sit in a box that scrolled sideways. A garden you have
+     to drag left and right to see is not a garden, so it is scaled down to fit
+     instead. The sprites are SVG rects, not bitmaps, so scaling costs nothing:
+     they stay as crisp at 0.8 as at 1.
+
+     The wrap is given the scaled height by hand, because a transform does not
+     affect layout - without it the panel keeps a gap the size of the difference.
+     The same call does the crop of the locked band, so the two cannot disagree
+     about how tall the box should be. */
+  function fitPlot() {
+    const plot = document.getElementById('garden-plot');
+    const wrap = plot && plot.parentElement;
+    if (!plot || !wrap || !wrap.classList.contains('garden-plot-wrap')) return;
+
+    /* Measured with last time's adjustments cleared, or each pass would shrink
+       the plot a little further than the one before it. */
+    plot.style.transform = '';
+    plot.style.marginRight = '';
+
+    const cs = window.getComputedStyle(plot);
+    const marginL = parseFloat(cs.marginLeft) || 0;
+    const marginR = parseFloat(cs.marginRight) || 0;
+    const wrapStyle = window.getComputedStyle(wrap);
+    const padding = (parseFloat(wrapStyle.paddingLeft) || 0) + (parseFloat(wrapStyle.paddingRight) || 0);
+    const avail = wrap.clientWidth - padding - marginL - marginR;
+    const natural = GARDEN_COLS * CELL_SIZE;
+
+    plotScale = (avail > 0 && avail < natural) ? Math.max(0.35, avail / natural) : 1;
+
+    if (plotScale === 1) {
+      plot.style.transformOrigin = '';
+      return void (wrap.style.height = sizedHeight(1));
+    }
+
+    plot.style.transformOrigin = 'top left';
+    plot.style.transform = 'scale(' + plotScale.toFixed(4) + ')';
+    /* A transform paints smaller but still occupies its full width in the
+       layout, so without this the wrap thinks it is overflowing and the right
+       fence post falls outside the panel. The leftover is pulled back in. */
+    plot.style.marginRight = Math.round(marginR - natural * (1 - plotScale)) + 'px';
+
+    wrap.style.height = sizedHeight(plotScale);
+
+    function sizedHeight(k) {
+      const fullRows = gardenRows || SECTION_ROWS;
+      const shownRows = Math.min(fullRows, plotVisibleRows);
+      wrap.classList.toggle('has-peek', shownRows < fullRows);
+      return Math.round(shownRows * CELL_SIZE * k) + 4 + 'px';
+    }
+  }
+
   function cellFromPoint(clientX, clientY) {
     const plot = document.getElementById('garden-plot');
     if (!plot) return null;
     const box = plot.getBoundingClientRect();
-    const col = Math.floor((clientX - box.left) / CELL_SIZE);
-    const row = Math.floor((clientY - box.top) / CELL_SIZE);
+    /* Derived from what is actually on screen rather than from CELL_SIZE, so a
+       scaled-down plot still puts the tap on the square under the finger. */
+    const cell = (box.width / GARDEN_COLS) || CELL_SIZE;
+    const col = Math.floor((clientX - box.left) / cell);
+    const row = Math.floor((clientY - box.top) / cell);
     if (col < 0 || col >= GARDEN_COLS || row < 0 || row > gardenMaxUnlockedRow) return null;
     return { row, col };
   }
@@ -1589,6 +1651,10 @@ const Garden = (function () {
     if (layout) layout.classList.toggle('no-garden', !gardenVisible);
     const btn = document.getElementById('garden-toggle-btn');
     if (btn) btn.textContent = gardenVisible ? 'Hide Garden' : 'Show Garden';
+    /* A hidden column measures zero, so the plot sits at scale 1 the whole time
+       it is away and has to be re-fitted on the way back - the window may have
+       been resized while it was gone. */
+    fitPlot();
   }
 
   function toggleGardenVisibility() {
@@ -1684,26 +1750,6 @@ const Garden = (function () {
       heroEl.innerHTML = `${thought}${heldWrap}<div class="sprite-shadow"></div>${heroSVG(heroDirection, getEquippedOutfit())}`;
     }
     renderControls();
-    keepHeroInView();
-  }
-
-  /* The plot fits a 390px phone exactly and scrolls on anything narrower.
-     Rather than shrink the tiles - the art is drawn at 34px and does not
-     survive being scaled - the plot pans to keep the gardener's square on
-     screen. On a screen where nothing overflows this does nothing at all. */
-  function keepHeroInView() {
-    const wrap = document.querySelector('.garden-stage .garden-plot-wrap');
-    if (!wrap) return;
-    const slack = wrap.scrollWidth - wrap.clientWidth;
-    if (slack <= 0) return;
-    const plot = document.getElementById('garden-plot');
-    const left = (plot ? plot.offsetLeft : 0) + heroPos.col * CELL_SIZE;
-    const margin = CELL_SIZE;
-    if (left - margin < wrap.scrollLeft) {
-      wrap.scrollLeft = Math.max(0, left - margin);
-    } else if (left + CELL_SIZE + margin > wrap.scrollLeft + wrap.clientWidth) {
-      wrap.scrollLeft = Math.min(slack, left + CELL_SIZE + margin - wrap.clientWidth);
-    }
   }
 
   /* Sparkles, hearts and the drifting wildlife all live in one layer that is
@@ -3130,19 +3176,7 @@ const Garden = (function () {
     const plot = document.getElementById('garden-plot');
     plot.style.width = (GARDEN_COLS * CELL_SIZE) + 'px';
     plot.style.height = (gardenRows * CELL_SIZE) + 'px';
-
-    /* The band you have not bought yet is drawn in full so its gate and its
-       scenery are in the right places, but only the top of it is shown. A whole
-       extra panel of grey was the single biggest thing on a new account's
-       screen, and none of it was anything you could do. The wrap does the
-       cropping, not the plot, so a thought bubble above the gardener still has
-       somewhere to go. */
-    const wrap = plot.parentElement;
-    if (wrap && wrap.classList.contains('garden-plot-wrap')) {
-      const shown = (maxUnlockedRow + 1 + LOCKED_PEEK_ROWS) * CELL_SIZE;
-      wrap.style.maxHeight = (shown < gardenRows * CELL_SIZE) ? (shown + 4) + 'px' : '';
-      wrap.classList.toggle('has-peek', shown < gardenRows * CELL_SIZE);
-    }
+    plotVisibleRows = maxUnlockedRow + 1 + LOCKED_PEEK_ROWS;
 
     let bandsHtml = '';
     let gateHtml = '';
@@ -3262,6 +3296,10 @@ const Garden = (function () {
     }).join('');
 
     plot.innerHTML = bandsHtml + dugTilesHtml + cellsHtml + movablesHtml + saplingsHtml + unplantedSaplingsHtml + groundLogsHtml + cabinsHtml + treatsHtml + petsHtml + gateHtml;
+
+    /* After the contents, so the height is real. The plot never scrolls
+       sideways - it shrinks to fit whatever room the column has. */
+    fitPlot();
 
     const heroEl = document.createElement('div');
     heroEl.className = 'garden-hero';
@@ -3431,6 +3469,10 @@ const Garden = (function () {
 
   /* Called when the world or the hero changes in settings. Nothing in storage
      moves - the same garden is simply drawn with the other world's art. */
+  /* The column changes width when the window does, when the garden is hidden
+     or shown, and when the layout flips between phone and desktop. */
+  function refit() { fitPlot(); }
+
   function reskin() {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
@@ -3499,6 +3541,7 @@ const Garden = (function () {
   return {
     applyVisibility: applyGardenVisibility,
     refreshControls: refreshControlHints,
+    refit: refit,
     __testWater: testWater,
     __walkTo: (r, c, axis) => walkTo(r, c, axis),
     __heroPos: () => ({ row: heroPos.row, col: heroPos.col }),
