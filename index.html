@@ -39,9 +39,20 @@
   <div class="header-top-row">
     <div class="brand-row" id="header-brand"></div>
     <span class="sync-badge" id="sync-badge"><span class="sync-dot"></span></span>
-    <div class="account-menu">
-      <button class="account-btn" id="account-btn" onclick="App.toggleAccountMenu(event)"></button>
-      <div class="account-dropdown" id="account-dropdown" hidden></div>
+    <!-- The two things you reach for most, kept in the corner at every width.
+         They used to live in the sidebar, which drops under the task list on a
+         narrow window with the garden open - so the button you press most was
+         the furthest thing down the page. -->
+    <div class="header-actions">
+      <button class="due-chip" id="due-today-btn" onclick="App.showDueToday()"
+              title="What is due today"></button>
+      <div class="new-task-btn-row">
+        <button class="new-task-btn" onclick="App.openNewTaskModal()">+ New Task</button>
+      </div>
+      <div class="account-menu">
+        <button class="account-btn" id="account-btn" onclick="App.toggleAccountMenu(event)"></button>
+        <div class="account-dropdown" id="account-dropdown" hidden></div>
+      </div>
     </div>
   </div>
   <h1 id="page-title">Tasks</h1>
@@ -227,15 +238,6 @@
   </div>
 
 </div>
-
-<aside class="sidebar">
-  <div class="new-task-btn-row">
-    <button class="new-task-btn" onclick="App.openNewTaskModal()">+ New Task</button>
-  </div>
-
-  <button class="due-today-btn" id="due-today-btn" onclick="App.showDueToday()"></button>
-
-</aside>
 
 </div>
 </main>

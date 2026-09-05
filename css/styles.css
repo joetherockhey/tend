@@ -147,37 +147,27 @@ main {
   padding: 24px 32px 60px;
 }
 
-/* Three columns on a wide screen; two when there is not room for three, with
-   the sidebar tucked under the tickets rather than wrapping below the garden.
-   This is a grid rather than wrapped flex because the garden column is far
-   taller than the others - wrapping left the sidebar stranded at the bottom of
-   the page with a dead strip of nothing beside the garden. */
+/* The garden beside the tickets. There used to be a third column - a sidebar
+   carrying the New Task button and the due-today card - but on a narrow window
+   with the garden open it wrapped under the task list, which left the button
+   you press most at the very bottom of the page. Both moved into the header
+   corner, where they are on screen at every width, and the column went with
+   them. */
 .app-layout {
   display: grid;
-  grid-template-columns: 324px minmax(0, 1fr) 240px;
-  grid-template-areas: "garden content sidebar";
+  grid-template-columns: 324px minmax(0, 1fr);
+  grid-template-areas: "garden content";
   gap: 24px;
   align-items: start;
 }
 
 .app-layout > .garden-col { grid-area: garden; }
 .app-layout > .content-col { grid-area: content; }
-.app-layout > .sidebar { grid-area: sidebar; }
 
-/* Not enough width for three: the sidebar drops under the tickets. */
-@media (max-width: 1275px) {
-  .app-layout {
-    grid-template-columns: 324px minmax(0, 1fr);
-    grid-template-areas:
-      "garden content"
-      "garden sidebar";
-  }
-}
-
-/* Garden hidden: give its track back instead of leaving a 364px hole. */
+/* Garden hidden: give its track back instead of leaving a 324px hole. */
 .app-layout.no-garden {
-  grid-template-columns: minmax(0, 1fr) 240px;
-  grid-template-areas: "content sidebar";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "content";
 }
 
 /* With no garden there is room for two columns well below 1275px, so the
@@ -187,13 +177,6 @@ main {
   min-width: 0;
 }
 
-.sidebar {
-  min-width: 0;
-  position: sticky;
-  top: 24px;
-}
-
-.sidebar h2,
 .garden-col h2 {
   font-size: 0.95rem;
   margin: 0 0 14px;
@@ -354,11 +337,11 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
-/* Below 1332px the sidebar wraps onto its own full-width row. A sticky element
-   there would slide up and hover over the columns above it as you scroll, so
-   sticky is only on while the sidebar genuinely sits beside the content. */
+/* A sticky column that has wrapped onto its own row slides up and hovers over
+   the content above it as you scroll, so sticky is only on while the column
+   genuinely sits beside the content. */
 @media (max-width: 1275px) {
-  .sidebar, .garden-col { position: static; }
+  .garden-col { position: static; }
 }
 
 @media (max-width: 600px) {
@@ -2226,7 +2209,46 @@ body.gated { overflow: hidden; }
 
 .header-top-row .brand-row { margin-bottom: 0; }
 
-.account-menu { margin-left: auto; position: relative; }
+/* Due-today and New Task live here now, in the corner beside the account chip,
+   because a sidebar that wraps is no place for the button you press most. */
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-actions .new-task-btn-row { margin: 0; }
+
+.due-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--header-chip);
+  border: 1px solid var(--header-chip-line);
+  color: var(--header-text);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.due-chip:hover { background: var(--header-chip-hover); }
+
+.due-chip-count { font-weight: 700; font-variant-numeric: tabular-nums; }
+.due-chip-label { color: var(--header-dim); }
+.due-chip.has-due .due-chip-count { color: #ffd479; }
+.due-chip.has-overdue .due-chip-count { color: #ff9c9c; }
+.due-chip-late {
+  color: #ff9c9c;
+  font-weight: 600;
+  border-left: 1px solid var(--header-chip-line);
+  padding-left: 8px;
+}
+
+.account-menu { position: relative; }
 
 .account-btn {
   display: flex;
@@ -2391,9 +2413,8 @@ body.gated { overflow: hidden; }
   .app-layout,
   .app-layout.no-garden {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "content" "sidebar" "garden";
+    grid-template-areas: "content" "garden";
   }
-  .sidebar { position: static; top: auto; }
   .garden-col { position: static; top: auto; }
 
   /* The plot is a fixed pixel grid, so let the whole thing scroll sideways
@@ -2677,54 +2698,6 @@ body.gated { overflow: hidden; }
    Due today button
    ============================================================ */
 
-.due-today-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel);
-  font: inherit;
-  color: var(--text);
-  cursor: pointer;
-  text-align: left;
-}
-
-.due-today-btn:hover { border-color: var(--accent); }
-
-.due-today-count {
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-  min-width: 22px;
-  text-align: center;
-}
-
-.due-today-btn.has-due { border-color: #f0d49a; background: #fdf6e7; }
-.due-today-btn.has-due .due-today-count { color: var(--series-over); }
-
-.due-today-btn.has-overdue { border-color: #f3c9d1; background: #fdf0f2; }
-.due-today-btn.has-overdue .due-today-count { color: var(--danger); }
-
-.due-today-text { display: flex; flex-direction: column; gap: 2px; }
-
-.due-today-title { font-size: 0.9rem; font-weight: 600; }
-
-.due-today-sub {
-  font-size: 0.75rem;
-  color: var(--danger);
-  font-weight: 600;
-}
-
-@media (max-width: 900px) {
-  .due-today-btn { margin-bottom: 16px; }
-}
-
 /* On a phone a calendar cell is about 48px wide, which is not enough for a word
    and a number side by side. The legend chips above carry the meaning, so drop
    the labels and keep the coloured numbers. */
@@ -2874,13 +2847,12 @@ body.gated { overflow: hidden; }
 
 /* The list view needs room: at a third of the page a cell is 84px wide and every
    ticket title truncates to two words. While it is showing, the calendar takes
-   the full width and the garden and sidebar stack underneath it. */
+   the full width and the garden stacks underneath it. */
 .app-layout.cal-wide,
 .app-layout.cal-wide.no-garden {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "content" "sidebar" "garden";
+  grid-template-areas: "content" "garden";
 }
-.app-layout.cal-wide .sidebar,
 .app-layout.cal-wide .garden-col { position: static; top: auto; }
 
 /* ============================================================
@@ -3515,7 +3487,7 @@ html[data-mode="phone"] .app-layout:not(.view-garden),
 html[data-mode="phone"] .app-layout.no-garden:not(.view-garden),
 html[data-mode="phone"] .app-layout.cal-wide:not(.view-garden) {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "content" "sidebar";
+  grid-template-areas: "content";
 }
 
 /* Garden as a section of its own: it takes the whole width, and the other two
@@ -3526,8 +3498,7 @@ html[data-mode="phone"] .app-layout.no-garden.view-garden {
   grid-template-areas: "garden";
 }
 
-html[data-mode="phone"] .app-layout.view-garden > .content-col,
-html[data-mode="phone"] .app-layout.view-garden > .sidebar { display: none; }
+html[data-mode="phone"] .app-layout.view-garden > .content-col { display: none; }
 
 html[data-mode="phone"] .app-layout:not(.view-garden) > .garden-col { display: none; }
 
@@ -3619,8 +3590,8 @@ html[data-mode="phone"] .garden-col .panel {
    under the category it belongs to.
    --------------------------------------------------------------------------- */
 
-/* Outside the task list the sidebar has nothing to say, so the section takes
-   the whole width.
+/* Outside the task list - the overview, the calendar - the content takes the
+   width the sidebar column used to hold.
 
    Every rule here excludes the garden section. The garden is laid out by its
    own rules further up, and because these came later in the file with equal
@@ -3636,8 +3607,6 @@ html[data-mode="phone"] .garden-col .panel {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "content";
 }
-
-.app-layout.no-sidebar > .sidebar { display: none; }
 
 @media (max-width: 1275px) {
   .app-layout.no-sidebar:not(.view-garden) {

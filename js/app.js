@@ -1079,13 +1079,12 @@ const App = (function () {
     const due = dueToday().length;
     const late = overdueTickets().length;
 
-    btn.className = 'due-today-btn' + (late ? ' has-overdue' : (due ? ' has-due' : ''));
-    btn.innerHTML = `
-      <span class="due-today-count">${due}</span>
-      <span class="due-today-text">
-        <span class="due-today-title">Due today</span>
-        ${late ? `<span class="due-today-sub">${late} overdue</span>` : ''}
-      </span>`;
+    /* A chip in the header corner rather than a card in the sidebar, so the
+       number is on screen at every width and in every view. */
+    btn.className = 'due-chip' + (late ? ' has-overdue' : (due ? ' has-due' : ''));
+    btn.innerHTML = `<span class="due-chip-count">${due}</span>`
+      + `<span class="due-chip-label">due today</span>`
+      + (late ? `<span class="due-chip-late">${late} overdue</span>` : '');
   }
 
   function showDueToday() {
@@ -1994,6 +1993,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-05', items: [
+      'Due today and + New Task now sit in the top corner of every page, so they are there whatever the window is doing. The sidebar they used to live in is gone, and the tasks and the calendar have its width.',
       'You can walk over the plants you buy - and only those. Trees, saplings, beds of scenery, tables and a finished cabin stop you again.',
     ] },
     { date: '2026-09-04', items: [
