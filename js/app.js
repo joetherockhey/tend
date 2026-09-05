@@ -508,9 +508,10 @@ const App = (function () {
 
   function rewardEarned(fromEl) {
     if (!hasGarden()) return;
+    const n = (Garden.coinsPerTask ? Garden.coinsPerTask() : 1);
     flyCoin(fromEl, coinTarget());
     const hint = Garden.coinHint ? Garden.coinHint() : '';
-    showToast('+1 coin' + (hint ? ' \u2014 ' + hint : ''));
+    showToast('+' + n + (n === 1 ? ' coin' : ' coins') + (hint ? ' \u2014 ' + hint : ''));
   }
 
   function togglePriority(id) {
@@ -2000,6 +2001,8 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'Every cabin you finish building raises what a task is worth. No cabins pays 1 coin, one pays 2, two pay 3, and so on. The shop shows your current rate.',
+      'The rate is fixed at the moment you tick a task, so finishing a cabin does not reprice work you have already done - and un-ticking an old task refunds exactly what it paid, not what it would pay today.',
       'Adding a category now offers a row of suggested colours to click, instead of a colour picker with sixteen million options in it. Colours already taken by another category are dimmed.',
       'There is a fun fact at the top of the page now, a different one every day, on a loop of 365. Every one of them is about animals, plants or the ocean. It replaces the counts that were there - Due today has its own card and the coins sit on the garden.',
       'Categories no longer line up in rows. A short category now starts right under the one above it instead of waiting for the tall one beside it to finish, so there are no more empty gaps down the page.',

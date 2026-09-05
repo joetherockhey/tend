@@ -677,6 +677,14 @@ const Garden = (function () {
   const COINS_AWARDED_KEY = 'coins-awarded-v1';
   const COINS_SPENT_KEY = 'coins-spent-v1';
   const COINS_BONUS_KEY = 'coins-bonus-v1';
+  /* What each finished task paid over the base coin, kept per task id.
+
+     The rate has to be recorded at the moment of completion, not applied to the
+     ledger afterwards. Multiplying the running total instead would mean that
+     finishing a cabin silently repriced every task you had ever done - a windfall
+     out of nowhere - and un-ticking an old task would refund it at today's rate
+     rather than the one it was paid at, which is a tick-untick money printer. */
+  const COIN_EXTRA_KEY = 'coins-extra-v1';
   const LENS_KEY = 'garden-lens-v1';
   const LENS_ON_KEY = 'garden-lens-on-v1';
   const LENS_COST = 4;
@@ -710,7 +718,19 @@ const Garden = (function () {
      leaving you poorer than your finished work says you should be. */
   let coinsSpent = 0;
   let coinsBonus = 0;
+  let coinExtra = {};
   let stateLoaded = false;
+
+  /* Every finished build multiplies what a task is worth: none pays 1, one pays
+     2, two pay 3. Only completed ones count - a half-stacked site pays nothing
+     until the last log goes on. */
+  function completedBuilds() {
+    return cabinSites.filter(s => s.complete).length;
+  }
+
+  function coinsPerTask() {
+    return completedBuilds() + 1;
+  }
 
   function loadAwardedCoins() {
     try {
@@ -722,6 +742,19 @@ const Garden = (function () {
 
   function saveAwardedCoins() {
     Store.kv.setItem(COINS_AWARDED_KEY, JSON.stringify([...awardedCoins]));
+  }
+
+  function loadCoinExtra() {
+    try {
+      const raw = JSON.parse(Store.kv.getItem(COIN_EXTRA_KEY));
+      coinExtra = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+    } catch (e) {
+      coinExtra = {};
+    }
+  }
+
+  function saveCoinExtra() {
+    Store.kv.setItem(COIN_EXTRA_KEY, JSON.stringify(coinExtra));
   }
 
   /* Reconciles coins against the task list. Idempotent, so it is safe to run
@@ -743,6 +776,14 @@ const Garden = (function () {
     completedIds.forEach(id => {
       if (awardedCoins.has(id)) return;
       awardedCoins.add(id);
+      /* The base coin comes from the size of the set; anything the builds add
+         on top goes into the bonus pile, and is written down against this task
+         so it can be taken back at the same rate it was paid. */
+      const extra = coinsPerTask() - 1;
+      if (extra > 0) {
+        coinExtra[id] = extra;
+        coinsBonus += extra;
+      }
       changed = true;
     });
 
@@ -750,12 +791,16 @@ const Garden = (function () {
       if (completedIds.has(id)) return;
       awardedCoins.delete(id);
       changed = true;
-      /* Un-ticking a task takes its coin back. Deleting one does not - that
-         work was still done - so its coin moves across to the kept pile. */
-      if (!existingIds.has(id)) coinsBonus += 1;
+      /* Un-ticking a task takes its coin back, at the rate it was paid.
+         Deleting one does not - that work was still done - so its base coin
+         moves across to the kept pile, and its extra is already there. */
+      if (existingIds.has(id)) coinsBonus -= (coinExtra[id] || 0);
+      else coinsBonus += 1;
+      delete coinExtra[id];
     });
 
-    if (changed) { saveAwardedCoins(); saveCoinLedger(); }
+    if (coinsBonus < 0) coinsBonus = 0;
+    if (changed) { saveAwardedCoins(); saveCoinExtra(); saveCoinLedger(); }
     if (recomputeCoins()) renderCoins();
   }
 
@@ -2583,7 +2628,14 @@ const Garden = (function () {
       const holding = heldPlantId != null;
       const value = heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE;
       const noRoom = !findPottingSpot();
-      plantsWrap.innerHTML =
+      const rate = coinsPerTask();
+      const built = completedBuilds();
+      const rateLine = `<div class="shop-info shop-rate">Each task you finish pays <b>${rate}</b> ${rate === 1 ? 'coin' : 'coins'}`
+        + (built
+            ? ` &middot; ${built} ${terms().build}${built === 1 ? '' : 's'} built`
+            : ` &middot; build a ${terms().build} to raise it`)
+        + '</div>';
+      plantsWrap.innerHTML = rateLine +
         `<div class="shop-info">Growing: ${Util.escapeHtml(tally)}${noRoom ? ' - no room for another' : ''}</div>
          <div class="shop-grid">
            <button class="shop-tile" ${(coins < PLANT_COST || noRoom) ? 'disabled' : ''} onclick="buyPlant()"
@@ -3232,14 +3284,14 @@ const Garden = (function () {
     const t = terms();
     return {
       cashin: { icon: '\u{1F4B0}', title: 'Cashing in', body: 'Changed your mind about a ' + t.plant + '? Pick it up, then use Cash in at the top of the shop. A seedling gives back the coin it cost; one you have grown is worth two.' },
-      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns one gold coin. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coin goes back.' },
+      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns gold coins - ' + coinsPerTask() + ' at the moment, because every finished ' + t.build + ' adds one to the rate. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coins go back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
       pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk up to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' and tap Pick up under the ' + t.place.replace(/^the\\s+/i, '') + '. Tap Put down to set it somewhere empty - or Use it, if it is a tool. The box beside the buttons always shows what you are carrying.' : 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool. The box beside the plot shows what you are carrying.') },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
       shovel: { icon: W().items.shovel.icon, title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
       sapling: { icon: '\u{1F331}', title: t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's', body: 'Buy one and it appears at the top. Carry it to an empty spot and press E to plant it. Move into it to water it - five waterings, once a minute, and it grows into ' + t.sprouted + '. Press F to grow every planted one at once.' },
-      cabin: { icon: '\u{1FAB5}', title: 'Building a ' + t.build, body: 'Carry ' + t.log + ' onto a tile that already has some to start a ' + t.build + ' site. Keep bringing more and watch it rise in stages - foundation, walls, roof, then doors and windows once it finishes at 10.' },
+      cabin: { icon: '\u{1FAB5}', title: 'Building a ' + t.build, body: 'Carry ' + t.log + ' onto a tile that already has some to start a ' + t.build + ' site. Keep bringing more and watch it rise in stages - foundation, walls, roof, then doors and windows once it finishes at 10. Every finished one pays you: each is worth an extra coin on every task you complete from then on. You have ' + completedBuilds() + '.' },
       pets: { icon: '\u{1F43E}', title: 'Companions', body: 'Buy one, or unlock a random one (10 max). One food suits every animal: buy a bowl, pick it up and walk it over to whichever one you want. Friendly ones stick close, skittish ones flee until you win them over.' },
       unlock: { icon: '\u{1F512}', title: 'More room', body: 'The next part of ' + t.place + ' is always visible ahead, dimmed, behind a gate. Tap the gate to open it for ' + SECTION_COST + ' coins. There is no limit - keep buying and ' + t.place + ' keeps going.' }
     };
@@ -3301,6 +3353,7 @@ const Garden = (function () {
     loadGardenVisibility();
     loadDugTiles();
     loadAwardedCoins();
+    loadCoinExtra();
     loadCoinLedger();
     stateLoaded = true;
   }
@@ -3447,6 +3500,8 @@ const Garden = (function () {
     renderShop: renderShop,
     coinHint: coinHint,
     coinBalance: coinBalance,
+    coinsPerTask: coinsPerTask,
+    completedBuilds: completedBuilds,
     coinSVG: coinSVG
   };
 })();
