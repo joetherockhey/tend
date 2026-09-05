@@ -1995,6 +1995,7 @@ const App = (function () {
   const UPDATES = [
     { date: '2026-09-04', items: [
       'The garden never scrolls sideways now. It scales down to fit whatever room it has, so the whole plot is always on screen at once.',
+      'The Friends tab only lists people who have actually planted something.',
       "Butterflies now appear the moment you open a friend's garden, already on the plot, instead of drifting in from off the edge half a minute later. Any garden with a plant in it gets at least one - fish, in the reef.",
       'Every cabin you finish building raises what a task is worth. No cabins pays 1 coin, one pays 2, two pay 3, and so on. The shop shows your current rate.',
       'The rate is fixed at the moment you tick a task, so finishing a cabin does not reprice work you have already done - and un-ticking an old task refunds exactly what it paid, not what it would pay today.',
@@ -2559,8 +2560,18 @@ const App = (function () {
       return;
     }
 
+    /* Only gardens with something in them. An account that has signed up and
+       not planted anything is a row with nothing to look at, and the tab is for
+       looking at gardens. */
+    const growing = friendsCache.filter(f => plantsIn(f.layout) > 0);
+    if (!growing.length) {
+      host.innerHTML = '<p class="cat-empty">Nobody has planted anything yet.</p>';
+      if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
+      return;
+    }
+
     /* Biggest gardens first - it is a list you scroll to compare. */
-    const sorted = friendsCache.slice().sort((a, b) => plantsIn(b.layout) - plantsIn(a.layout));
+    const sorted = growing.slice().sort((a, b) => plantsIn(b.layout) - plantsIn(a.layout));
 
     host.innerHTML = `<div class="friend-list">${sorted.map(f => {
       const plants = plantsIn(f.layout);
