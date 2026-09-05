@@ -11,7 +11,6 @@
 const App = (function () {
   'use strict';
 
-  const PRIORITY_COLOR = '#eda100';
   const DEFAULT_CATEGORY_COLOR = '#8a8f98';
   /* Suggestions, not a colour picker. Picking a category colour out of the
      full 16-million is a decision nobody wants to make about "Errands", and the
@@ -765,10 +764,12 @@ const App = (function () {
 
   /* The task list has three shapes, and a button for each. The choice is
      remembered per account; category is what a new account opens on. */
+  /* 'priority' - a Priority block lifted out above the categories - was removed.
+     An account still holding it in prefs falls through listGrouping's validation
+     and lands back on 'category'. */
   const LIST_GROUPINGS = [
     ['category', 'By category'],
     ['due', 'By date'],
-    ['priority', 'Priority + category'],
     ['status', 'By status']
   ];
 
@@ -829,7 +830,7 @@ const App = (function () {
       activeList.innerHTML = '';
       priorityList.innerHTML = '';
       if (mode === 'due') renderListByDate(activeAll, query);
-      else renderListByCategory(activeAll, query, mode === 'priority');
+      else renderListByCategory(activeAll, query);
     } else {
       if (catEl) catEl.innerHTML = '';
       activeList.innerHTML = active.length ? active.map(renderTaskItem).join('') : `<li class="empty-note">${noActiveMsg}</li>`;
@@ -862,9 +863,8 @@ const App = (function () {
   }
 
   /* The same rows as the Priority / Active lists, gathered under their
-     category. In "Priority + category" the starred ones are lifted out into a
-     block of their own across the top, and do not appear again below. */
-  function renderListByCategory(open, query, priorityFirst) {
+     category, with the starred ones first inside each category. */
+  function renderListByCategory(open, query) {
     const host = document.getElementById('category-sections');
     if (!host) return;
 
@@ -874,36 +874,24 @@ const App = (function () {
         <ul class="task-list">${list.map(t => renderTaskItem(t, opts)).join('')}</ul>
       </section>`;
 
-    const starred = priorityFirst ? open.filter(t => t.priority) : [];
-    const rest = priorityFirst ? open.filter(t => !t.priority) : open;
-    const groups = groupByCategory(rest);
+    const groups = groupByCategory(open);
 
-    if (!starred.length && !groups.length) {
+    if (!groups.length) {
       host.innerHTML = `<div class="cat-wide"><section class="list-section"><ul class="task-list"><li class="empty-note">${
         query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.'
       }</li></ul></section></div>`;
       return;
     }
 
-    /* Priority, when it is lifted out, runs the full width across the top; the
-       categories flow underneath it. They are two containers rather than one
-       because the categories are laid out in newspaper columns, and nothing can
-       span a column. */
-    const wide = [];
-    if (starred.length) {
-      /* Priority keeps its rows' category pills - which category a starred
-         task came from is the one thing this block would otherwise lose. */
-      wide.push(section(categoryPill('Priority', PRIORITY_COLOR), starred, { wide: true, noDrag: true }));
-    }
     const blocks = groups.map(g => {
       /* Inside a category's own group, repeating that category on every row is
-         the noise this view exists to remove. */
-      const sorted = priorityFirst ? g.list
-        : g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
+         the noise this view exists to remove. Starred tasks still rise to the
+         top of their own category - the star has not gone anywhere, only the
+         view that pulled them all out into a block of their own. */
+      const sorted = g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
       return section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true });
     });
-    host.innerHTML = (wide.length ? `<div class="cat-wide">${wide.join('')}</div>` : '')
-      + `<div class="cat-columns">${blocks.join('')}</div>`;
+    host.innerHTML = `<div class="cat-columns">${blocks.join('')}</div>`;
   }
 
   /* The same rows again, gathered by when they are due rather than by what
@@ -2003,6 +1991,7 @@ const App = (function () {
     { date: '2026-09-04', items: [
       'Every cabin you finish building raises what a task is worth. No cabins pays 1 coin, one pays 2, two pay 3, and so on. The shop shows your current rate.',
       'The rate is fixed at the moment you tick a task, so finishing a cabin does not reprice work you have already done - and un-ticking an old task refunds exactly what it paid, not what it would pay today.',
+      'The Priority + category view has been removed. Starred tasks still rise to the top of their own category.',
       'Adding a category now offers a row of suggested colours to click, instead of a colour picker with sixteen million options in it. Colours already taken by another category are dimmed.',
       'There is a fun fact at the top of the page now, a different one every day, on a loop of 365. Every one of them is about animals, plants or the ocean. It replaces the counts that were there - Due today has its own card and the coins sit on the garden.',
       'Categories no longer line up in rows. A short category now starts right under the one above it instead of waiting for the tall one beside it to finish, so there are no more empty gaps down the page.',
