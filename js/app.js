@@ -1994,6 +1994,8 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'You can now walk over everything - trees, beds, tables, the cabin, your own plants. Nothing blocks you.',
+      'Press E on whatever you are standing on, or whatever you are facing. Walking onto a plant still waters it, and putting something down uses the square under your feet unless it is taken.',
       'The garden never scrolls sideways now. It scales down to fit whatever room it has, so the whole plot is always on screen at once.',
       'The Friends tab only lists people who have actually planted something.',
       "Butterflies now appear the moment you open a friend's garden, already on the plot, instead of drifting in from off the edge half a minute later. Any garden with a plant in it gets at least one - fish, in the reef.",

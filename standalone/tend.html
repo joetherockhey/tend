@@ -8539,7 +8539,7 @@ const Garden = (function () {
   /* One answer to "is anything already standing here?". Every placement helper
      goes through this, so a bought seedling can no longer land on top of a log,
      a sapling, a bowl of food or the gardener. */
-  function cellOccupied(row, col) {
+  function cellOccupied(row, col, ignoreHero) {
     if (findPlantAt(row, col)) return true;
     if (findDecorationAt(row, col)) return true;
     if (findGroundLogAt(row, col)) return true;
@@ -8547,7 +8547,12 @@ const Garden = (function () {
     if (cabinSites.some(s => s.row === row && s.col === col)) return true;
     if (pendingTreats.some(t => t.row === row && t.col === col)) return true;
     if (ownedPets.some(p => p.row === row && p.col === col)) return true;
-    if (row === heroPos.row && col === heroPos.col) return true;
+    /* The shop asks "where can a new seedling land", and the answer must not be
+       under the gardener's feet. Setting something down is the opposite
+       question - you are standing there on purpose - so it passes ignoreHero.
+       Beds and other flat ground are not blocking and never count as occupied,
+       which is what keeps planting in a bed possible. */
+    if (!ignoreHero && row === heroPos.row && col === heroPos.col) return true;
     return false;
   }
 
@@ -9595,7 +9600,12 @@ const Garden = (function () {
       return;
     }
 
-    groundLogs.push({ id: heldLog.id, row: heroPos.row, col: heroPos.col });
+    /* Stacking onto a site or another log is the point, so those two cases are
+       handled above. Setting a log down on fresh ground still needs the ground
+       to be free of everything else. */
+    const spot = dropSquare();
+    if (!spot) { showThought('No room here'); return; }
+    groundLogs.push({ id: heldLog.id, row: spot.row, col: spot.col });
     heldLog = null;
     saveGroundLogs();
     renderGarden();
@@ -9673,36 +9683,20 @@ const Garden = (function () {
       return false;
     }
 
+    /* Nothing stops you any more. Trees, beds, tables, plants, the cabin - you
+       walk over all of it. Working round the scenery a square at a time was the
+       fiddliest part of the garden, and the game underneath is watering things
+       and carrying them about, not navigating a maze.
+
+       Walking onto a plant still waters it, which is the one thing the old wall
+       was carrying: you had to bump into a plant to water it, and now you step
+       onto it instead. */
     const plantId = findPlantAt(targetRow, targetCol);
-    if (plantId) {
-      if (mayWater) waterCheck(targetRow, targetCol, plantId);
-      saveHeroPos();
-      positionHero();
-      lensLook(targetRow, targetCol);
-      return false;
-    }
+    if (plantId && mayWater) waterCheck(targetRow, targetCol, plantId);
 
     const saplingHere = saplings.find(s => s.planted && s.row === targetRow && s.col === targetCol);
-    if (saplingHere && !isSaplingGrown(saplingHere)) {
-      if (mayWater) waterSaplingCheck(targetRow, targetCol, saplingHere);
-      saveHeroPos();
-      positionHero();
-      lensLook(targetRow, targetCol);
-      return false;
-    }
-
-    if (findDecorationAt(targetRow, targetCol)) {
-      saveHeroPos();
-      positionHero();
-      lensLook(targetRow, targetCol);
-      return false;
-    }
-
-    if (cabinSites.some(s => s.complete && s.row === targetRow && s.col === targetCol)) {
-      saveHeroPos();
-      positionHero();
-      lensLook(targetRow, targetCol);
-      return false;
+    if (saplingHere && !isSaplingGrown(saplingHere) && mayWater) {
+      waterSaplingCheck(targetRow, targetCol, saplingHere);
     }
 
     heroPos = { row: targetRow, col: targetCol };
@@ -9712,7 +9706,7 @@ const Garden = (function () {
     reactPetsToHero();
     checkTreatDelivery();
     checkAnimalSounds();
-    lensLook();
+    lensLook(heroPos.row, heroPos.col);
     return true;
   }
 
@@ -9729,10 +9723,26 @@ const Garden = (function () {
     });
   }
 
+  /* Where a carried thing should be set down. You can stand on top of another
+     plant now, so "drop it where I am" would quietly stack two things on one
+     square - which is exactly the bug that used to lose seedlings bought in
+     bulk. Under your feet if that square is free, otherwise the one you are
+     facing, otherwise nowhere and you are told why. */
+  function dropSquare() {
+    if (!cellOccupied(heroPos.row, heroPos.col, true)) return { row: heroPos.row, col: heroPos.col };
+    const [fr, fc] = facingSquare();
+    if (fr >= 0 && fr <= gardenMaxUnlockedRow && fc >= 0 && fc < GARDEN_COLS && !cellOccupied(fr, fc)) {
+      return { row: fr, col: fc };
+    }
+    return null;
+  }
+
   function togglePickup() {
     if (heldPlantId) {
+      const spot = dropSquare();
+      if (!spot) { showThought('No room here'); return; }
       gardenLayout[heldPlantId] = {
-        row: heroPos.row, col: heroPos.col,
+        row: spot.row, col: spot.col,
         variety: heldPlantVariety, potColor: heldPlantPot,
         grown: heldPlantGrown, waterCount: heldPlantWaters
       };   /* no held flag - it is back in the ground */
@@ -9754,10 +9764,12 @@ const Garden = (function () {
     }
 
     if (heldSapling) {
+      const spot = dropSquare();
+      if (!spot) { showThought('No room here'); return; }
       const sapling = saplings.find(s => s.id === heldSapling.id);
       if (sapling) {
-        sapling.row = heroPos.row;
-        sapling.col = heroPos.col;
+        sapling.row = spot.row;
+        sapling.col = spot.col;
         sapling.planted = true;
         sapling.plantedAt = Date.now();
         saveSaplings();
@@ -9829,12 +9841,14 @@ const Garden = (function () {
         }
       }
 
+      const spot = dropSquare();
+      if (!spot) { showThought('No room here'); return; }
       if (heldDecoration.source === 'theme') {
-        movableLayout[heldDecoration.instanceId] = { row: heroPos.row, col: heroPos.col };
+        movableLayout[heldDecoration.instanceId] = { row: spot.row, col: spot.col };
         saveMovableLayout();
       } else if (heldDecoration.source === 'item') {
         const item = purchasedItems.find(p => p.id === heldDecoration.sourceId);
-        if (item) { item.row = heroPos.row; item.col = heroPos.col; }
+        if (item) { item.row = spot.row; item.col = spot.col; }
         savePurchasedItems();
       }
       heldDecoration = null;
@@ -9843,15 +9857,20 @@ const Garden = (function () {
     }
 
     if (heldTreat) {
+      const spot = dropSquare();
+      if (!spot) { showThought('No room here'); return; }
       const idx = pendingTreats.findIndex(t => t.id === heldTreat.id);
-      if (idx !== -1) pendingTreats[idx] = { ...pendingTreats[idx], row: heroPos.row, col: heroPos.col };
+      if (idx !== -1) pendingTreats[idx] = { ...pendingTreats[idx], row: spot.row, col: spot.col };
       heldTreat = null;
       renderGarden();
       return;
     }
 
-    /* Whatever you are looking at comes first, of whatever kind. Only when the
-       square in front is empty do the other three neighbours get a look in. */
+    /* Now that you can walk over things, the square you are standing on comes
+       first - walking onto a plant and pressing E is the obvious move, and it
+       used to be impossible. Then the square you are facing, then the rest. */
+    if (takeFromSquare(heroPos.row, heroPos.col)) return;
+
     const [fr, fc] = facingSquare();
     if (takeFromSquare(fr, fc)) return;
 
@@ -9993,13 +10012,13 @@ const Garden = (function () {
     return variety.name;
   }
 
-  /* The square in front plus the four around it - whatever you have walked up
-     to. The nearest thing wins, and the same thing does not announce itself
-     twice in a row. */
-  function lensLook(facingRow, facingCol) {
+  /* The square you are on plus the four around it - whatever you have walked
+     onto or up to. The nearest thing wins, and the same thing does not announce
+     itself twice in a row. */
+  function lensLook(row, col) {
     if (!hasLens || !lensOn) return;
     const cells = [];
-    if (Number.isFinite(facingRow) && Number.isFinite(facingCol)) cells.push([facingRow, facingCol]);
+    if (Number.isFinite(row) && Number.isFinite(col)) cells.push([row, col]);
     [[-1, 0], [0, 1], [1, 0], [0, -1]].forEach(([dr, dc]) =>
       cells.push([heroPos.row + dr, heroPos.col + dc]));
 
@@ -10941,7 +10960,7 @@ const Garden = (function () {
       cashin: { icon: '\u{1F4B0}', title: 'Cashing in', body: 'Changed your mind about a ' + t.plant + '? Pick it up, then use Cash in at the top of the shop. A seedling gives back the coin it cost; one you have grown is worth two.' },
       coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns gold coins - ' + coinsPerTask() + ' at the moment, because every finished ' + t.build + ' adds one to the rate. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coins go back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
-      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk up to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' and tap Pick up under the ' + t.place.replace(/^the\\s+/i, '') + '. Tap Put down to set it somewhere empty - or Use it, if it is a tool. The box beside the buttons always shows what you are carrying.' : 'Press E next to a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' to pick it up. Press E again to put it down somewhere empty - or use it, if it is a tool. The box beside the plot shows what you are carrying.') },
+      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - nothing blocks you - and tap Pick up. Tap Put down to set it on a free square, or Use it if it is a tool. The box beside the buttons always shows what you are carrying.' : 'Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - nothing blocks you - and press E to pick it up. Standing on it counts first, then whatever you are facing. Press E again to put it down on a free square, or use it if it is a tool. The box beside the plot shows what you are carrying.') },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
       shovel: { icon: W().items.shovel.icon, title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
@@ -11030,11 +11049,12 @@ const Garden = (function () {
 
   function useHintText() {
     if (!phoneControls()) {
-      return 'Press E to pick up whatever you are facing. Press E again to put it'
-        + ' down - or to use it, if it is a tool.';
+      return 'Walk anywhere - nothing is in your way. Press E to pick up whatever'
+        + ' you are standing on or facing, and E again to put it down.';
     }
-    return 'Use the Pick up and Put down buttons under the ' + terms().place.replace(/^the\s+/i, '')
-      + ' - the box beside them shows what you are carrying.';
+    return 'Walk anywhere - nothing is in your way. Pick up and Put down are under the '
+      + terms().place.replace(/^the\s+/i, '')
+      + ', and the box beside them shows what you are carrying.';
   }
 
   /* The hint list, the held-item window and the two buttons all say the same
@@ -13163,6 +13183,8 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-04', items: [
+      'You can now walk over everything - trees, beds, tables, the cabin, your own plants. Nothing blocks you.',
+      'Press E on whatever you are standing on, or whatever you are facing. Walking onto a plant still waters it, and putting something down uses the square under your feet unless it is taken.',
       'The garden never scrolls sideways now. It scales down to fit whatever room it has, so the whole plot is always on screen at once.',
       'The Friends tab only lists people who have actually planted something.',
       "Butterflies now appear the moment you open a friend's garden, already on the plot, instead of drifting in from off the edge half a minute later. Any garden with a plant in it gets at least one - fish, in the reef.",
