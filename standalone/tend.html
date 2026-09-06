@@ -2224,46 +2224,53 @@ body.gated { overflow: hidden; }
 
 .header-top-row .brand-row { margin-bottom: 0; }
 
-/* Due-today and New Task live here now, in the corner beside the account chip,
-   because a sidebar that wraps is no place for the button you press most. */
-.header-actions {
-  margin-left: auto;
+.account-menu { margin-left: auto; position: relative; }
+
+/* Due-today and New Task, on the first line of the page rather than in a
+   sidebar that wraps. Right-aligned, so they sit under the Show Garden button
+   whatever the window is doing. */
+.page-actions {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: 10px;
+  margin-bottom: 16px;
 }
 
-.header-actions .new-task-btn-row { margin: 0; }
+.page-actions .new-task-btn-row { margin: 0; }
 
 .due-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: var(--header-chip);
-  border: 1px solid var(--header-chip-line);
-  color: var(--header-text);
-  padding: 5px 12px;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 14px;
   border-radius: 999px;
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.due-chip:hover { background: var(--header-chip-hover); }
+.due-chip:hover { border-color: var(--accent); }
 
 .due-chip-count { font-weight: 700; font-variant-numeric: tabular-nums; }
-.due-chip-label { color: var(--header-dim); }
-.due-chip.has-due .due-chip-count { color: #ffd479; }
-.due-chip.has-overdue .due-chip-count { color: #ff9c9c; }
+.due-chip-label { color: var(--muted); }
+
+.due-chip.has-due { border-color: #f0d49a; background: #fdf6e7; }
+.due-chip.has-due .due-chip-count { color: var(--series-over); }
+
+.due-chip.has-overdue { border-color: #f3c9d1; background: #fdf0f2; }
+.due-chip.has-overdue .due-chip-count { color: var(--danger); }
+
 .due-chip-late {
-  color: #ff9c9c;
+  color: var(--danger);
   font-weight: 600;
-  border-left: 1px solid var(--header-chip-line);
+  border-left: 1px solid rgba(31, 36, 48, 0.14);
   padding-left: 8px;
 }
-
-.account-menu { position: relative; }
 
 .account-btn {
   display: flex;
@@ -4205,20 +4212,9 @@ li.task[draggable="false"] { cursor: pointer; }
   <div class="header-top-row">
     <div class="brand-row" id="header-brand"></div>
     <span class="sync-badge" id="sync-badge"><span class="sync-dot"></span></span>
-    <!-- The two things you reach for most, kept in the corner at every width.
-         They used to live in the sidebar, which drops under the task list on a
-         narrow window with the garden open - so the button you press most was
-         the furthest thing down the page. -->
-    <div class="header-actions">
-      <button class="due-chip" id="due-today-btn" onclick="App.showDueToday()"
-              title="What is due today"></button>
-      <div class="new-task-btn-row">
-        <button class="new-task-btn" onclick="App.openNewTaskModal()">+ New Task</button>
-      </div>
-      <div class="account-menu">
-        <button class="account-btn" id="account-btn" onclick="App.toggleAccountMenu(event)"></button>
-        <div class="account-dropdown" id="account-dropdown" hidden></div>
-      </div>
+    <div class="account-menu">
+      <button class="account-btn" id="account-btn" onclick="App.toggleAccountMenu(event)"></button>
+      <div class="account-dropdown" id="account-dropdown" hidden></div>
     </div>
   </div>
   <h1 id="page-title">Tasks</h1>
@@ -4243,6 +4239,19 @@ li.task[draggable="false"] { cursor: pointer; }
 </header>
 
 <main>
+
+<!-- The two things reached for most, on the first line of the page under the
+     tab row, right-aligned beneath the Show Garden button. They used to sit in
+     a sidebar, which wrapped under the task list on a narrow window with the
+     garden open - so the button pressed most was the furthest thing down. -->
+<div class="page-actions">
+  <button class="due-chip" id="due-today-btn" onclick="App.showDueToday()"
+          title="What is due today"></button>
+  <div class="new-task-btn-row">
+    <button class="new-task-btn" onclick="App.openNewTaskModal()">+ New Task</button>
+  </div>
+</div>
+
 <div class="app-layout">
 
 <div class="garden-col">
@@ -13161,7 +13170,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-05', items: [
-      'Due today and + New Task now sit in the top corner of every page, so they are there whatever the window is doing. The sidebar they used to live in is gone, and the tasks and the calendar have its width.',
+      'Due today and + New Task now sit on the first line of every page, over on the right under the Show Garden button, so they are there whatever the window is doing. The sidebar they used to live in is gone, and the tasks and the calendar have its width.',
       'You can walk over the plants you buy - and only those. Trees, saplings, beds of scenery, tables and a finished cabin stop you again.',
     ] },
     { date: '2026-09-04', items: [

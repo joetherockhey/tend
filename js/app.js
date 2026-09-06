@@ -1993,7 +1993,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-05', items: [
-      'Due today and + New Task now sit in the top corner of every page, so they are there whatever the window is doing. The sidebar they used to live in is gone, and the tasks and the calendar have its width.',
+      'Due today and + New Task now sit on the first line of every page, over on the right under the Show Garden button, so they are there whatever the window is doing. The sidebar they used to live in is gone, and the tasks and the calendar have its width.',
       'You can walk over the plants you buy - and only those. Trees, saplings, beds of scenery, tables and a finished cabin stop you again.',
     ] },
     { date: '2026-09-04', items: [
