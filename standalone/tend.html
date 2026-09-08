@@ -3712,38 +3712,39 @@ html[data-mode="phone"] .cat-toggle button { white-space: nowrap; flex: none; }
 
 #category-sections { display: block; }
 
-/* Newspaper columns, not a grid.
+/* Packed columns, not a grid and no longer CSS multi-column.
 
    A grid lines every category up on a row, so one tall category leaves a hole
-   beside it the height of the difference - four tasks under Projects meant an
-   empty half-column under Uni. In columns each category starts wherever the one
-   above it finished, and the browser picks the split that balances the columns.
-   The order is preserved: it reads down the first column, then down the next,
-   which is also the order the categories are ranked in.
+   beside it the height of the difference. CSS columns were the next answer and
+   left a worse one: a break can only fall between two categories, so the column
+   is at least as tall as the tallest single category, and anything that will not
+   fit in what is left of a column jumps to the next one - a one-task category
+   ranked first sat alone at the top of a 640px column.
 
-   Nothing can span a CSS column, which is why the full-width blocks - Priority,
-   the date buckets, the empty state - are rendered in .cat-wide above this
-   rather than inside it. */
+   So these are real columns, each a flex child of the row, and
+   `packCategoryColumns()` puts each category into whichever is shortest at the
+   time. flex: 1 1 0 with min-width: 0 means every column is exactly its share
+   of the row whatever is in it, which is what makes measuring a block in one
+   column tell you its height in any of them. The gaps here have twins in that
+   function - CAT_COL_GAP and CAT_BLOCK_GAP - so change them together.
+
+   The full-width blocks - the date buckets, the empty state - are rendered in
+   .cat-wide above this rather than inside it. */
 .cat-columns {
-  column-width: 310px;
-  column-gap: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
 }
 
-.cat-columns > .list-section {
-  /* Without this a category can be sliced in half across a column break. */
-  break-inside: avoid;
-  page-break-inside: avoid;
-  margin: 0 0 20px;
+.cat-col {
+  flex: 1 1 0;
+  min-width: 0;
 }
+
+.cat-col > .list-section { margin: 0 0 20px; }
+.cat-col > .list-section:last-child { margin-bottom: 0; }
 
 .cat-wide > .list-section { margin-bottom: 20px; }
-
-/* One column on a phone. This has to sit after the rule above, not up with the
-   other small-screen rules, or the later declaration wins and a 390px screen
-   gets two columns. */
-@media (max-width: 900px) {
-  .cat-columns { column-width: auto; column-count: 1; }
-}
 
 /* Kept for the full-width blocks, which are still laid out as blocks. */
 .cat-section-wide { width: 100%; }
@@ -12266,8 +12267,13 @@ const App = (function () {
     const host = document.getElementById('category-sections');
     if (!host) return;
 
+    /* data-cat-order is the ranking. Packing reads the blocks back out of the
+       columns it made last time, and their DOM order by then is column order,
+       not ranking order - re-packing off that walks the layout away from the
+       ranking a little more every time. */
     const section = (headHtml, list, opts) =>
-      `<section class="list-section${opts && opts.wide ? ' cat-section-wide' : ''}">
+      `<section class="list-section${opts && opts.wide ? ' cat-section-wide' : ''}"${
+        opts && opts.order != null ? ` data-cat-order="${opts.order}"` : ''}>
         <div class="cat-section-head">${headHtml}</div>
         <ul class="task-list">${list.map(t => renderTaskItem(t, opts)).join('')}</ul>
       </section>`;
@@ -12281,15 +12287,80 @@ const App = (function () {
       return;
     }
 
-    const blocks = groups.map(g => {
+    const blocks = groups.map((g, i) => {
       /* Inside a category's own group, repeating that category on every row is
          the noise this view exists to remove. Starred tasks still rise to the
          top of their own category - the star has not gone anywhere, only the
          view that pulled them all out into a block of their own. */
       const sorted = g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
-      return section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true });
+      return section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true, order: i });
     });
     host.innerHTML = `<div class="cat-columns">${blocks.join('')}</div>`;
+    packCategoryColumns();
+  }
+
+  /* ---------------------------------------------------------------
+     Packing the category columns.
+
+     CSS multi-column was the previous answer and it left exactly the hole it
+     was meant to fix. A column break can only happen between two blocks, so
+     the column height is at least the tallest single category - and once the
+     first column is that tall, a category that does not fit in what is left of
+     it moves to the next column and the remainder is dead space. Joe ranked Uni
+     first with one task and Projects second with ten: Uni sat alone at the top
+     of a 640px column.
+
+     So the blocks are packed by hand instead: each category, in the order they
+     are ranked, goes into whichever column is shortest at that moment. No holes
+     at any ranking, and the highest-ranked category is still top-left.
+     --------------------------------------------------------------- */
+
+  const CAT_COL_MIN = 310;   /* narrower than this and a task row is unreadable */
+  const CAT_COL_GAP = 24;    /* must match .cat-columns' gap */
+  const CAT_COL_MAX = 3;
+  const CAT_BLOCK_GAP = 20;  /* must match .cat-col > .list-section's margin */
+
+  function packCategoryColumns() {
+    const wrap = document.querySelector('#category-sections .cat-columns');
+    if (!wrap) return;
+
+    const blocks = Array.from(wrap.querySelectorAll('.list-section'))
+      .sort((a, b) => (+a.dataset.catOrder || 0) - (+b.dataset.catOrder || 0));
+    if (!blocks.length) return;
+
+    const width = wrap.clientWidth;
+    /* Hidden - another section is open, or this one has not been laid out yet.
+       Everything goes in one column and switchView packs it again when it is
+       actually on screen and has a width to divide. */
+    let cols = 1;
+    if (width > 0) {
+      cols = Math.floor((width + CAT_COL_GAP) / (CAT_COL_MIN + CAT_COL_GAP));
+      cols = Math.max(1, Math.min(CAT_COL_MAX, cols, blocks.length));
+    }
+
+    const columns = [];
+    wrap.innerHTML = '';
+    for (let i = 0; i < cols; i++) {
+      const col = document.createElement('div');
+      col.className = 'cat-col';
+      wrap.appendChild(col);
+      columns.push(col);
+    }
+
+    /* Measured inside a real column, so the height is the height it will have:
+       the columns are flex: 1 1 0 with min-width: 0, so each is exactly its
+       share of the row whatever is in it. One write, then one read of every
+       height, then the moves - rather than a reflow per block. */
+    blocks.forEach(b => columns[0].appendChild(b));
+    const heights = blocks.map(b => b.offsetHeight);
+
+    const used = columns.map(() => 0);
+    blocks.forEach((b, i) => {
+      let shortest = 0;
+      for (let c = 1; c < cols; c++) if (used[c] < used[shortest]) shortest = c;
+      columns[shortest].appendChild(b);
+      used[shortest] += heights[i] + CAT_BLOCK_GAP;
+    });
   }
 
   /* The same rows again, gathered by when they are due rather than by what
@@ -12645,6 +12716,9 @@ const App = (function () {
   /* The window can be resized across the threshold at any moment. */
   const onResize = Util.debounce(function () {
     if (viewModePref() === 'auto') applyLayoutMode();
+    /* A new width can mean a different number of columns, and even at the same
+       number the blocks are a different height once titles rewrap. */
+    packCategoryColumns();
     /* Even when the mode has not changed, the column has a new width and the
        plot has to be rescaled to it. */
     if (hasGarden() && Garden.refit) Garden.refit();
@@ -12707,6 +12781,10 @@ const App = (function () {
        every section wants - so the toggle is hidden rather than the row. */
     const listToolbar = document.getElementById('list-toolbar');
     if (listToolbar) listToolbar.hidden = view !== 'list';
+
+    /* Packed while the list was hidden, the columns had no width to divide, so
+       everything went into one. Now it has one. */
+    if (view === 'list') packCategoryColumns();
 
     if (view === 'calendar') renderCalendar();
     if (view === 'overview') renderOverview();

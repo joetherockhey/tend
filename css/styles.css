@@ -3712,38 +3712,39 @@ html[data-mode="phone"] .cat-toggle button { white-space: nowrap; flex: none; }
 
 #category-sections { display: block; }
 
-/* Newspaper columns, not a grid.
+/* Packed columns, not a grid and no longer CSS multi-column.
 
    A grid lines every category up on a row, so one tall category leaves a hole
-   beside it the height of the difference - four tasks under Projects meant an
-   empty half-column under Uni. In columns each category starts wherever the one
-   above it finished, and the browser picks the split that balances the columns.
-   The order is preserved: it reads down the first column, then down the next,
-   which is also the order the categories are ranked in.
+   beside it the height of the difference. CSS columns were the next answer and
+   left a worse one: a break can only fall between two categories, so the column
+   is at least as tall as the tallest single category, and anything that will not
+   fit in what is left of a column jumps to the next one - a one-task category
+   ranked first sat alone at the top of a 640px column.
 
-   Nothing can span a CSS column, which is why the full-width blocks - Priority,
-   the date buckets, the empty state - are rendered in .cat-wide above this
-   rather than inside it. */
+   So these are real columns, each a flex child of the row, and
+   `packCategoryColumns()` puts each category into whichever is shortest at the
+   time. flex: 1 1 0 with min-width: 0 means every column is exactly its share
+   of the row whatever is in it, which is what makes measuring a block in one
+   column tell you its height in any of them. The gaps here have twins in that
+   function - CAT_COL_GAP and CAT_BLOCK_GAP - so change them together.
+
+   The full-width blocks - the date buckets, the empty state - are rendered in
+   .cat-wide above this rather than inside it. */
 .cat-columns {
-  column-width: 310px;
-  column-gap: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
 }
 
-.cat-columns > .list-section {
-  /* Without this a category can be sliced in half across a column break. */
-  break-inside: avoid;
-  page-break-inside: avoid;
-  margin: 0 0 20px;
+.cat-col {
+  flex: 1 1 0;
+  min-width: 0;
 }
+
+.cat-col > .list-section { margin: 0 0 20px; }
+.cat-col > .list-section:last-child { margin-bottom: 0; }
 
 .cat-wide > .list-section { margin-bottom: 20px; }
-
-/* One column on a phone. This has to sit after the rule above, not up with the
-   other small-screen rules, or the later declaration wins and a 390px screen
-   gets two columns. */
-@media (max-width: 900px) {
-  .cat-columns { column-width: auto; column-count: 1; }
-}
 
 /* Kept for the full-width blocks, which are still laid out as blocks. */
 .cat-section-wide { width: 100%; }

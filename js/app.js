@@ -1044,8 +1044,13 @@ const App = (function () {
     const host = document.getElementById('category-sections');
     if (!host) return;
 
+    /* data-cat-order is the ranking. Packing reads the blocks back out of the
+       columns it made last time, and their DOM order by then is column order,
+       not ranking order - re-packing off that walks the layout away from the
+       ranking a little more every time. */
     const section = (headHtml, list, opts) =>
-      `<section class="list-section${opts && opts.wide ? ' cat-section-wide' : ''}">
+      `<section class="list-section${opts && opts.wide ? ' cat-section-wide' : ''}"${
+        opts && opts.order != null ? ` data-cat-order="${opts.order}"` : ''}>
         <div class="cat-section-head">${headHtml}</div>
         <ul class="task-list">${list.map(t => renderTaskItem(t, opts)).join('')}</ul>
       </section>`;
@@ -1059,15 +1064,80 @@ const App = (function () {
       return;
     }
 
-    const blocks = groups.map(g => {
+    const blocks = groups.map((g, i) => {
       /* Inside a category's own group, repeating that category on every row is
          the noise this view exists to remove. Starred tasks still rise to the
          top of their own category - the star has not gone anywhere, only the
          view that pulled them all out into a block of their own. */
       const sorted = g.list.slice().sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
-      return section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true });
+      return section(categoryPill(g.name, g.color), sorted, { hideCategory: true, noDrag: true, order: i });
     });
     host.innerHTML = `<div class="cat-columns">${blocks.join('')}</div>`;
+    packCategoryColumns();
+  }
+
+  /* ---------------------------------------------------------------
+     Packing the category columns.
+
+     CSS multi-column was the previous answer and it left exactly the hole it
+     was meant to fix. A column break can only happen between two blocks, so
+     the column height is at least the tallest single category - and once the
+     first column is that tall, a category that does not fit in what is left of
+     it moves to the next column and the remainder is dead space. Joe ranked Uni
+     first with one task and Projects second with ten: Uni sat alone at the top
+     of a 640px column.
+
+     So the blocks are packed by hand instead: each category, in the order they
+     are ranked, goes into whichever column is shortest at that moment. No holes
+     at any ranking, and the highest-ranked category is still top-left.
+     --------------------------------------------------------------- */
+
+  const CAT_COL_MIN = 310;   /* narrower than this and a task row is unreadable */
+  const CAT_COL_GAP = 24;    /* must match .cat-columns' gap */
+  const CAT_COL_MAX = 3;
+  const CAT_BLOCK_GAP = 20;  /* must match .cat-col > .list-section's margin */
+
+  function packCategoryColumns() {
+    const wrap = document.querySelector('#category-sections .cat-columns');
+    if (!wrap) return;
+
+    const blocks = Array.from(wrap.querySelectorAll('.list-section'))
+      .sort((a, b) => (+a.dataset.catOrder || 0) - (+b.dataset.catOrder || 0));
+    if (!blocks.length) return;
+
+    const width = wrap.clientWidth;
+    /* Hidden - another section is open, or this one has not been laid out yet.
+       Everything goes in one column and switchView packs it again when it is
+       actually on screen and has a width to divide. */
+    let cols = 1;
+    if (width > 0) {
+      cols = Math.floor((width + CAT_COL_GAP) / (CAT_COL_MIN + CAT_COL_GAP));
+      cols = Math.max(1, Math.min(CAT_COL_MAX, cols, blocks.length));
+    }
+
+    const columns = [];
+    wrap.innerHTML = '';
+    for (let i = 0; i < cols; i++) {
+      const col = document.createElement('div');
+      col.className = 'cat-col';
+      wrap.appendChild(col);
+      columns.push(col);
+    }
+
+    /* Measured inside a real column, so the height is the height it will have:
+       the columns are flex: 1 1 0 with min-width: 0, so each is exactly its
+       share of the row whatever is in it. One write, then one read of every
+       height, then the moves - rather than a reflow per block. */
+    blocks.forEach(b => columns[0].appendChild(b));
+    const heights = blocks.map(b => b.offsetHeight);
+
+    const used = columns.map(() => 0);
+    blocks.forEach((b, i) => {
+      let shortest = 0;
+      for (let c = 1; c < cols; c++) if (used[c] < used[shortest]) shortest = c;
+      columns[shortest].appendChild(b);
+      used[shortest] += heights[i] + CAT_BLOCK_GAP;
+    });
   }
 
   /* The same rows again, gathered by when they are due rather than by what
@@ -1423,6 +1493,9 @@ const App = (function () {
   /* The window can be resized across the threshold at any moment. */
   const onResize = Util.debounce(function () {
     if (viewModePref() === 'auto') applyLayoutMode();
+    /* A new width can mean a different number of columns, and even at the same
+       number the blocks are a different height once titles rewrap. */
+    packCategoryColumns();
     /* Even when the mode has not changed, the column has a new width and the
        plot has to be rescaled to it. */
     if (hasGarden() && Garden.refit) Garden.refit();
@@ -1485,6 +1558,10 @@ const App = (function () {
        every section wants - so the toggle is hidden rather than the row. */
     const listToolbar = document.getElementById('list-toolbar');
     if (listToolbar) listToolbar.hidden = view !== 'list';
+
+    /* Packed while the list was hidden, the columns had no width to divide, so
+       everything went into one. Now it has one. */
+    if (view === 'list') packCategoryColumns();
 
     if (view === 'calendar') renderCalendar();
     if (view === 'overview') renderOverview();
