@@ -344,6 +344,7 @@ const App = (function () {
     const catOtherInput = document.getElementById('new-task-category-other');
     const priorityCheckbox = document.getElementById('new-task-priority');
     const dueDateInput = document.getElementById('new-task-duedate');
+    const repeatSelect = document.getElementById('new-task-repeat');
 
     const title = input.value.trim();
     if (!title) return;
@@ -357,8 +358,9 @@ const App = (function () {
       populateCategorySelects();
     }
 
+    const newId = Util.uid();
     tickets().unshift({
-      id: Util.uid(),
+      id: newId,
       title: title,
       notes: notesInput.value.trim(),
       category: category,
@@ -369,6 +371,7 @@ const App = (function () {
       completedAt: null,
       subtasks: readSubtaskEditor('new-subtasks')
     });
+    setRepeat(newId, repeatSelect ? repeatSelect.value : '');
 
     input.value = '';
     notesInput.value = '';
@@ -376,6 +379,7 @@ const App = (function () {
     catOtherInput.value = '';
     priorityCheckbox.checked = false;
     dueDateInput.value = '';
+    if (repeatSelect) repeatSelect.value = '';
     renderSubtaskEditor('new-subtasks', []);
     onCategoryChange();
     closeNewTaskModal();
@@ -456,6 +460,8 @@ const App = (function () {
     const nowCompleting = !t.completedAt;
     snapshot(nowCompleting ? 'finishing "' + t.title + '"' : 'un-ticking "' + t.title + '"');
     t.completedAt = t.completedAt ? null : Util.todayStr();
+    /* A repeating task hands over to its next copy here. */
+    const spawned = nowCompleting ? spawnRepeat(t) : (unspawnRepeat(t), null);
     Store.saveTickets();
     if (nowCompleting) {
       /* A coin has just been earned, so it sounds like one. */
@@ -467,7 +473,7 @@ const App = (function () {
     }
     renderAll();
     /* After the render, so the counter it flies to is the new one. */
-    if (nowCompleting) rewardEarned(elm);
+    if (nowCompleting) rewardEarned(elm, spawned);
   }
 
   /* The coin was the quietest thing on the screen: a sound, and a number
@@ -505,12 +511,20 @@ const App = (function () {
     setTimeout(() => coin.remove(), 900);
   }
 
-  function rewardEarned(fromEl) {
+  function rewardEarned(fromEl, spawned) {
     if (!hasGarden()) return;
     const n = (Garden.coinsPerTask ? Garden.coinsPerTask() : 1);
     flyCoin(fromEl, coinTarget());
+    const coins = '+' + n + (n === 1 ? ' coin' : ' coins');
+    /* There is one toast, so a repeat says when it is back instead of the
+       what-a-coin-buys hint - the hint is the same every time, the date is
+       the news. */
+    if (spawned) {
+      showToast(coins + ' \u00B7 \u21BB back on ' + Util.formatDate(spawned.dueDate));
+      return;
+    }
     const hint = Garden.coinHint ? Garden.coinHint() : '';
-    showToast('+' + n + (n === 1 ? ' coin' : ' coins') + (hint ? ' \u2014 ' + hint : ''));
+    showToast(coins + (hint ? ' \u2014 ' + hint : ''));
   }
 
   function togglePriority(id) {
@@ -546,9 +560,171 @@ const App = (function () {
     const list = tickets();
     const i = list.findIndex(x => x.id === id);
     if (i !== -1) list.splice(i, 1);
+    forgetRepeat(id);
     Store.saveTickets();
     renderAll();
     showUndoToast('Deleted \u201c' + t.title + '\u201d');
+  }
+
+  /* ---------------------------------------------------------------
+     Repeats. A task can come round every day, week or month.
+
+     Ticking one completes today's copy - it keeps its coin and its place in
+     the history - and puts a fresh copy in the list due on the next date.
+     Rolling the same task forward instead would have meant special-casing the
+     coin ledger: `coins-awarded-v1` is a set of task ids that have paid out,
+     so an id that never stays completed can never pay twice, and minting
+     around it is exactly the kind of thing that used to eat Joe's coins.
+
+     The rule lives in the synced key/value bag, not on the ticket row.
+     `tickets` is a real table: a `repeat` column would be a migration to run
+     before anything worked, and an upsert naming a column the server does not
+     have fails the whole push, taking every other edit with it. The bag needs
+     no migration and travels with the account either way.
+     --------------------------------------------------------------- */
+
+  const REPEAT_KEY = 'task-repeat-v1';        /* { taskId: rule } */
+  const REPEAT_CHILD_KEY = 'task-repeat-child-v1';  /* { parentId: childId } */
+
+  const REPEAT_RULES = ['daily', 'weekly', 'monthly'];
+  const REPEAT_LABEL = { daily: 'Every day', weekly: 'Every week', monthly: 'Every month' };
+  const REPEAT_SHORT = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
+
+  function readMap(key) {
+    try {
+      const raw = Store.kv.getItem(key);
+      const obj = raw ? JSON.parse(raw) : null;
+      return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function writeMap(key, obj) {
+    Store.kv.setItem(key, JSON.stringify(obj));
+  }
+
+  /* Anything not one of the three rules reads as "does not repeat", so a value
+     from a newer build - or a half-written one - can never spawn something
+     nobody asked for. */
+  function repeatOf(id) {
+    const rule = readMap(REPEAT_KEY)[id];
+    return REPEAT_RULES.indexOf(rule) === -1 ? '' : rule;
+  }
+
+  function setRepeat(id, rule) {
+    const map = readMap(REPEAT_KEY);
+    if (REPEAT_RULES.indexOf(rule) === -1) {
+      if (!(id in map)) return;
+      delete map[id];
+    } else {
+      if (map[id] === rule) return;
+      map[id] = rule;
+    }
+    writeMap(REPEAT_KEY, map);
+  }
+
+  /* The next date, counted from the one it was due - or from today when it has
+     no date, since "every week" has to start somewhere. A monthly repeat keeps
+     its day of the month and clamps: the 31st of January comes round on the
+     28th of February, not the 3rd of March. */
+  function nextRepeatDate(from, rule) {
+    const iso = Util.toIsoDate(from) || Util.todayStr();
+    const [y, m, d] = iso.split('-').map(Number);
+    if (rule === 'monthly') {
+      const targetMonth = m === 12 ? 0 : m;
+      const targetYear = m === 12 ? y + 1 : y;
+      const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+      return Util.dateToStr(new Date(targetYear, targetMonth, Math.min(d, lastDay)));
+    }
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + (rule === 'weekly' ? 7 : 1));
+    return Util.dateToStr(dt);
+  }
+
+  /* Called the moment a task is ticked. Returns the new task, or null. */
+  function spawnRepeat(t) {
+    const rule = repeatOf(t.id);
+    if (!rule) return null;
+
+    /* Un-ticking and re-ticking must not mint a second copy. */
+    const children = readMap(REPEAT_CHILD_KEY);
+    const existing = children[t.id];
+    if (existing && tickets().some(x => x.id === existing)) return null;
+
+    const child = {
+      id: Util.uid(),
+      title: t.title,
+      notes: t.notes || '',
+      category: t.category || '',
+      priority: !!t.priority,
+      archived: false,
+      dueDate: nextRepeatDate(t.dueDate, rule),
+      createdAt: Util.todayStr(),
+      completedAt: null,
+      /* The steps come with it, unticked - a checklist you work through every
+         week is the whole point of putting one on a repeating task. */
+      subtasks: subtasksOf(t).map(sub => ({ title: sub.title, done: false }))
+    };
+
+    tickets().unshift(child);
+    setRepeat(child.id, rule);
+    children[t.id] = child.id;
+    writeMap(REPEAT_CHILD_KEY, children);
+    return child;
+  }
+
+  /* Un-ticking takes the copy back, so long as it is still untouched. Once it
+     has been completed in its own right it is somebody's finished work and
+     stays. */
+  function unspawnRepeat(t) {
+    const children = readMap(REPEAT_CHILD_KEY);
+    const childId = children[t.id];
+    if (!childId) return false;
+
+    const list = tickets();
+    const i = list.findIndex(x => x.id === childId);
+    if (i !== -1) {
+      if (list[i].completedAt) return false;
+      list.splice(i, 1);
+      setRepeat(childId, '');
+    }
+    delete children[t.id];
+    writeMap(REPEAT_CHILD_KEY, children);
+    return true;
+  }
+
+  function forgetRepeat(id) {
+    setRepeat(id, '');
+    const children = readMap(REPEAT_CHILD_KEY);
+    if (id in children) {
+      delete children[id];
+      writeMap(REPEAT_CHILD_KEY, children);
+    }
+  }
+
+  /* Both maps are keyed by task id, so a deleted task would leave an entry
+     behind for ever. Swept once on boot rather than tracked, which also
+     tidies up after a task deleted on another device. */
+  function pruneRepeats() {
+    const live = {};
+    tickets().forEach(t => { live[t.id] = true; });
+
+    const rules = readMap(REPEAT_KEY);
+    let changed = false;
+    Object.keys(rules).forEach(id => { if (!live[id]) { delete rules[id]; changed = true; } });
+    if (changed) writeMap(REPEAT_KEY, rules);
+
+    const children = readMap(REPEAT_CHILD_KEY);
+    let childChanged = false;
+    Object.keys(children).forEach(id => {
+      if (!live[id] || !live[children[id]]) { delete children[id]; childChanged = true; }
+    });
+    if (childChanged) writeMap(REPEAT_CHILD_KEY, children);
+  }
+
+  function repeatSelectHtml() {
+    return REPEAT_RULES.map(r => `<option value="${r}">${REPEAT_LABEL[r]}</option>`).join('');
   }
 
   /* ---------------------------------------------------------------
@@ -981,6 +1157,10 @@ const App = (function () {
       const overdue = !done && t.dueDate < Util.todayStr();
       tags.push(`<span class="tag ${overdue ? 'overdue' : ''}">Due ${Util.formatDate(t.dueDate)}${overdue ? ' (overdue)' : ''}</span>`);
     }
+    const rule = repeatOf(t.id);
+    if (rule) {
+      tags.push(`<span class="tag repeat-tag" title="${REPEAT_LABEL[rule]}">&#8635; ${REPEAT_SHORT[rule]}</span>`);
+    }
     const tagsHtml = tags.length ? `<div class="task-tags">${tags.join('')}</div>` : '';
     const borderStyle = t.category ? ` style="border-left-color:${catColor}"` : '';
 
@@ -1300,6 +1480,11 @@ const App = (function () {
     /* There is nothing to search outside the task list. */
     const search = document.getElementById('nav-search');
     if (search) search.hidden = view !== 'list';
+
+    /* The grouping toggle shares its line with Due today and New Task, which
+       every section wants - so the toggle is hidden rather than the row. */
+    const listToolbar = document.getElementById('list-toolbar');
+    if (listToolbar) listToolbar.hidden = view !== 'list';
 
     if (view === 'calendar') renderCalendar();
     if (view === 'overview') renderOverview();
@@ -1655,6 +1840,11 @@ const App = (function () {
     if (t.category) {
       rows.push(detailRow('Category', categoryPill(t.category, categoryColor(t.category))));
     }
+    const detailRule = repeatOf(t.id);
+    if (detailRule) {
+      rows.push(detailRow('Repeats', REPEAT_LABEL[detailRule]
+        + (done ? '' : ' &middot; the next one appears when you tick this off')));
+    }
     const dp = subtaskProgress(t);
     if (dp.total) {
       rows.push(detailRow('Steps', `${dp.done} of ${dp.total} done<ul class="detail-subtasks">${
@@ -1688,6 +1878,8 @@ const App = (function () {
     document.getElementById('edit-task-notes').value = t.notes || '';
     document.getElementById('edit-task-priority').checked = !!t.priority;
     document.getElementById('edit-task-duedate').value = t.dueDate || '';
+    const editRepeat = document.getElementById('edit-task-repeat');
+    if (editRepeat) editRepeat.value = repeatOf(t.id);
 
     const sel = document.getElementById('edit-task-category');
     const known = categories().map(c => c.name);
@@ -1728,6 +1920,8 @@ const App = (function () {
     t.priority = document.getElementById('edit-task-priority').checked;
     t.dueDate = document.getElementById('edit-task-duedate').value || null;
     t.subtasks = readSubtaskEditor('edit-subtasks');
+    const editRepeatSel = document.getElementById('edit-task-repeat');
+    if (editRepeatSel) setRepeat(t.id, editRepeatSel.value);
 
     Store.saveTickets();
     renderAll();
@@ -1993,7 +2187,8 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-05', items: [
-      'Due today and + New Task now sit on the first line of every page, over on the right under the Show Garden button, so they are there whatever the window is doing. The sidebar they used to live in is gone, and the tasks and the calendar have its width.',
+      'Tasks can repeat. Choose every day, week or month when you make one - tick it off and the next one appears straight away, due on the next date, with its steps unticked and its coin already earned.',
+      'Due today and + New Task now sit at the top right of every section, sharing a line with the group-by buttons, so they are there whatever the window is doing. The sidebar they used to live in is gone, and the tasks and the calendar have its width.',
       'You can walk over the plants you buy - and only those. Trees, saplings, beds of scenery, tables and a finished cabin stop you again.',
     ] },
     { date: '2026-09-04', items: [
@@ -2845,6 +3040,7 @@ const App = (function () {
 
     renderHeader();
     Garden.loadAll();   /* hydrate the garden before anything renders or saves it */
+    pruneRepeats();
     seedFirstRun();
     renderAll();
     Garden.start();

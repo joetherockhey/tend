@@ -66,19 +66,6 @@
 </header>
 
 <main>
-
-<!-- The two things reached for most, on the first line of the page under the
-     tab row, right-aligned beneath the Show Garden button. They used to sit in
-     a sidebar, which wrapped under the task list on a narrow window with the
-     garden open - so the button pressed most was the furthest thing down. -->
-<div class="page-actions">
-  <button class="due-chip" id="due-today-btn" onclick="App.showDueToday()"
-          title="What is due today"></button>
-  <div class="new-task-btn-row">
-    <button class="new-task-btn" onclick="App.openNewTaskModal()">+ New Task</button>
-  </div>
-</div>
-
 <div class="app-layout">
 
 <div class="garden-col">
@@ -155,10 +142,24 @@
 
 <div class="content-col">
 
-  <div id="view-list" class="view active">
-    <div class="list-toolbar">
+  <!-- The section's first line: what to group the list by on the left, and the
+       two things reached for most on the right. They used to sit in a sidebar,
+       which wrapped under the task list on a narrow window with the garden
+       open - so the button pressed most was the furthest thing down. -->
+  <div class="page-actions">
+    <div class="list-toolbar" id="list-toolbar">
       <div class="cat-toggle" id="list-group-toggle"></div>
     </div>
+    <div class="page-actions-end">
+      <button class="due-chip" id="due-today-btn" onclick="App.showDueToday()"
+              title="What is due today"></button>
+      <div class="new-task-btn-row">
+        <button class="new-task-btn" onclick="App.openNewTaskModal()">+ New Task</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-list" class="view active">
 
     <div class="active-priority-grid" id="status-sections">
       <section class="list-section">
@@ -284,6 +285,16 @@
       </div>
 
       <div class="field-row">
+        <label class="field-label" for="edit-task-repeat">Does it repeat?</label>
+        <select id="edit-task-repeat">
+          <option value="">Doesn't repeat</option>
+          <option value="daily">Every day</option>
+          <option value="weekly">Every week</option>
+          <option value="monthly">Every month</option>
+        </select>
+      </div>
+
+      <div class="field-row">
         <label class="field-label">Steps</label>
         <div class="subtask-editor" id="edit-subtasks"></div>
       </div>
@@ -324,6 +335,16 @@
       <div class="field-row">
         <label class="field-label" for="new-task-duedate">When does it need to be done by?</label>
         <input type="date" id="new-task-duedate">
+      </div>
+
+      <div class="field-row">
+        <label class="field-label" for="new-task-repeat">Does it repeat?</label>
+        <select id="new-task-repeat">
+          <option value="">Doesn't repeat</option>
+          <option value="daily">Every day</option>
+          <option value="weekly">Every week</option>
+          <option value="monthly">Every month</option>
+        </select>
       </div>
 
       <div class="field-row">

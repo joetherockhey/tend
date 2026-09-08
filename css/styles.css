@@ -2211,18 +2211,32 @@ body.gated { overflow: hidden; }
 
 .account-menu { margin-left: auto; position: relative; }
 
-/* Due-today and New Task, on the first line of the page rather than in a
-   sidebar that wraps. Right-aligned, so they sit under the Show Garden button
-   whatever the window is doing. */
+/* The section's first line, rather than a sidebar that wraps: the list's
+   grouping toggle on the left and Due today / New Task on the right, on one
+   line. It is the first child of the content column, so its right edge is the
+   page's right edge and its left edge lines up with the task list.
+
+   It wraps rather than squeezing - on a phone the grouping toggle is already
+   scrolling sideways to fit four labels, so there is nothing left to give. */
 .page-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.page-actions-end {
+  display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-left: auto;
 }
 
 .page-actions .new-task-btn-row { margin: 0; }
+.page-actions .list-toolbar { margin: 0; min-width: 0; }
+.page-actions .list-toolbar .cat-toggle { margin-bottom: 0; }
 
 .due-chip {
   display: inline-flex;
@@ -2877,6 +2891,14 @@ body.gated { overflow: hidden; }
 }
 
 .tag.subtask-tag:hover { border-color: var(--accent); color: var(--accent); }
+
+/* A repeating task, on the row and in the day modal. Quiet - the date beside
+   it is the thing being read; this only says the date will come round again. */
+.tag.repeat-tag {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
 .tag.subtask-tag.all-done { color: var(--green); border-color: #b8e6d4; background: var(--green-soft); }
 
 .subtask-list {
@@ -3676,6 +3698,8 @@ html[data-mode="phone"] .cat-toggle button { white-space: nowrap; flex: none; }
   margin-bottom: 4px;
 }
 .list-toolbar .cat-toggle { margin-bottom: 10px; }
+/* display: flex above beats the [hidden] attribute on its own. */
+.list-toolbar[hidden] { display: none; }
 
 /* A category heading on the task list, standing in for the usual h2. */
 .cat-section-head {
