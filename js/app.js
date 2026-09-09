@@ -31,6 +31,7 @@ const App = (function () {
   let calYear, calMonth;              // calMonth is 0-indexed
   let showCompleted = false;
   let showArchived = false;
+  let showWaiting = false;
   let booted = false;
 
   /* ========================= convenience ========================= */
@@ -110,17 +111,20 @@ const App = (function () {
     const p = Store.prefs() || {};
     showCompleted = !!p.showCompleted;
     showArchived = !!p.showArchived;
+    showWaiting = !!p.showWaiting;
   }
 
   function saveViewPrefs() {
     const p = Store.prefs();
     p.showCompleted = showCompleted;
     p.showArchived = showArchived;
+    p.showWaiting = showWaiting;
     Store.savePrefs();
   }
 
   function toggleShowCompleted() { showCompleted = !showCompleted; saveViewPrefs(); renderList(); }
   function toggleShowArchived() { showArchived = !showArchived; saveViewPrefs(); renderList(); }
+  function toggleShowWaiting() { showWaiting = !showWaiting; saveViewPrefs(); renderList(); }
 
   /* ========================= category key panel ========================= */
 
@@ -372,6 +376,9 @@ const App = (function () {
       subtasks: readSubtaskEditor('new-subtasks')
     });
     setRepeat(newId, repeatSelect ? repeatSelect.value : '');
+    /* A repeat dated ahead goes straight into the waiting list, which would
+       otherwise look like the task never saved. */
+    const addedWaiting = isWaitingRepeat(tickets()[0]);
 
     input.value = '';
     notesInput.value = '';
@@ -386,6 +393,9 @@ const App = (function () {
 
     Store.saveTickets();
     renderAll();
+    if (addedWaiting) {
+      showToast('Added \u00B7 \u21BB waiting until ' + Util.formatDate(tickets().find(x => x.id === newId).dueDate));
+    }
   }
 
   function openNewTaskModal() {
@@ -723,6 +733,21 @@ const App = (function () {
     if (childChanged) writeMap(REPEAT_CHILD_KEY, children);
   }
 
+  /* A repeat with its day still ahead of it is waiting, not active: ticking
+     Monday's copy should clear the feed until Monday comes round again. It is
+     still a real open task - the calendar and the counts know about it - it is
+     only kept out of the list you work from, with its own Show recurring
+     button beside Show completed and Show archived.
+
+     The rule is the same for a repeat set up in advance as for one that was
+     spawned, which is what makes it explainable: a repeat waits until its day.
+     No date means no day to wait for, so it stays in the feed. */
+  function isWaitingRepeat(t) {
+    if (t.completedAt || t.archived || !t.dueDate) return false;
+    if (!repeatOf(t.id)) return false;
+    return t.dueDate > Util.todayStr();
+  }
+
   function repeatSelectHtml() {
     return REPEAT_RULES.map(r => `<option value="${r}">${REPEAT_LABEL[r]}</option>`).join('');
   }
@@ -974,7 +999,12 @@ const App = (function () {
     const filtered = tickets().filter(t => matchesSearch(t, query));
 
     const notArchived = filtered.filter(t => !t.archived);
-    const activeAll = notArchived.filter(t => !t.completedAt);
+    const openAll = notArchived.filter(t => !t.completedAt);
+    /* Repeats whose day has not come yet are held back from every shape of the
+       feed - status, category and date alike - and listed on their own. */
+    const waiting = openAll.filter(isWaitingRepeat)
+      .sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1));
+    const activeAll = openAll.filter(t => !isWaitingRepeat(t));
     const active = activeAll.filter(t => !t.priority);
     const priority = activeAll.filter(t => t.priority);
     const completed = notArchived.filter(t => t.completedAt).sort((a, b) => a.completedAt < b.completedAt ? 1 : -1);
@@ -984,11 +1014,14 @@ const App = (function () {
     const priorityList = document.getElementById('priority-list');
     const completedList = document.getElementById('completed-list');
     const archivedList = document.getElementById('archived-list');
+    const waitingList = document.getElementById('waiting-list');
 
     const noActiveMsg = query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.';
     const noPriorityMsg = query ? 'No priority tasks match your search.' : 'Star a task to mark it as priority.';
     const noCompletedMsg = query ? 'No completed tasks match your search.' : 'Nothing completed yet.';
     const noArchivedMsg = query ? 'No archived tasks match your search.' : 'Archive a task to tuck it away here.';
+    const noWaitingMsg = query ? 'No recurring tasks match your search.'
+      : 'Nothing waiting. Tick off a repeating task and the next one waits here until its day.';
 
     renderListGroupToggle();
     const mode = listGrouping();
@@ -1031,8 +1064,19 @@ const App = (function () {
 
     archivedList.innerHTML = archived.length ? archived.map(renderTaskItem).join('') : `<li class="empty-note">${noArchivedMsg}</li>`;
 
+    if (waitingList) {
+      waitingList.innerHTML = waiting.length
+        ? waiting.map(t => renderTaskItem(t, { noDrag: true })).join('')
+        : `<li class="empty-note">${noWaitingMsg}</li>`;
+    }
+
     completedList.style.display = showCompleted ? '' : 'none';
     document.getElementById('toggle-completed-btn').textContent = showCompleted ? 'Hide completed' : `Show completed (${completed.length})`;
+
+    const waitingSection = document.getElementById('waiting-section');
+    if (waitingSection) waitingSection.style.display = showWaiting ? '' : 'none';
+    const waitingBtn = document.getElementById('toggle-waiting-btn');
+    if (waitingBtn) waitingBtn.textContent = showWaiting ? 'Hide recurring' : `Show recurring (${waiting.length})`;
 
     document.getElementById('archived-section').style.display = showArchived ? '' : 'none';
     document.getElementById('toggle-archived-btn').textContent = showArchived ? 'Hide archived' : `Show archived (${archived.length})`;
@@ -2264,7 +2308,8 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-05', items: [
-      'Tasks can repeat. Choose every day, week or month when you make one - tick it off and the next one appears straight away, due on the next date, with its steps unticked and its coin already earned.',
+      'Tasks can repeat. Choose every day, week or month when you make one - tick it off and the next one is waiting on its date, with its steps unticked and its coin already earned.',
+      'A repeat whose day has not come yet stays out of the feed, so a weekly task ticked on Monday is gone until next Monday. Show recurring, beside Show completed, lists what is waiting and when it is back.',
       'Due today and + New Task now sit at the top right of every section, sharing a line with the group-by buttons, so they are there whatever the window is doing. The sidebar they used to live in is gone, and the tasks and the calendar have its width.',
       'You can walk over the plants you buy - and only those. Trees, saplings, beds of scenery, tables and a finished cabin stop you again.',
     ] },
@@ -3131,6 +3176,22 @@ const App = (function () {
       window.addEventListener('resize', onResize);
       window.addEventListener('orientationchange', onResize);
 
+      /* Left open overnight, the page still thinks it is yesterday: a repeat
+         waiting for today stays hidden and nothing new reads as overdue. The
+         day is checked on the minute and whenever the tab is looked at again,
+         and only a change costs a render. */
+      let dayOnScreen = Util.todayStr();
+      const checkDayRolled = function () {
+        const today = Util.todayStr();
+        if (today === dayOnScreen) return;
+        dayOnScreen = today;
+        renderAll();
+      };
+      setInterval(checkDayRolled, 60000);
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) checkDayRolled();
+      });
+
       /* The row menu closes the way every menu should: click anywhere else, or
          press Escape. Scrolling closes it too - it is anchored to a row that
          moves. */
@@ -3211,7 +3272,7 @@ const App = (function () {
     setListGrouping, undoLast, pickCategoryColor,
     renderFriends, openFriendGarden, closeFriendGarden,
     closeModal, closeModalOnBackdrop,
-    toggleShowCompleted, toggleShowArchived,
+    toggleShowCompleted, toggleShowArchived, toggleShowWaiting,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
     saveDisplayName, exportBackup, forcePull, eraseEverything,
     setDigest, setDigestHour,

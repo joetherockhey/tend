@@ -175,6 +175,14 @@
 
     <div id="category-sections" style="display:none;"></div>
 
+    <!-- Repeats waiting for their day. Hidden from the feed above until the
+         date arrives, so a weekly task ticked on Monday is out of the way
+         until next Monday - and findable here in the meantime. -->
+    <section class="list-section" id="waiting-section" style="display:none;">
+      <h2>Recurring &mdash; waiting for their day</h2>
+      <ul class="task-list" id="waiting-list"></ul>
+    </section>
+
     <section class="list-section" id="archived-section" style="display:none;">
       <h2>Archived</h2>
       <ul class="task-list" id="archived-list"></ul>
@@ -184,6 +192,7 @@
       <div class="section-header">
         <h2>Completed</h2>
         <div class="section-toggle-group">
+          <button class="section-toggle-btn" id="toggle-waiting-btn" onclick="App.toggleShowWaiting()">Show recurring</button>
           <button class="section-toggle-btn" id="toggle-archived-btn" onclick="App.toggleShowArchived()">Show archived</button>
           <button class="section-toggle-btn" id="toggle-completed-btn" onclick="App.toggleShowCompleted()">Show completed</button>
         </div>
