@@ -2038,7 +2038,13 @@ const Garden = (function () {
       return;
     }
 
+    /* A development shortcut: finishes every planted sapling at once. It is
+       off unless DEV_SHORTCUTS is turned on in js/config.js, because F sits
+       right beside the WASD keys used to walk, and one stray press would
+       skip the watering the whole reward loop is built on - permanently,
+       with no undo. */
     if (key === 'f') {
+      if (!(window.TEND_CONFIG || {}).DEV_SHORTCUTS) return;
       event.preventDefault();
       saplings.forEach(s => { if (s.planted) s.waterCount = SAPLING_WATERS_NEEDED; });
       saveSaplings();
@@ -3481,7 +3487,7 @@ const Garden = (function () {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
     refreshControlHints();
-    const coinHelp = document.querySelector('.coin-help-btn');
+    const coinHelp = document.querySelector('.coin-help-btn .help-icon-glyph');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.';
@@ -3505,7 +3511,7 @@ const Garden = (function () {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
     refreshControlHints();
-    const coinHelp = document.querySelector('.coin-help-btn');
+    const coinHelp = document.querySelector('.coin-help-btn .help-icon-glyph');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.';

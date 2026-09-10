@@ -47,6 +47,13 @@ window.TEND_CONFIG = {
      a local profile has no email address to send to. */
   DAILY_EMAIL: false,
 
+  /* Set true to turn on the keyboard shortcuts used while building the garden
+     - currently F, which finishes watering every planted sapling at once.
+     Leave it false in anything anyone else will use: F is next to the WASD
+     keys you walk with, and one stray press skips the watering the whole
+     coins-and-plants loop is built on, with no way back. */
+  DEV_SHORTCUTS: false,
+
   /* Where the Supabase client library is loaded from. Change this only if you
      want to self-host the library instead of using the CDN. */
   SUPABASE_LIB_URL: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'

@@ -1,0 +1,922 @@
+<title>Tend UX Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+:root {
+  --ground:      #F1F3EC;
+  --paper:       #FAFBF7;
+  --paper-sunk:  #EBEEE3;
+  --edge:        #DCE1D4;
+  --edge-soft:   #E7EBDF;
+  --ink:         #1B2317;
+  --ink-soft:    #5C6754;
+  --ink-faint:   #8A9481;
+  --accent:      #2E6B4A;
+  --accent-ink:  #1E4C33;
+  --accent-wash: #E3EDE5;
+  --brass:       #8A6A18;
+  --sev-high:    #A03B2B;
+  --sev-med:     #A07214;
+  --sev-low:     #4C7486;
+  --shadow:      0 1px 2px rgba(27,35,23,.05), 0 8px 24px -12px rgba(27,35,23,.18);
+
+  --f-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --f-body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:      #141810;
+    --paper:       #1C2117;
+    --paper-sunk:  #232A1E;
+    --edge:        #2E3626;
+    --edge-soft:   #262E1F;
+    --ink:         #E7EBE0;
+    --ink-soft:    #A3AF98;
+    --ink-faint:   #74806A;
+    --accent:      #74C193;
+    --accent-ink:  #9AD6B0;
+    --accent-wash: #1F3327;
+    --brass:       #C9A44E;
+    --sev-high:    #D97A66;
+    --sev-med:     #D0A24C;
+    --sev-low:     #86B0C2;
+    --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:      #141810;
+  --paper:       #1C2117;
+  --paper-sunk:  #232A1E;
+  --edge:        #2E3626;
+  --edge-soft:   #262E1F;
+  --ink:         #E7EBE0;
+  --ink-soft:    #A3AF98;
+  --ink-faint:   #74806A;
+  --accent:      #74C193;
+  --accent-ink:  #9AD6B0;
+  --accent-wash: #1F3327;
+  --brass:       #C9A44E;
+  --sev-high:    #D97A66;
+  --sev-med:     #D0A24C;
+  --sev-low:     #86B0C2;
+  --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 16px/1.6 var(--f-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 24px 96px;
+}
+
+/* ---------- masthead ---------- */
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px 32px;
+  padding-bottom: 22px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.eyebrow {
+  font: 500 11px/1 var(--f-body);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 10px;
+}
+
+h1 {
+  font: 600 clamp(34px, 6vw, 52px)/1.02 var(--f-display);
+  font-variation-settings: "opsz" 96, "SOFT" 30;
+  letter-spacing: -.015em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.masthead-note {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  max-width: 34ch;
+  margin: 0;
+}
+
+.masthead-note b { color: var(--ink); font-weight: 600; }
+
+/* ---------- the tray ---------- */
+
+.tray {
+  margin: 26px 0 0;
+  background: var(--paper);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.tally {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.tally-cell {
+  padding: 16px 18px 18px;
+  border-right: 1px solid var(--edge-soft);
+}
+.tally-cell:last-child { border-right: 0; }
+
+.tally-n {
+  font: 600 30px/1 var(--f-display);
+  font-variation-settings: "opsz" 40;
+  font-variant-numeric: tabular-nums;
+  display: block;
+  margin-bottom: 5px;
+}
+.tally-cell.is-approved .tally-n { color: var(--accent); }
+.tally-cell.is-declined .tally-n { color: var(--ink-faint); }
+.tally-cell.is-later    .tally-n { color: var(--sev-low); }
+
+.tally-k {
+  font: 500 10.5px/1.3 var(--f-body);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.queue {
+  border-top: 1px solid var(--edge);
+  background: var(--accent-wash);
+  padding: 14px 18px 16px;
+}
+
+.queue-head {
+  font: 500 10.5px/1 var(--f-body);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  margin-bottom: 10px;
+}
+
+.queue ol {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.queue li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 14.5px;
+  color: var(--ink);
+}
+
+.queue li code {
+  font: 400 12px/1.5 var(--f-mono);
+  color: var(--accent-ink);
+  flex: none;
+}
+
+.queue-empty {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+/* ---------- filters ---------- */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 30px 0 6px;
+}
+
+.chip {
+  font: 500 13px/1 var(--f-body);
+  font-family: var(--f-body);
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background .14s, color .14s, border-color .14s;
+}
+.chip:hover { border-color: var(--ink-faint); color: var(--ink); }
+.chip[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--ground);
+}
+.chip .chip-n {
+  font-variant-numeric: tabular-nums;
+  opacity: .6;
+  margin-left: 6px;
+}
+
+/* ---------- findings ---------- */
+
+.ledger { margin-top: 8px; }
+
+.finding {
+  display: grid;
+  grid-template-columns: 3px 1fr;
+  gap: 0 20px;
+  padding: 26px 0;
+  border-bottom: 1px solid var(--edge);
+  align-items: start;
+}
+
+.stripe { align-self: stretch; border-radius: 2px; min-height: 100%; }
+.sev-high .stripe { background: var(--sev-high); }
+.sev-medium .stripe { background: var(--sev-med); }
+.sev-low .stripe { background: var(--sev-low); }
+
+.finding.settled { opacity: .62; }
+.finding.settled:hover { opacity: 1; }
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+.fid {
+  font: 500 11.5px/1 var(--f-mono);
+  color: var(--ink-faint);
+  letter-spacing: .02em;
+}
+
+.tag {
+  font: 500 10.5px/1 var(--f-body);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 4px 7px;
+  border-radius: 3px;
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+}
+
+.tag.sev { color: var(--ground); }
+.sev-high .tag.sev   { background: var(--sev-high); }
+.sev-medium .tag.sev { background: var(--sev-med); }
+.sev-low .tag.sev    { background: var(--sev-low); }
+:root[data-theme="dark"] .tag.sev,
+:root:not([data-theme="light"]) .tag.sev { color: #141810; }
+
+.verdict {
+  margin-left: auto;
+  font: 500 11px/1 var(--f-body);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.verdict.v-approved { color: var(--accent); }
+.verdict.v-declined { color: var(--ink-faint); }
+.verdict.v-later    { color: var(--sev-low); }
+
+h2.f-title {
+  font: 600 21px/1.25 var(--f-display);
+  font-variation-settings: "opsz" 32;
+  margin: 0 0 8px;
+  letter-spacing: -.008em;
+  text-wrap: balance;
+}
+
+.f-problem {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+  max-width: 66ch;
+}
+
+.f-fix {
+  background: var(--paper);
+  border-left: 2px solid var(--accent);
+  padding: 12px 16px;
+  margin: 0 0 14px;
+  max-width: 66ch;
+}
+.f-fix .f-fix-k {
+  display: block;
+  font: 500 10.5px/1 var(--f-body);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 7px;
+}
+.f-fix p { margin: 0; font-size: 15px; }
+
+.refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0 0 16px;
+  font: 400 12.5px/1.5 var(--f-mono);
+  color: var(--ink-faint);
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.act {
+  font: 500 13.5px/1 var(--f-body);
+  padding: 9px 15px;
+  border-radius: 3px;
+  border: 1px solid var(--edge);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background .14s, color .14s, border-color .14s;
+}
+.act:hover:not(:disabled) { border-color: var(--ink-faint); color: var(--ink); }
+.act:disabled { cursor: not-allowed; opacity: .45; }
+
+.act.on-approve[aria-pressed="true"] {
+  background: var(--accent); border-color: var(--accent); color: var(--paper);
+}
+:root[data-theme="dark"] .act.on-approve[aria-pressed="true"],
+:root:not([data-theme="light"]) .act.on-approve[aria-pressed="true"] { color: #141810; }
+
+.act.on-decline[aria-pressed="true"] {
+  background: var(--ink-soft); border-color: var(--ink-soft); color: var(--ground);
+}
+.act.on-later[aria-pressed="true"] {
+  background: var(--sev-low); border-color: var(--sev-low); color: var(--ground);
+}
+:root[data-theme="dark"] .act.on-later[aria-pressed="true"],
+:root:not([data-theme="light"]) .act.on-later[aria-pressed="true"] { color: #141810; }
+
+.undo-hint {
+  align-self: center;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+/* ---------- plain words ---------- */
+
+.plainer {
+  font: 500 13px/1 var(--f-body);
+  color: var(--accent);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  padding: 0 0 2px;
+  margin: 0 0 16px;
+  cursor: pointer;
+  transition: color .14s;
+}
+.plainer:hover:not(:disabled) { color: var(--ink); }
+.plainer:disabled {
+  cursor: progress;
+  color: var(--ink-faint);
+  border-bottom-style: dotted;
+}
+
+.plain-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 10.5px/1 var(--f-body);
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--brass);
+  margin-bottom: 9px;
+}
+.plain-mark::before {
+  content: "";
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--brass);
+}
+
+.finding.plainly .f-problem { color: var(--ink); }
+.finding.plainly .f-fix { border-left-color: var(--brass); }
+.finding.plainly .f-fix .f-fix-k { color: var(--brass); }
+
+/* ---------- states ---------- */
+
+.notice {
+  margin: 26px 0 0;
+  padding: 14px 18px;
+  border-radius: 4px;
+  border: 1px solid var(--edge);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 14.5px;
+}
+.notice b { color: var(--ink); font-weight: 600; }
+
+.blank {
+  padding: 56px 0;
+  text-align: center;
+  color: var(--ink-faint);
+}
+.blank-t {
+  font: 600 20px/1.3 var(--f-display);
+  color: var(--ink-soft);
+  margin: 0 0 6px;
+}
+
+.colophon {
+  margin-top: 44px;
+  padding-top: 22px;
+  border-top: 1px solid var(--edge);
+  font-size: 13.5px;
+  color: var(--ink-faint);
+  max-width: 70ch;
+}
+.colophon code {
+  font: 400 12.5px/1.5 var(--f-mono);
+  color: var(--ink-soft);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translate(-50%, 14px);
+  background: var(--ink);
+  color: var(--ground);
+  font-size: 14px;
+  padding: 11px 18px;
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s, transform .18s;
+  z-index: 20;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0s !important; animation-duration: 0s !important; }
+}
+
+@media (max-width: 640px) {
+  .wrap { padding: 28px 16px 80px; }
+  .tally { grid-template-columns: repeat(2, 1fr); }
+  .tally-cell:nth-child(2) { border-right: 0; }
+  .tally-cell:nth-child(-n+2) { border-bottom: 1px solid var(--edge-soft); }
+  .finding { grid-template-columns: 3px 1fr; gap: 0 14px; }
+  .verdict { margin-left: 0; width: 100%; }
+}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Tend &middot; user experience</p>
+      <h1>UX Ledger</h1>
+    </div>
+    <p class="masthead-note">
+      Every finding from a sweep of the app, waiting on a verdict.
+      Approve one and <b>Claude builds it</b> on the next pass; decline it and
+      no later sweep will raise it again. Any write-up that reads too technical
+      has a <b>plain words</b> button under it.
+    </p>
+  </header>
+
+  <section class="tray" aria-label="Decisions so far">
+    <div class="tally">
+      <div class="tally-cell is-open">
+        <span class="tally-n" id="n-open">&mdash;</span>
+        <span class="tally-k">Awaiting you</span>
+      </div>
+      <div class="tally-cell is-approved">
+        <span class="tally-n" id="n-approved">&mdash;</span>
+        <span class="tally-k">To build</span>
+      </div>
+      <div class="tally-cell is-later">
+        <span class="tally-n" id="n-later">&mdash;</span>
+        <span class="tally-k">Later</span>
+      </div>
+      <div class="tally-cell is-declined">
+        <span class="tally-n" id="n-declined">&mdash;</span>
+        <span class="tally-k">Declined</span>
+      </div>
+    </div>
+    <div class="queue">
+      <div class="queue-head">Queued for the next build</div>
+      <div id="queue-body"><p class="queue-empty">Nothing approved yet.</p></div>
+    </div>
+  </section>
+
+  <div id="notice-slot"></div>
+
+  <div class="filters" id="filters" role="group" aria-label="Filter findings"></div>
+
+  <div class="ledger" id="ledger">
+    <div class="blank">
+      <p class="blank-t">Reading the ledger&hellip;</p>
+      <p>Findings load from this page's own store.</p>
+    </div>
+  </div>
+
+  <p class="colophon">
+    Findings come from the <code>tend-ux</code> agent, which reads
+    <code>index.html</code>, <code>css/styles.css</code> and <code>js/*.js</code>
+    and never touches <code>standalone/tend.html</code> &mdash; that file is
+    built by <code>build.py</code>. Verdicts recorded here are read back into
+    the session and mirrored to <code>UX-BACKLOG.md</code>, so a declined
+    finding stays declined across sweeps.
+  </p>
+
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SEV_RANK = { high: 0, medium: 1, low: 2 };
+  var FILTERS = [
+    { key: "all",      label: "All" },
+    { key: "open",     label: "Awaiting you" },
+    { key: "approved", label: "To build" },
+    { key: "later",    label: "Later" },
+    { key: "declined", label: "Declined" }
+  ];
+  var VERDICT_WORD = { approved: "Approved", declined: "Declined", later: "Deferred" };
+
+  var findings = [];
+  var filter = "all";
+  var db = null;
+  var sample = null;
+  var loaded = false;
+  var showPlain = {};   /* id -> reading the plain-words version */
+  var busy = {};        /* id -> a rewrite is in flight */
+
+  var ledgerEl = document.getElementById("ledger");
+  var filtersEl = document.getElementById("filters");
+  var queueEl = document.getElementById("queue-body");
+  var noticeEl = document.getElementById("notice-slot");
+  var toastEl = document.getElementById("toast");
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2600);
+  }
+
+  function notice(html) {
+    noticeEl.innerHTML = html ? '<div class="notice">' + html + "</div>" : "";
+  }
+
+  function statusOf(f) {
+    var s = f.status;
+    return (s === "approved" || s === "declined" || s === "later") ? s : "open";
+  }
+
+  function sorted() {
+    return findings.slice().sort(function (a, b) {
+      var ra = SEV_RANK[a.severity] == null ? 3 : SEV_RANK[a.severity];
+      var rb = SEV_RANK[b.severity] == null ? 3 : SEV_RANK[b.severity];
+      if (ra !== rb) return ra - rb;
+      return String(a.id).localeCompare(String(b.id));
+    });
+  }
+
+  function counts() {
+    var c = { all: findings.length, open: 0, approved: 0, declined: 0, later: 0 };
+    findings.forEach(function (f) { c[statusOf(f)] += 1; });
+    return c;
+  }
+
+  /* ---------- rendering ---------- */
+
+  function renderTally() {
+    var c = counts();
+    ["open", "approved", "later", "declined"].forEach(function (k) {
+      document.getElementById("n-" + k).textContent = c[k];
+    });
+
+    var queued = sorted().filter(function (f) { return statusOf(f) === "approved"; });
+    if (!queued.length) {
+      queueEl.innerHTML = '<p class="queue-empty">' + (loaded
+        ? "Nothing approved yet &mdash; press <em>Build it</em> on anything below."
+        : "Nothing approved yet.") + "</p>";
+      return;
+    }
+    queueEl.innerHTML = "<ol>" + queued.map(function (f) {
+      return "<li><code>" + esc(f.id) + "</code><span>" + esc(f.title) + "</span></li>";
+    }).join("") + "</ol>";
+  }
+
+  function renderFilters() {
+    var c = counts();
+    filtersEl.innerHTML = FILTERS.map(function (f) {
+      return '<button type="button" class="chip" data-filter="' + f.key + '"'
+        + ' aria-pressed="' + (filter === f.key) + '">' + f.label
+        + '<span class="chip-n">' + c[f.key] + "</span></button>";
+    }).join("");
+  }
+
+  function plainOf(f) {
+    var p = f.plain;
+    return (p && p.problem && p.fix) ? p : null;
+  }
+
+  /* The button under the write-up: ask for plain words, or swap between the
+     two wordings once they both exist. Absent entirely where this view
+     cannot ask Claude. */
+  function plainerBtn(f) {
+    var id = esc(f.id);
+    if (busy[f.id]) {
+      return '<button type="button" class="plainer" data-plain="' + id
+        + '" disabled>Putting it in plain words&hellip;</button>';
+    }
+    if (plainOf(f)) {
+      return '<button type="button" class="plainer" data-plain="' + id + '">'
+        + (showPlain[f.id] ? "Show the original wording" : "Read it in plain words")
+        + "</button>";
+    }
+    if (!sample) return "";
+    return '<button type="button" class="plainer" data-plain="' + id
+      + '">Too technical? Put it in plain words</button>';
+  }
+
+  function renderOne(f) {
+    var st = statusOf(f);
+    var sev = f.severity || "low";
+    var refs = (f.refs || []).map(function (r) {
+      return "<span>" + esc(r) + "</span>";
+    }).join("");
+
+    var plain = plainOf(f);
+    var plainly = !!(plain && showPlain[f.id]);
+    var problem = plainly ? plain.problem : f.problem;
+    var fix = plainly ? plain.fix : f.fix;
+
+    return '<article class="finding sev-' + esc(sev) + (st === "open" ? "" : " settled")
+      + (plainly ? " plainly" : "")
+      + '" data-id="' + esc(f.id) + '">'
+      + '<div class="stripe" aria-hidden="true"></div>'
+      + "<div>"
+        + '<div class="meta">'
+          + '<span class="fid">' + esc(f.id) + "</span>"
+          + '<span class="tag sev">' + esc(sev) + "</span>"
+          + '<span class="tag">' + esc(f.area || "app") + "</span>"
+          + '<span class="tag">' + esc(f.effort || "?") + " build</span>"
+          + (st === "open" ? "" : '<span class="verdict v-' + st + '">'
+              + VERDICT_WORD[st] + "</span>")
+        + "</div>"
+        + '<h2 class="f-title">' + esc(f.title) + "</h2>"
+        + (plainly ? '<div class="plain-mark">In plain words</div>' : "")
+        + '<p class="f-problem">' + esc(problem) + "</p>"
+        + '<div class="f-fix"><span class="f-fix-k">Proposed fix</span><p>'
+          + esc(fix) + "</p></div>"
+        + (refs ? '<div class="refs">' + refs + "</div>" : "")
+        + plainerBtn(f)
+        + '<div class="actions">'
+          + btn("approve", "approved", st, "Build it")
+          + btn("decline", "declined", st, "Not this")
+          + btn("later", "later", st, "Later")
+          + (st === "open" ? "" : '<span class="undo-hint">Press it again to undecide</span>')
+        + "</div>"
+      + "</div></article>";
+  }
+
+  function btn(cls, val, st, label) {
+    return '<button type="button" class="act on-' + cls + '" data-set="' + val + '"'
+      + ' aria-pressed="' + (st === val) + '"' + (db ? "" : " disabled")
+      + ">" + label + "</button>";
+  }
+
+  function render() {
+    renderTally();
+    renderFilters();
+
+    if (!loaded) return;
+
+    var rows = sorted().filter(function (f) {
+      return filter === "all" || statusOf(f) === filter;
+    });
+
+    if (!findings.length) {
+      ledgerEl.innerHTML = '<div class="blank">'
+        + '<p class="blank-t">No findings on the ledger</p>'
+        + "<p>Ask for a UX sweep and they will land here.</p></div>";
+      return;
+    }
+    if (!rows.length) {
+      ledgerEl.innerHTML = '<div class="blank">'
+        + '<p class="blank-t">Nothing in this pile</p>'
+        + "<p>Every finding sits under one of the other filters.</p></div>";
+      return;
+    }
+    ledgerEl.innerHTML = rows.map(renderOne).join("");
+  }
+
+  /* ---------- interaction ---------- */
+
+  filtersEl.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-filter]");
+    if (!b) return;
+    filter = b.getAttribute("data-filter");
+    render();
+  });
+
+  ledgerEl.addEventListener("click", function (e) {
+    var p = e.target.closest("[data-plain]");
+    if (p) {
+      if (!p.disabled) plainer(p.getAttribute("data-plain"));
+      return;
+    }
+    var b = e.target.closest("[data-set]");
+    if (!b || b.disabled) return;
+    var art = b.closest(".finding");
+    if (!art) return;
+    decide(art.getAttribute("data-id"), b.getAttribute("data-set"));
+  });
+
+  function byId(id) {
+    return findings.filter(function (x) { return x.id === id; })[0];
+  }
+
+  function decide(id, want) {
+    var f = byId(id);
+    if (!f || !db) return;
+
+    var was = statusOf(f);
+    var next = was === want ? "open" : want;
+
+    f.status = next;          /* optimistic — the snapshot confirms */
+    render();
+
+    db.doc("findings/" + id).update({
+      status: next,
+      decidedAt: next === "open" ? null : new Date().toISOString()
+    }).then(function () {
+      if (next === "approved") toast("Approved — " + f.title.toLowerCase());
+      else if (next === "declined") toast("Declined. No later sweep will raise it.");
+      else if (next === "later") toast("Deferred to a later pass.");
+      else toast("Back to awaiting a verdict.");
+    }).catch(function (err) {
+      f.status = was;
+      render();
+      notice("<b>That verdict was not saved.</b> " + esc(err && err.message
+        ? err.message : "The store turned the write away.")
+        + " Everything already on the ledger is unaffected.");
+    });
+  }
+
+  /* ---------- plain words ---------- */
+
+  /* Already rewritten? Just swap wordings — the rewrite is kept on the
+     finding, so it is asked for once and never again. */
+  function plainer(id) {
+    var f = byId(id);
+    if (!f || busy[id]) return;
+    if (plainOf(f)) { showPlain[id] = !showPlain[id]; render(); return; }
+    if (!sample) return;
+
+    busy[id] = true;
+    render();
+
+    sample.json(PROMPT(f), { modelTier: "quick" }).then(function (out) {
+      var plain = {
+        problem: String((out && out.problem) || "").trim(),
+        fix: String((out && out.fix) || "").trim()
+      };
+      delete busy[id];
+      if (!plain.problem || !plain.fix) {
+        render();
+        toast("That came back half-written. Press it again.");
+        return;
+      }
+      f.plain = plain;
+      showPlain[id] = true;
+      render();
+      if (db) {
+        db.doc("findings/" + id).update({ plain: plain }).catch(function () {
+          toast("Plain words ready, but only until you reload.");
+        });
+      }
+    }).catch(function (e) {
+      delete busy[id];
+      var code = e && e.code;
+      if (code === "not_granted") {
+        sample = null;
+        notice("<b>Plain words are switched off for this page.</b> The buttons "
+          + "are gone; every finding still reads as it was written.");
+      } else if (code === "rate_limited") {
+        toast("Too many at once — give it a few seconds.");
+      } else if (code === "invalid_json") {
+        toast("That came back in a shape the page could not read. Press it again.");
+      } else if (code !== "cancelled") {
+        toast("Could not reach Claude for a rewrite. Press it again.");
+      }
+      render();
+    });
+  }
+
+  function PROMPT(f) {
+    return "You are rewriting one entry from a UX review of Tend, a personal "
+      + "task-tracker web app, for the person who owns it. They know the app "
+      + "well but are not reading its code right now, and the wording below is "
+      + "too technical for them.\n\n"
+      + "Rewrite both fields in plain words:\n"
+      + "- Drop code identifiers, CSS selectors, ARIA attribute names, file "
+      + "names and line numbers. Say what a person using Tend would actually "
+      + "notice instead.\n"
+      + "- Stay concrete and specific to Tend. Do not generalise into advice.\n"
+      + "- Keep the meaning exactly: do not soften the problem, and do not "
+      + "invent a different fix from the one given.\n"
+      + "- Two or three short sentences each. Everyday English, no jargon, no "
+      + "bullet points, no preamble.\n\n"
+      + 'Reply with only a JSON object of the form {"problem": string, '
+      + '"fix": string} and nothing else.\n\n'
+      + "TITLE: " + f.title + "\n"
+      + "PROBLEM: " + f.problem + "\n"
+      + "FIX: " + f.fix + "\n";
+  }
+
+  /* ---------- store ---------- */
+
+  function fromDoc(d) {
+    var v = d.data() || {};
+    var p = v.plain;
+    return {
+      id: v.id || d.id,
+      title: v.title || "(untitled finding)",
+      area: v.area, severity: v.severity, effort: v.effort,
+      problem: v.problem || "", fix: v.fix || "",
+      refs: Array.isArray(v.refs) ? v.refs : [],
+      plain: (p && p.problem && p.fix)
+        ? { problem: String(p.problem), fix: String(p.fix) } : null,
+      status: v.status, sweep: v.sweep
+    };
+  }
+
+  claude.use("sample").then(function (fn) {
+    sample = fn || null;
+    if (loaded) render();
+  });
+
+  claude.use("db").then(function (store) {
+    if (!store) {
+      loaded = true;
+      findings = [];
+      notice("<b>This view cannot reach the ledger's store.</b> Open the "
+        + "artifact from your own gallery to record verdicts.");
+      render();
+      return;
+    }
+    db = store;
+    store.collection("findings").onSnapshot(function (snap) {
+      findings = snap.docs.map(fromDoc);
+      loaded = true;
+      render();
+    }, function (err) {
+      loaded = true;
+      notice("<b>The ledger stopped updating.</b> "
+        + esc(err && err.message ? err.message : "Reload to pick it back up."));
+      render();
+    });
+  });
+
+  render();
+})();
+</script>

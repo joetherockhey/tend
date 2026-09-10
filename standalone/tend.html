@@ -4213,6 +4213,147 @@ li.task[draggable="false"] { cursor: pointer; }
   cursor: default;
 }
 
+/* ============================ FOCUS ============================
+   Almost every control in Tend is a custom-styled button, several of them
+   setting their own background and border, so the browser's own focus ring
+   was either invisible against them or suppressed outright: tabbing the
+   header, the tab row, the shop and the help icons showed nothing at all.
+   One ring, in whichever accent the current theme sets, drawn only for
+   keyboard focus. Declared last in the file so it wins the ties.        */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* A mouse click should not leave the ring sitting there afterwards. */
+:focus:not(:focus-visible) { outline: none; }
+
+/* The accent has nothing to sit against on the dark header ribbon or the
+   bottom bar, so controls there take the ribbon's own text colour. */
+header :focus-visible,
+.bottom-nav :focus-visible {
+  outline-color: var(--header-text);
+}
+
+/* The search box already answers focus by growing, so the ring goes round
+   the whole control rather than the bare input inside it. */
+.nav-search:focus-within {
+  outline: 2px solid var(--header-text);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.search-input:focus-visible { outline: none; }
+
+/* Fields that draw their own focus state keep it and skip the ring. */
+.auth-form input:focus-visible { outline: none; }
+
+/* The garden plot is the one thing here that is neither button nor field:
+   a focusable grid where every key press depends on knowing it has the
+   focus. It already shows a ring on click - which is how you focus it -
+   so keyboard focus just draws that ring heavier. */
+.garden-plot:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--accent);
+  outline: none;
+}
+
+/* ===================== GARDEN HELP GROUPS =====================
+   These eleven buttons sat in one flat row, labelled only by a title
+   attribute - which a phone never shows, so the only way to learn what one
+   did was to tap all eleven. Three named groups now, and under the phone
+   breakpoint each button shows its name instead of a bare icon.        */
+
+.garden-help-icons {
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.help-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.help-group-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.help-group-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.help-icon-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.help-icon-word { display: none; }
+
+@media (max-width: 560px) {
+  .garden-help-icons { gap: 12px; }
+  .help-group-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .help-icon-btn {
+    width: auto;
+    height: auto;
+    min-height: 32px;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 6px 9px;
+  }
+  .help-icon-word {
+    display: inline;
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+}
+
+/* ===================== REVEAL TOGGLES =====================
+   Show recurring / archived / completed. These used to sit in the Completed
+   section's header, which filed the recurring control under a heading
+   saying "Completed" and opened sections that render above the button just
+   pressed. Their own line, ahead of everything they reveal.           */
+
+.reveal-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 28px 0 6px;
+}
+
+/* ===================== UNDO BUTTON =====================
+   The label names what it will undo, so it can run long. Trimmed with an
+   ellipsis; the full text is on aria-label. */
+
+#undo-btn { max-width: 16rem; }
+
+#undo-btn-label {
+  display: inline-block;
+  max-width: 11.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+@media (max-width: 720px) {
+  #undo-btn { max-width: 9.5rem; }
+  #undo-btn-label { max-width: 5.5rem; }
+}
+
 </style>
 </head>
 <body class="gated">
@@ -4256,8 +4397,11 @@ li.task[draggable="false"] { cursor: pointer; }
              aria-label="Search tasks by title, notes or category">
       <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
     </div>
+    <!-- The label says what it will undo, on the button itself. It used to say
+         so only in a title attribute, which touch never shows and a screen
+         reader never reads out while the button is disabled. -->
     <button id="undo-btn" class="garden-toggle-btn" onclick="App.undoLast()" disabled
-            title="Nothing to undo">&#8630; Undo</button>
+            aria-label="Nothing to undo">&#8630; <span id="undo-btn-label">Undo</span></button>
     <button id="garden-toggle-btn" class="garden-toggle-btn" onclick="toggleGardenVisibility()">Hide Garden</button>
   </nav>
 </div>
@@ -4300,18 +4444,38 @@ li.task[draggable="false"] { cursor: pointer; }
       <li id="garden-use-hint">Press E to pick up, plant, or use whatever you are next to.</li>
       <li id="garden-buy-hint">Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.</li>
     </ul>
+    <!-- Eleven of these used to sit in one undifferentiated row, labelled only
+         by a title attribute - which a phone never shows, so the only way to
+         learn what one did was to tap all eleven. They are grouped now, each
+         one says its own name, and the name is what shows on a narrow screen
+         instead of a bare icon. -->
     <div class="garden-help-icons">
-      <button class="help-icon-btn coin-help-btn" onclick="showHelpTopic('coins')" title="Coins and plants"></button>
-      <button class="help-icon-btn" onclick="showHelpTopic('water')" title="Watering">&#x1F4A7;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('cashin')" title="Cashing plants in">&#x1F4B0;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('pickup')" title="Picking things up">&#x270B;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('axe')" title="Axe">&#x1FA93;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('hoe')" title="Hoe">&#x26CF;&#xFE0F;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('shovel')" title="Shovel"><svg class="glyph-icon" viewBox="0 0 16 20" shape-rendering="crispEdges" role="img" aria-label="shovel"><rect x="5" y="1" width="6" height="2" fill="#9a6636"/><rect x="7" y="3" width="2" height="9" fill="#8a5a2e"/><rect x="4" y="11" width="8" height="1" fill="#7b818a"/><rect x="4" y="12" width="8" height="4" fill="#b9bec6"/><rect x="5" y="16" width="6" height="2" fill="#b9bec6"/><rect x="6" y="18" width="4" height="1" fill="#a4aab3"/><rect x="9" y="12" width="3" height="4" fill="#a4aab3"/><rect x="9" y="16" width="2" height="2" fill="#a4aab3"/></svg></button>
-      <button class="help-icon-btn" onclick="showHelpTopic('sapling')" title="Saplings">&#x1F331;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('cabin')" title="Cabins">&#x1FAB5;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('pets')" title="Pets">&#x1F43E;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('unlock')" title="Unlocking sections">&#x1F512;</button>
+      <div class="help-group">
+        <span class="help-group-label">How it works</span>
+        <div class="help-group-btns">
+          <button class="help-icon-btn coin-help-btn" onclick="showHelpTopic('coins')" title="Coins and plants" aria-label="Coins and plants"><span class="help-icon-glyph" aria-hidden="true"></span><span class="help-icon-word">Coins</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('water')" title="Watering" aria-label="Watering"><span class="help-icon-glyph" aria-hidden="true">&#x1F4A7;</span><span class="help-icon-word">Watering</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('cashin')" title="Cashing plants in" aria-label="Cashing plants in"><span class="help-icon-glyph" aria-hidden="true">&#x1F4B0;</span><span class="help-icon-word">Cashing in</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('unlock')" title="Unlocking sections" aria-label="Unlocking sections"><span class="help-icon-glyph" aria-hidden="true">&#x1F512;</span><span class="help-icon-word">Unlocking</span></button>
+        </div>
+      </div>
+      <div class="help-group">
+        <span class="help-group-label">Tools</span>
+        <div class="help-group-btns">
+          <button class="help-icon-btn" onclick="showHelpTopic('pickup')" title="Picking things up" aria-label="Picking things up"><span class="help-icon-glyph" aria-hidden="true">&#x270B;</span><span class="help-icon-word">Picking up</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('axe')" title="Axe" aria-label="Axe"><span class="help-icon-glyph" aria-hidden="true">&#x1FA93;</span><span class="help-icon-word">Axe</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('hoe')" title="Hoe" aria-label="Hoe"><span class="help-icon-glyph" aria-hidden="true">&#x26CF;&#xFE0F;</span><span class="help-icon-word">Hoe</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('shovel')" title="Shovel" aria-label="Shovel"><span class="help-icon-glyph" aria-hidden="true"><svg class="glyph-icon" viewBox="0 0 16 20" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="6" height="2" fill="#9a6636"/><rect x="7" y="3" width="2" height="9" fill="#8a5a2e"/><rect x="4" y="11" width="8" height="1" fill="#7b818a"/><rect x="4" y="12" width="8" height="4" fill="#b9bec6"/><rect x="5" y="16" width="6" height="2" fill="#b9bec6"/><rect x="6" y="18" width="4" height="1" fill="#a4aab3"/><rect x="9" y="12" width="3" height="4" fill="#a4aab3"/><rect x="9" y="16" width="2" height="2" fill="#a4aab3"/></svg></span><span class="help-icon-word">Shovel</span></button>
+        </div>
+      </div>
+      <div class="help-group">
+        <span class="help-group-label">Living things</span>
+        <div class="help-group-btns">
+          <button class="help-icon-btn" onclick="showHelpTopic('sapling')" title="Saplings" aria-label="Saplings"><span class="help-icon-glyph" aria-hidden="true">&#x1F331;</span><span class="help-icon-word">Saplings</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('cabin')" title="Cabins" aria-label="Cabins"><span class="help-icon-glyph" aria-hidden="true">&#x1FAB5;</span><span class="help-icon-word">Cabins</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('pets')" title="Pets" aria-label="Pets"><span class="help-icon-glyph" aria-hidden="true">&#x1F43E;</span><span class="help-icon-word">Pets</span></button>
+        </div>
+      </div>
     </div>
     <div class="help-explanation" id="help-explanation"></div>
   </div>
@@ -4373,6 +4537,17 @@ li.task[draggable="false"] { cursor: pointer; }
 
     <div id="category-sections" style="display:none;"></div>
 
+    <!-- The three reveal toggles. They used to live in the Completed section's
+         header, which put the control for recurring tasks under a heading
+         saying "Completed" - the one thing those tasks are not - and opened
+         sections that render ABOVE the button you just pressed. They sit on
+         their own line now, ahead of everything they reveal. -->
+    <div class="reveal-toggles">
+      <button class="section-toggle-btn" id="toggle-waiting-btn" onclick="App.toggleShowWaiting()" aria-expanded="false" aria-controls="waiting-section">Show recurring</button>
+      <button class="section-toggle-btn" id="toggle-archived-btn" onclick="App.toggleShowArchived()" aria-expanded="false" aria-controls="archived-section">Show archived</button>
+      <button class="section-toggle-btn" id="toggle-completed-btn" onclick="App.toggleShowCompleted()" aria-expanded="false" aria-controls="completed-section">Show completed</button>
+    </div>
+
     <!-- Repeats waiting for their day. Hidden from the feed above until the
          date arrives, so a weekly task ticked on Monday is out of the way
          until next Monday - and findable here in the meantime. -->
@@ -4387,14 +4562,7 @@ li.task[draggable="false"] { cursor: pointer; }
     </section>
 
     <section class="list-section" id="completed-section">
-      <div class="section-header">
-        <h2>Completed</h2>
-        <div class="section-toggle-group">
-          <button class="section-toggle-btn" id="toggle-waiting-btn" onclick="App.toggleShowWaiting()">Show recurring</button>
-          <button class="section-toggle-btn" id="toggle-archived-btn" onclick="App.toggleShowArchived()">Show archived</button>
-          <button class="section-toggle-btn" id="toggle-completed-btn" onclick="App.toggleShowCompleted()">Show completed</button>
-        </div>
-      </div>
+      <h2>Completed</h2>
       <ul class="task-list" id="completed-list"></ul>
     </section>
   </div>
@@ -4455,17 +4623,17 @@ li.task[draggable="false"] { cursor: pointer; }
 <!-- ============================ MODALS ============================ -->
 
 <div class="modal-backdrop" id="modal-backdrop" onclick="App.closeModalOnBackdrop(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="App.closeModal()">&times;</button>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <button class="modal-close" onclick="App.closeModal()" aria-label="Close">&times;</button>
     <h3 id="modal-title"></h3>
     <div id="modal-body"></div>
   </div>
 </div>
 
 <div class="modal-backdrop" id="edit-modal-backdrop" onclick="App.closeEditModalOnBackdrop(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="App.closeEditModal()">&times;</button>
-    <h3>Edit task</h3>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <button class="modal-close" onclick="App.closeEditModal()" aria-label="Close">&times;</button>
+    <h3 id="edit-modal-title">Edit task</h3>
     <input type="hidden" id="edit-task-id">
     <div class="modal-form">
       <input type="text" id="edit-task-title" placeholder="What needs to be done?" maxlength="200">
@@ -4517,9 +4685,9 @@ li.task[draggable="false"] { cursor: pointer; }
 </div>
 
 <div class="modal-backdrop" id="new-task-modal-backdrop" onclick="App.closeNewTaskModalOnBackdrop(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="App.closeNewTaskModal()">&times;</button>
-    <h3>New task</h3>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="new-task-modal-title">
+    <button class="modal-close" onclick="App.closeNewTaskModal()" aria-label="Close">&times;</button>
+    <h3 id="new-task-modal-title">New task</h3>
     <div class="modal-form">
       <input type="text" id="new-task-input" placeholder="What needs to be done?" maxlength="200">
 
@@ -4570,8 +4738,8 @@ li.task[draggable="false"] { cursor: pointer; }
 </div>
 
 <div class="modal-backdrop" id="settings-modal-backdrop" onclick="App.closeSettingsOnBackdrop(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="App.closeSettings()">&times;</button>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <button class="modal-close" onclick="App.closeSettings()" aria-label="Close">&times;</button>
     <h3 id="settings-title">Settings &amp; backup</h3>
     <div id="settings-body"></div>
   </div>
@@ -4652,8 +4820,8 @@ li.task[draggable="false"] { cursor: pointer; }
    ============================================================================ */
 
 window.TEND_CONFIG = {
-  SUPABASE_URL: 'https://vhkwqfxykluhbpvofzdx.supabase.co',
-  SUPABASE_ANON_KEY: 'sb_publishable_9ySOQl3T9dcmtoHEnQhHpg_Z7E1JFeE',
+  SUPABASE_URL: '',
+  SUPABASE_ANON_KEY: '',
 
   /* Shown on the sign-in card and in the browser tab. */
   APP_NAME: 'Tend',
@@ -4675,6 +4843,13 @@ window.TEND_CONFIG = {
      false and nobody sees an option that would do nothing. Cloud mode only -
      a local profile has no email address to send to. */
   DAILY_EMAIL: false,
+
+  /* Set true to turn on the keyboard shortcuts used while building the garden
+     - currently F, which finishes watering every planted sapling at once.
+     Leave it false in anything anyone else will use: F is next to the WASD
+     keys you walk with, and one stray press skips the watering the whole
+     coins-and-plants loop is built on, with no way back. */
+  DEV_SHORTCUTS: false,
 
   /* Where the Supabase client library is loaded from. Change this only if you
      want to self-host the library instead of using the CDN. */
@@ -9672,7 +9847,13 @@ const Garden = (function () {
       return;
     }
 
+    /* A development shortcut: finishes every planted sapling at once. It is
+       off unless DEV_SHORTCUTS is turned on in js/config.js, because F sits
+       right beside the WASD keys used to walk, and one stray press would
+       skip the watering the whole reward loop is built on - permanently,
+       with no undo. */
     if (key === 'f') {
+      if (!(window.TEND_CONFIG || {}).DEV_SHORTCUTS) return;
       event.preventDefault();
       saplings.forEach(s => { if (s.planted) s.waterCount = SAPLING_WATERS_NEEDED; });
       saveSaplings();
@@ -11114,7 +11295,7 @@ const Garden = (function () {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
     refreshControlHints();
-    const coinHelp = document.querySelector('.coin-help-btn');
+    const coinHelp = document.querySelector('.coin-help-btn .help-icon-glyph');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.';
@@ -11138,7 +11319,7 @@ const Garden = (function () {
     const panel = document.getElementById('garden-panel-title');
     if (panel) panel.textContent = terms().panel;
     refreshControlHints();
-    const coinHelp = document.querySelector('.coin-help-btn');
+    const coinHelp = document.querySelector('.coin-help-btn .help-icon-glyph');
     if (coinHelp && !coinHelp.firstChild) coinHelp.innerHTML = coinSVG();
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.';
@@ -11630,14 +11811,92 @@ const App = (function () {
     }
   }
 
+  /* ==================== modal focus plumbing ====================
+     The modals are plain divs, so nothing about them was a dialog to the
+     browser: Tab walked straight out of an open one into the task list
+     behind it, and closing it dropped focus at the top of the document
+     instead of back on the button that opened it - so adding three tasks
+     by keyboard meant crossing the header three times. Every modal now
+     opens and closes through here: a stack of what is open, focus parked
+     on the way in and put back on the way out, and Tab kept inside the
+     top one. The role and aria-modal attributes are in index.html.       */
+
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]),'
+    + ' select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  let modalStack = [];
+  let focusBeforeModal = null;
+
+  function focusablesIn(modal) {
+    if (!modal) return [];
+    return Array.prototype.filter.call(modal.querySelectorAll(FOCUSABLE),
+      el => el.offsetParent !== null || el === document.activeElement);
+  }
+
+  function openBackdrop(id) {
+    const bd = document.getElementById(id);
+    if (!bd) return;
+    if (!modalStack.length) focusBeforeModal = document.activeElement;
+    if (modalStack.indexOf(id) === -1) modalStack.push(id);
+    bd.classList.add('active');
+    /* Some of these focus their own first field straight after calling us;
+       this is only for the ones that do not. */
+    const modal = bd.querySelector('.modal');
+    if (modal && !modal.contains(document.activeElement)) {
+      const first = focusablesIn(modal)[0];
+      if (first) first.focus();
+    }
+  }
+
+  function closeBackdrop(id) {
+    const bd = document.getElementById(id);
+    /* Escape closes all four in a row, so one that was never open must not
+       reach in and move anybody's focus. */
+    if (!bd || !bd.classList.contains('active')) return;
+    bd.classList.remove('active');
+    modalStack = modalStack.filter(x => x !== id);
+    if (modalStack.length) {
+      const top = document.getElementById(modalStack[modalStack.length - 1]);
+      const back = top && focusablesIn(top.querySelector('.modal'))[0];
+      if (back) back.focus();
+      return;
+    }
+    if (focusBeforeModal && document.body.contains(focusBeforeModal)) {
+      focusBeforeModal.focus();
+    }
+    focusBeforeModal = null;
+  }
+
+  function topModal() {
+    for (let i = modalStack.length - 1; i >= 0; i--) {
+      const bd = document.getElementById(modalStack[i]);
+      if (bd && bd.classList.contains('active')) return bd.querySelector('.modal');
+    }
+    return null;
+  }
+
+  function trapModalTab(e) {
+    if (e.key !== 'Tab') return;
+    const modal = topModal();
+    if (!modal) return;
+    const items = focusablesIn(modal);
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    const inside = modal.contains(document.activeElement);
+    if (e.shiftKey && (!inside || document.activeElement === first)) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && (!inside || document.activeElement === last)) {
+      e.preventDefault(); first.focus();
+    }
+  }
+
   function openNewTaskModal() {
     renderSubtaskEditor('new-subtasks', []);
-    document.getElementById('new-task-modal-backdrop').classList.add('active');
+    openBackdrop('new-task-modal-backdrop');
     document.getElementById('new-task-input').focus();
   }
 
   function closeNewTaskModal() {
-    document.getElementById('new-task-modal-backdrop').classList.remove('active');
+    closeBackdrop('new-task-modal-backdrop');
   }
 
   function closeNewTaskModalOnBackdrop(event) {
@@ -11693,7 +11952,16 @@ const App = (function () {
     if (!btn) return;
     const next = undoStack[undoStack.length - 1];
     btn.disabled = !next;
-    btn.title = next ? 'Undo: ' + next.label + '  (Ctrl+Z)' : 'Nothing to undo';
+    /* What it will undo goes on the button, not into a title nobody on a
+       phone can see and no screen reader reads out on a disabled button.
+       The label is allowed to run long - CSS trims it with an ellipsis and
+       the full text stays on aria-label. */
+    const label = document.getElementById('undo-btn-label');
+    if (label) label.textContent = next ? 'Undo: ' + next.label : 'Undo';
+    btn.setAttribute('aria-label', next
+      ? 'Undo: ' + next.label + ' (Ctrl+Z)'
+      : 'Nothing to undo');
+    btn.removeAttribute('title');
   }
 
   function toggleTask(id, elm) {
@@ -12303,15 +12571,26 @@ const App = (function () {
     }
 
     completedList.style.display = showCompleted ? '' : 'none';
-    document.getElementById('toggle-completed-btn').textContent = showCompleted ? 'Hide completed' : `Show completed (${completed.length})`;
+    setRevealBtn('toggle-completed-btn', showCompleted,
+      'Hide completed', `Show completed (${completed.length})`);
 
     const waitingSection = document.getElementById('waiting-section');
     if (waitingSection) waitingSection.style.display = showWaiting ? '' : 'none';
-    const waitingBtn = document.getElementById('toggle-waiting-btn');
-    if (waitingBtn) waitingBtn.textContent = showWaiting ? 'Hide recurring' : `Show recurring (${waiting.length})`;
+    setRevealBtn('toggle-waiting-btn', showWaiting,
+      'Hide recurring', `Show recurring (${waiting.length})`);
 
     document.getElementById('archived-section').style.display = showArchived ? '' : 'none';
-    document.getElementById('toggle-archived-btn').textContent = showArchived ? 'Hide archived' : `Show archived (${archived.length})`;
+    setRevealBtn('toggle-archived-btn', showArchived,
+      'Hide archived', `Show archived (${archived.length})`);
+  }
+
+  /* One of the three reveal toggles under the feed. The button says which way
+     it goes, and aria-expanded says the same thing to a screen reader. */
+  function setRevealBtn(id, open, openLabel, shutLabel) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.textContent = open ? openLabel : shutLabel;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
   /* The same rows as the Priority / Active lists, gathered under their
@@ -12633,7 +12912,7 @@ const App = (function () {
            <span class="day-task-note overdue">${Util.formatDate(t.dueDate)}</span></li>`).join('')}</ul></div>`;
     }
     document.getElementById('modal-body').innerHTML = body;
-    document.getElementById('modal-backdrop').classList.add('active');
+    openBackdrop('modal-backdrop');
   }
 
   function renderStats() {
@@ -13169,7 +13448,7 @@ const App = (function () {
     }).join('');
 
     document.getElementById('modal-body').innerHTML = body;
-    document.getElementById('modal-backdrop').classList.add('active');
+    openBackdrop('modal-backdrop');
   }
 
   function detailRow(label, valueHtml) {
@@ -13214,10 +13493,10 @@ const App = (function () {
       <div class="detail-actions">
         <button class="detail-edit-btn" onclick="App.closeModal(); App.openEditModal('${t.id}')">Edit task</button>
       </div>`;
-    document.getElementById('modal-backdrop').classList.add('active');
+    openBackdrop('modal-backdrop');
   }
 
-  function closeModal() { document.getElementById('modal-backdrop').classList.remove('active'); }
+  function closeModal() { closeBackdrop('modal-backdrop'); }
   function closeModalOnBackdrop(event) { if (event.target.id === 'modal-backdrop') closeModal(); }
 
   /* ========================= edit modal ========================= */
@@ -13246,7 +13525,7 @@ const App = (function () {
     onEditCategoryChange();
     renderSubtaskEditor('edit-subtasks', subtasksOf(t));
 
-    document.getElementById('edit-modal-backdrop').classList.add('active');
+    openBackdrop('edit-modal-backdrop');
   }
 
   function saveEditedTask() {
@@ -13281,7 +13560,7 @@ const App = (function () {
     closeEditModal();
   }
 
-  function closeEditModal() { document.getElementById('edit-modal-backdrop').classList.remove('active'); }
+  function closeEditModal() { closeBackdrop('edit-modal-backdrop'); }
   function closeEditModalOnBackdrop(event) { if (event.target.id === 'edit-modal-backdrop') closeEditModal(); }
 
   /* ========================= account menu + header ========================= */
@@ -13451,7 +13730,7 @@ const App = (function () {
       const sec = document.getElementById('install-prompt-section');
       if (sec) sec.hidden = false;
     }
-    document.getElementById('settings-modal-backdrop').classList.add('active');
+    openBackdrop('settings-modal-backdrop');
   }
 
   function copyInstallLink() {
@@ -13716,7 +13995,7 @@ const App = (function () {
         <div id="updates-list"></div>
       </div>`;
     renderUpdates();
-    document.getElementById('settings-modal-backdrop').classList.add('active');
+    openBackdrop('settings-modal-backdrop');
   }
 
   /* Installed on a home screen, Tend is resumed rather than reloaded, so it can
@@ -13839,7 +14118,7 @@ const App = (function () {
     renderWorldSettings();
     renderThemePicker();
     renderViewModePicker();
-    document.getElementById('settings-modal-backdrop').classList.add('active');
+    openBackdrop('settings-modal-backdrop');
   }
 
   /* ---------------------------------------------------------------
@@ -13944,7 +14223,7 @@ const App = (function () {
     renderWorldSettings();
   }
 
-  function closeSettings() { document.getElementById('settings-modal-backdrop').classList.remove('active'); }
+  function closeSettings() { closeBackdrop('settings-modal-backdrop'); }
   function closeSettingsOnBackdrop(e) { if (e.target.id === 'settings-modal-backdrop') closeSettings(); }
 
   function saveDisplayName() {
@@ -14302,41 +14581,68 @@ const App = (function () {
      changing under you is explained rather than startling. The header badge is
      hidden on a phone, which is exactly where this matters most. */
   let syncedFlashTimer = null;
-  function showToast(text) {
+  let toastHoldMs = 0;
+
+  /* Every bit of passing feedback in the app comes through this one element,
+     so it is a live region: without that, finishing a task says nothing at
+     all to a screen reader. It also holds still while the pointer is over it
+     or something inside it has focus - otherwise the Undo button below can
+     time out from under the hand reaching for it. */
+  function toastEl() {
     let el = document.getElementById('sync-toast');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'sync-toast';
-      el.className = 'sync-toast';
-      document.body.appendChild(el);
-    }
-    el.textContent = text;
-    el.classList.add('show');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'sync-toast';
+    el.className = 'sync-toast';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.addEventListener('mouseenter', holdToast);
+    el.addEventListener('focusin', holdToast);
+    el.addEventListener('mouseleave', releaseToast);
+    el.addEventListener('focusout', releaseToast);
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function armToastTimer(el, ms) {
     if (syncedFlashTimer) clearTimeout(syncedFlashTimer);
     syncedFlashTimer = setTimeout(function () {
       el.classList.remove('show');
       syncedFlashTimer = null;
-    }, 2200);
+    }, ms);
+  }
+
+  function holdToast() {
+    if (syncedFlashTimer) { clearTimeout(syncedFlashTimer); syncedFlashTimer = null; }
+  }
+
+  function releaseToast() {
+    const el = document.getElementById('sync-toast');
+    if (!el || !el.classList.contains('show')) return;
+    /* A moment to get clear of it, not the full run again. */
+    armToastTimer(el, Math.min(toastHoldMs, 1200));
+  }
+
+  function showToast(text) {
+    const el = toastEl();
+    el.setAttribute('aria-live', 'polite');
+    el.textContent = text;
+    el.classList.add('show');
+    toastHoldMs = 2200;
+    armToastTimer(el, toastHoldMs);
   }
 
   /* The same toast, with the way back in it. Ctrl+Z already did this; the
-     button is for the hand that is nowhere near a keyboard. */
+     button is for the hand that is nowhere near a keyboard. Assertive,
+     because it carries an action that expires. */
   function showUndoToast(text) {
-    let el = document.getElementById('sync-toast');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'sync-toast';
-      el.className = 'sync-toast';
-      document.body.appendChild(el);
-    }
+    const el = toastEl();
+    el.setAttribute('aria-live', 'assertive');
     el.innerHTML = '<span>' + Util.escapeHtml(text) + '</span>'
       + '<button type="button" class="toast-undo" onclick="App.undoLast()">Undo</button>';
     el.classList.add('show');
-    if (syncedFlashTimer) clearTimeout(syncedFlashTimer);
-    syncedFlashTimer = setTimeout(function () {
-      el.classList.remove('show');
-      syncedFlashTimer = null;
-    }, 5000);
+    toastHoldMs = 5000;
+    armToastTimer(el, toastHoldMs);
   }
 
   function flashSynced() { showToast('Updated from your other device'); }
@@ -14483,6 +14789,9 @@ const App = (function () {
         closeModal(); closeEditModal(); closeNewTaskModal(); closeSettings();
         document.getElementById('account-dropdown').hidden = true;
       });
+
+      /* Keeps Tab inside whichever modal is on top. */
+      document.addEventListener('keydown', trapModalTab);
     }
   }
 

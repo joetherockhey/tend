@@ -58,8 +58,11 @@
              aria-label="Search tasks by title, notes or category">
       <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
     </div>
+    <!-- The label says what it will undo, on the button itself. It used to say
+         so only in a title attribute, which touch never shows and a screen
+         reader never reads out while the button is disabled. -->
     <button id="undo-btn" class="garden-toggle-btn" onclick="App.undoLast()" disabled
-            title="Nothing to undo">&#8630; Undo</button>
+            aria-label="Nothing to undo">&#8630; <span id="undo-btn-label">Undo</span></button>
     <button id="garden-toggle-btn" class="garden-toggle-btn" onclick="toggleGardenVisibility()">Hide Garden</button>
   </nav>
 </div>
@@ -102,18 +105,38 @@
       <li id="garden-use-hint">Press E to pick up, plant, or use whatever you are next to.</li>
       <li id="garden-buy-hint">Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.</li>
     </ul>
+    <!-- Eleven of these used to sit in one undifferentiated row, labelled only
+         by a title attribute - which a phone never shows, so the only way to
+         learn what one did was to tap all eleven. They are grouped now, each
+         one says its own name, and the name is what shows on a narrow screen
+         instead of a bare icon. -->
     <div class="garden-help-icons">
-      <button class="help-icon-btn coin-help-btn" onclick="showHelpTopic('coins')" title="Coins and plants"></button>
-      <button class="help-icon-btn" onclick="showHelpTopic('water')" title="Watering">&#x1F4A7;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('cashin')" title="Cashing plants in">&#x1F4B0;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('pickup')" title="Picking things up">&#x270B;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('axe')" title="Axe">&#x1FA93;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('hoe')" title="Hoe">&#x26CF;&#xFE0F;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('shovel')" title="Shovel"><svg class="glyph-icon" viewBox="0 0 16 20" shape-rendering="crispEdges" role="img" aria-label="shovel"><rect x="5" y="1" width="6" height="2" fill="#9a6636"/><rect x="7" y="3" width="2" height="9" fill="#8a5a2e"/><rect x="4" y="11" width="8" height="1" fill="#7b818a"/><rect x="4" y="12" width="8" height="4" fill="#b9bec6"/><rect x="5" y="16" width="6" height="2" fill="#b9bec6"/><rect x="6" y="18" width="4" height="1" fill="#a4aab3"/><rect x="9" y="12" width="3" height="4" fill="#a4aab3"/><rect x="9" y="16" width="2" height="2" fill="#a4aab3"/></svg></button>
-      <button class="help-icon-btn" onclick="showHelpTopic('sapling')" title="Saplings">&#x1F331;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('cabin')" title="Cabins">&#x1FAB5;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('pets')" title="Pets">&#x1F43E;</button>
-      <button class="help-icon-btn" onclick="showHelpTopic('unlock')" title="Unlocking sections">&#x1F512;</button>
+      <div class="help-group">
+        <span class="help-group-label">How it works</span>
+        <div class="help-group-btns">
+          <button class="help-icon-btn coin-help-btn" onclick="showHelpTopic('coins')" title="Coins and plants" aria-label="Coins and plants"><span class="help-icon-glyph" aria-hidden="true"></span><span class="help-icon-word">Coins</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('water')" title="Watering" aria-label="Watering"><span class="help-icon-glyph" aria-hidden="true">&#x1F4A7;</span><span class="help-icon-word">Watering</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('cashin')" title="Cashing plants in" aria-label="Cashing plants in"><span class="help-icon-glyph" aria-hidden="true">&#x1F4B0;</span><span class="help-icon-word">Cashing in</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('unlock')" title="Unlocking sections" aria-label="Unlocking sections"><span class="help-icon-glyph" aria-hidden="true">&#x1F512;</span><span class="help-icon-word">Unlocking</span></button>
+        </div>
+      </div>
+      <div class="help-group">
+        <span class="help-group-label">Tools</span>
+        <div class="help-group-btns">
+          <button class="help-icon-btn" onclick="showHelpTopic('pickup')" title="Picking things up" aria-label="Picking things up"><span class="help-icon-glyph" aria-hidden="true">&#x270B;</span><span class="help-icon-word">Picking up</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('axe')" title="Axe" aria-label="Axe"><span class="help-icon-glyph" aria-hidden="true">&#x1FA93;</span><span class="help-icon-word">Axe</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('hoe')" title="Hoe" aria-label="Hoe"><span class="help-icon-glyph" aria-hidden="true">&#x26CF;&#xFE0F;</span><span class="help-icon-word">Hoe</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('shovel')" title="Shovel" aria-label="Shovel"><span class="help-icon-glyph" aria-hidden="true"><svg class="glyph-icon" viewBox="0 0 16 20" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="6" height="2" fill="#9a6636"/><rect x="7" y="3" width="2" height="9" fill="#8a5a2e"/><rect x="4" y="11" width="8" height="1" fill="#7b818a"/><rect x="4" y="12" width="8" height="4" fill="#b9bec6"/><rect x="5" y="16" width="6" height="2" fill="#b9bec6"/><rect x="6" y="18" width="4" height="1" fill="#a4aab3"/><rect x="9" y="12" width="3" height="4" fill="#a4aab3"/><rect x="9" y="16" width="2" height="2" fill="#a4aab3"/></svg></span><span class="help-icon-word">Shovel</span></button>
+        </div>
+      </div>
+      <div class="help-group">
+        <span class="help-group-label">Living things</span>
+        <div class="help-group-btns">
+          <button class="help-icon-btn" onclick="showHelpTopic('sapling')" title="Saplings" aria-label="Saplings"><span class="help-icon-glyph" aria-hidden="true">&#x1F331;</span><span class="help-icon-word">Saplings</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('cabin')" title="Cabins" aria-label="Cabins"><span class="help-icon-glyph" aria-hidden="true">&#x1FAB5;</span><span class="help-icon-word">Cabins</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('pets')" title="Pets" aria-label="Pets"><span class="help-icon-glyph" aria-hidden="true">&#x1F43E;</span><span class="help-icon-word">Pets</span></button>
+        </div>
+      </div>
     </div>
     <div class="help-explanation" id="help-explanation"></div>
   </div>
@@ -175,6 +198,17 @@
 
     <div id="category-sections" style="display:none;"></div>
 
+    <!-- The three reveal toggles. They used to live in the Completed section's
+         header, which put the control for recurring tasks under a heading
+         saying "Completed" - the one thing those tasks are not - and opened
+         sections that render ABOVE the button you just pressed. They sit on
+         their own line now, ahead of everything they reveal. -->
+    <div class="reveal-toggles">
+      <button class="section-toggle-btn" id="toggle-waiting-btn" onclick="App.toggleShowWaiting()" aria-expanded="false" aria-controls="waiting-section">Show recurring</button>
+      <button class="section-toggle-btn" id="toggle-archived-btn" onclick="App.toggleShowArchived()" aria-expanded="false" aria-controls="archived-section">Show archived</button>
+      <button class="section-toggle-btn" id="toggle-completed-btn" onclick="App.toggleShowCompleted()" aria-expanded="false" aria-controls="completed-section">Show completed</button>
+    </div>
+
     <!-- Repeats waiting for their day. Hidden from the feed above until the
          date arrives, so a weekly task ticked on Monday is out of the way
          until next Monday - and findable here in the meantime. -->
@@ -189,14 +223,7 @@
     </section>
 
     <section class="list-section" id="completed-section">
-      <div class="section-header">
-        <h2>Completed</h2>
-        <div class="section-toggle-group">
-          <button class="section-toggle-btn" id="toggle-waiting-btn" onclick="App.toggleShowWaiting()">Show recurring</button>
-          <button class="section-toggle-btn" id="toggle-archived-btn" onclick="App.toggleShowArchived()">Show archived</button>
-          <button class="section-toggle-btn" id="toggle-completed-btn" onclick="App.toggleShowCompleted()">Show completed</button>
-        </div>
-      </div>
+      <h2>Completed</h2>
       <ul class="task-list" id="completed-list"></ul>
     </section>
   </div>
@@ -257,17 +284,17 @@
 <!-- ============================ MODALS ============================ -->
 
 <div class="modal-backdrop" id="modal-backdrop" onclick="App.closeModalOnBackdrop(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="App.closeModal()">&times;</button>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <button class="modal-close" onclick="App.closeModal()" aria-label="Close">&times;</button>
     <h3 id="modal-title"></h3>
     <div id="modal-body"></div>
   </div>
 </div>
 
 <div class="modal-backdrop" id="edit-modal-backdrop" onclick="App.closeEditModalOnBackdrop(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="App.closeEditModal()">&times;</button>
-    <h3>Edit task</h3>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <button class="modal-close" onclick="App.closeEditModal()" aria-label="Close">&times;</button>
+    <h3 id="edit-modal-title">Edit task</h3>
     <input type="hidden" id="edit-task-id">
     <div class="modal-form">
       <input type="text" id="edit-task-title" placeholder="What needs to be done?" maxlength="200">
@@ -319,9 +346,9 @@
 </div>
 
 <div class="modal-backdrop" id="new-task-modal-backdrop" onclick="App.closeNewTaskModalOnBackdrop(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="App.closeNewTaskModal()">&times;</button>
-    <h3>New task</h3>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="new-task-modal-title">
+    <button class="modal-close" onclick="App.closeNewTaskModal()" aria-label="Close">&times;</button>
+    <h3 id="new-task-modal-title">New task</h3>
     <div class="modal-form">
       <input type="text" id="new-task-input" placeholder="What needs to be done?" maxlength="200">
 
@@ -372,8 +399,8 @@
 </div>
 
 <div class="modal-backdrop" id="settings-modal-backdrop" onclick="App.closeSettingsOnBackdrop(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="App.closeSettings()">&times;</button>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <button class="modal-close" onclick="App.closeSettings()" aria-label="Close">&times;</button>
     <h3 id="settings-title">Settings &amp; backup</h3>
     <div id="settings-body"></div>
   </div>

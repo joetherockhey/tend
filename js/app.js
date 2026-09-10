@@ -398,14 +398,92 @@ const App = (function () {
     }
   }
 
+  /* ==================== modal focus plumbing ====================
+     The modals are plain divs, so nothing about them was a dialog to the
+     browser: Tab walked straight out of an open one into the task list
+     behind it, and closing it dropped focus at the top of the document
+     instead of back on the button that opened it - so adding three tasks
+     by keyboard meant crossing the header three times. Every modal now
+     opens and closes through here: a stack of what is open, focus parked
+     on the way in and put back on the way out, and Tab kept inside the
+     top one. The role and aria-modal attributes are in index.html.       */
+
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]),'
+    + ' select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  let modalStack = [];
+  let focusBeforeModal = null;
+
+  function focusablesIn(modal) {
+    if (!modal) return [];
+    return Array.prototype.filter.call(modal.querySelectorAll(FOCUSABLE),
+      el => el.offsetParent !== null || el === document.activeElement);
+  }
+
+  function openBackdrop(id) {
+    const bd = document.getElementById(id);
+    if (!bd) return;
+    if (!modalStack.length) focusBeforeModal = document.activeElement;
+    if (modalStack.indexOf(id) === -1) modalStack.push(id);
+    bd.classList.add('active');
+    /* Some of these focus their own first field straight after calling us;
+       this is only for the ones that do not. */
+    const modal = bd.querySelector('.modal');
+    if (modal && !modal.contains(document.activeElement)) {
+      const first = focusablesIn(modal)[0];
+      if (first) first.focus();
+    }
+  }
+
+  function closeBackdrop(id) {
+    const bd = document.getElementById(id);
+    /* Escape closes all four in a row, so one that was never open must not
+       reach in and move anybody's focus. */
+    if (!bd || !bd.classList.contains('active')) return;
+    bd.classList.remove('active');
+    modalStack = modalStack.filter(x => x !== id);
+    if (modalStack.length) {
+      const top = document.getElementById(modalStack[modalStack.length - 1]);
+      const back = top && focusablesIn(top.querySelector('.modal'))[0];
+      if (back) back.focus();
+      return;
+    }
+    if (focusBeforeModal && document.body.contains(focusBeforeModal)) {
+      focusBeforeModal.focus();
+    }
+    focusBeforeModal = null;
+  }
+
+  function topModal() {
+    for (let i = modalStack.length - 1; i >= 0; i--) {
+      const bd = document.getElementById(modalStack[i]);
+      if (bd && bd.classList.contains('active')) return bd.querySelector('.modal');
+    }
+    return null;
+  }
+
+  function trapModalTab(e) {
+    if (e.key !== 'Tab') return;
+    const modal = topModal();
+    if (!modal) return;
+    const items = focusablesIn(modal);
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    const inside = modal.contains(document.activeElement);
+    if (e.shiftKey && (!inside || document.activeElement === first)) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && (!inside || document.activeElement === last)) {
+      e.preventDefault(); first.focus();
+    }
+  }
+
   function openNewTaskModal() {
     renderSubtaskEditor('new-subtasks', []);
-    document.getElementById('new-task-modal-backdrop').classList.add('active');
+    openBackdrop('new-task-modal-backdrop');
     document.getElementById('new-task-input').focus();
   }
 
   function closeNewTaskModal() {
-    document.getElementById('new-task-modal-backdrop').classList.remove('active');
+    closeBackdrop('new-task-modal-backdrop');
   }
 
   function closeNewTaskModalOnBackdrop(event) {
@@ -461,7 +539,16 @@ const App = (function () {
     if (!btn) return;
     const next = undoStack[undoStack.length - 1];
     btn.disabled = !next;
-    btn.title = next ? 'Undo: ' + next.label + '  (Ctrl+Z)' : 'Nothing to undo';
+    /* What it will undo goes on the button, not into a title nobody on a
+       phone can see and no screen reader reads out on a disabled button.
+       The label is allowed to run long - CSS trims it with an ellipsis and
+       the full text stays on aria-label. */
+    const label = document.getElementById('undo-btn-label');
+    if (label) label.textContent = next ? 'Undo: ' + next.label : 'Undo';
+    btn.setAttribute('aria-label', next
+      ? 'Undo: ' + next.label + ' (Ctrl+Z)'
+      : 'Nothing to undo');
+    btn.removeAttribute('title');
   }
 
   function toggleTask(id, elm) {
@@ -1071,15 +1158,26 @@ const App = (function () {
     }
 
     completedList.style.display = showCompleted ? '' : 'none';
-    document.getElementById('toggle-completed-btn').textContent = showCompleted ? 'Hide completed' : `Show completed (${completed.length})`;
+    setRevealBtn('toggle-completed-btn', showCompleted,
+      'Hide completed', `Show completed (${completed.length})`);
 
     const waitingSection = document.getElementById('waiting-section');
     if (waitingSection) waitingSection.style.display = showWaiting ? '' : 'none';
-    const waitingBtn = document.getElementById('toggle-waiting-btn');
-    if (waitingBtn) waitingBtn.textContent = showWaiting ? 'Hide recurring' : `Show recurring (${waiting.length})`;
+    setRevealBtn('toggle-waiting-btn', showWaiting,
+      'Hide recurring', `Show recurring (${waiting.length})`);
 
     document.getElementById('archived-section').style.display = showArchived ? '' : 'none';
-    document.getElementById('toggle-archived-btn').textContent = showArchived ? 'Hide archived' : `Show archived (${archived.length})`;
+    setRevealBtn('toggle-archived-btn', showArchived,
+      'Hide archived', `Show archived (${archived.length})`);
+  }
+
+  /* One of the three reveal toggles under the feed. The button says which way
+     it goes, and aria-expanded says the same thing to a screen reader. */
+  function setRevealBtn(id, open, openLabel, shutLabel) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.textContent = open ? openLabel : shutLabel;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
   /* The same rows as the Priority / Active lists, gathered under their
@@ -1401,7 +1499,7 @@ const App = (function () {
            <span class="day-task-note overdue">${Util.formatDate(t.dueDate)}</span></li>`).join('')}</ul></div>`;
     }
     document.getElementById('modal-body').innerHTML = body;
-    document.getElementById('modal-backdrop').classList.add('active');
+    openBackdrop('modal-backdrop');
   }
 
   function renderStats() {
@@ -1937,7 +2035,7 @@ const App = (function () {
     }).join('');
 
     document.getElementById('modal-body').innerHTML = body;
-    document.getElementById('modal-backdrop').classList.add('active');
+    openBackdrop('modal-backdrop');
   }
 
   function detailRow(label, valueHtml) {
@@ -1982,10 +2080,10 @@ const App = (function () {
       <div class="detail-actions">
         <button class="detail-edit-btn" onclick="App.closeModal(); App.openEditModal('${t.id}')">Edit task</button>
       </div>`;
-    document.getElementById('modal-backdrop').classList.add('active');
+    openBackdrop('modal-backdrop');
   }
 
-  function closeModal() { document.getElementById('modal-backdrop').classList.remove('active'); }
+  function closeModal() { closeBackdrop('modal-backdrop'); }
   function closeModalOnBackdrop(event) { if (event.target.id === 'modal-backdrop') closeModal(); }
 
   /* ========================= edit modal ========================= */
@@ -2014,7 +2112,7 @@ const App = (function () {
     onEditCategoryChange();
     renderSubtaskEditor('edit-subtasks', subtasksOf(t));
 
-    document.getElementById('edit-modal-backdrop').classList.add('active');
+    openBackdrop('edit-modal-backdrop');
   }
 
   function saveEditedTask() {
@@ -2049,7 +2147,7 @@ const App = (function () {
     closeEditModal();
   }
 
-  function closeEditModal() { document.getElementById('edit-modal-backdrop').classList.remove('active'); }
+  function closeEditModal() { closeBackdrop('edit-modal-backdrop'); }
   function closeEditModalOnBackdrop(event) { if (event.target.id === 'edit-modal-backdrop') closeEditModal(); }
 
   /* ========================= account menu + header ========================= */
@@ -2219,7 +2317,7 @@ const App = (function () {
       const sec = document.getElementById('install-prompt-section');
       if (sec) sec.hidden = false;
     }
-    document.getElementById('settings-modal-backdrop').classList.add('active');
+    openBackdrop('settings-modal-backdrop');
   }
 
   function copyInstallLink() {
@@ -2484,7 +2582,7 @@ const App = (function () {
         <div id="updates-list"></div>
       </div>`;
     renderUpdates();
-    document.getElementById('settings-modal-backdrop').classList.add('active');
+    openBackdrop('settings-modal-backdrop');
   }
 
   /* Installed on a home screen, Tend is resumed rather than reloaded, so it can
@@ -2607,7 +2705,7 @@ const App = (function () {
     renderWorldSettings();
     renderThemePicker();
     renderViewModePicker();
-    document.getElementById('settings-modal-backdrop').classList.add('active');
+    openBackdrop('settings-modal-backdrop');
   }
 
   /* ---------------------------------------------------------------
@@ -2712,7 +2810,7 @@ const App = (function () {
     renderWorldSettings();
   }
 
-  function closeSettings() { document.getElementById('settings-modal-backdrop').classList.remove('active'); }
+  function closeSettings() { closeBackdrop('settings-modal-backdrop'); }
   function closeSettingsOnBackdrop(e) { if (e.target.id === 'settings-modal-backdrop') closeSettings(); }
 
   function saveDisplayName() {
@@ -3070,41 +3168,68 @@ const App = (function () {
      changing under you is explained rather than startling. The header badge is
      hidden on a phone, which is exactly where this matters most. */
   let syncedFlashTimer = null;
-  function showToast(text) {
+  let toastHoldMs = 0;
+
+  /* Every bit of passing feedback in the app comes through this one element,
+     so it is a live region: without that, finishing a task says nothing at
+     all to a screen reader. It also holds still while the pointer is over it
+     or something inside it has focus - otherwise the Undo button below can
+     time out from under the hand reaching for it. */
+  function toastEl() {
     let el = document.getElementById('sync-toast');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'sync-toast';
-      el.className = 'sync-toast';
-      document.body.appendChild(el);
-    }
-    el.textContent = text;
-    el.classList.add('show');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'sync-toast';
+    el.className = 'sync-toast';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.addEventListener('mouseenter', holdToast);
+    el.addEventListener('focusin', holdToast);
+    el.addEventListener('mouseleave', releaseToast);
+    el.addEventListener('focusout', releaseToast);
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function armToastTimer(el, ms) {
     if (syncedFlashTimer) clearTimeout(syncedFlashTimer);
     syncedFlashTimer = setTimeout(function () {
       el.classList.remove('show');
       syncedFlashTimer = null;
-    }, 2200);
+    }, ms);
+  }
+
+  function holdToast() {
+    if (syncedFlashTimer) { clearTimeout(syncedFlashTimer); syncedFlashTimer = null; }
+  }
+
+  function releaseToast() {
+    const el = document.getElementById('sync-toast');
+    if (!el || !el.classList.contains('show')) return;
+    /* A moment to get clear of it, not the full run again. */
+    armToastTimer(el, Math.min(toastHoldMs, 1200));
+  }
+
+  function showToast(text) {
+    const el = toastEl();
+    el.setAttribute('aria-live', 'polite');
+    el.textContent = text;
+    el.classList.add('show');
+    toastHoldMs = 2200;
+    armToastTimer(el, toastHoldMs);
   }
 
   /* The same toast, with the way back in it. Ctrl+Z already did this; the
-     button is for the hand that is nowhere near a keyboard. */
+     button is for the hand that is nowhere near a keyboard. Assertive,
+     because it carries an action that expires. */
   function showUndoToast(text) {
-    let el = document.getElementById('sync-toast');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'sync-toast';
-      el.className = 'sync-toast';
-      document.body.appendChild(el);
-    }
+    const el = toastEl();
+    el.setAttribute('aria-live', 'assertive');
     el.innerHTML = '<span>' + Util.escapeHtml(text) + '</span>'
       + '<button type="button" class="toast-undo" onclick="App.undoLast()">Undo</button>';
     el.classList.add('show');
-    if (syncedFlashTimer) clearTimeout(syncedFlashTimer);
-    syncedFlashTimer = setTimeout(function () {
-      el.classList.remove('show');
-      syncedFlashTimer = null;
-    }, 5000);
+    toastHoldMs = 5000;
+    armToastTimer(el, toastHoldMs);
   }
 
   function flashSynced() { showToast('Updated from your other device'); }
@@ -3251,6 +3376,9 @@ const App = (function () {
         closeModal(); closeEditModal(); closeNewTaskModal(); closeSettings();
         document.getElementById('account-dropdown').hidden = true;
       });
+
+      /* Keeps Tab inside whichever modal is on top. */
+      document.addEventListener('keydown', trapModalTab);
     }
   }
 

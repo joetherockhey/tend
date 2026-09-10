@@ -4217,3 +4217,144 @@ li.task[draggable="false"] { cursor: pointer; }
   pointer-events: none;
   cursor: default;
 }
+
+/* ============================ FOCUS ============================
+   Almost every control in Tend is a custom-styled button, several of them
+   setting their own background and border, so the browser's own focus ring
+   was either invisible against them or suppressed outright: tabbing the
+   header, the tab row, the shop and the help icons showed nothing at all.
+   One ring, in whichever accent the current theme sets, drawn only for
+   keyboard focus. Declared last in the file so it wins the ties.        */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* A mouse click should not leave the ring sitting there afterwards. */
+:focus:not(:focus-visible) { outline: none; }
+
+/* The accent has nothing to sit against on the dark header ribbon or the
+   bottom bar, so controls there take the ribbon's own text colour. */
+header :focus-visible,
+.bottom-nav :focus-visible {
+  outline-color: var(--header-text);
+}
+
+/* The search box already answers focus by growing, so the ring goes round
+   the whole control rather than the bare input inside it. */
+.nav-search:focus-within {
+  outline: 2px solid var(--header-text);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.search-input:focus-visible { outline: none; }
+
+/* Fields that draw their own focus state keep it and skip the ring. */
+.auth-form input:focus-visible { outline: none; }
+
+/* The garden plot is the one thing here that is neither button nor field:
+   a focusable grid where every key press depends on knowing it has the
+   focus. It already shows a ring on click - which is how you focus it -
+   so keyboard focus just draws that ring heavier. */
+.garden-plot:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--accent);
+  outline: none;
+}
+
+/* ===================== GARDEN HELP GROUPS =====================
+   These eleven buttons sat in one flat row, labelled only by a title
+   attribute - which a phone never shows, so the only way to learn what one
+   did was to tap all eleven. Three named groups now, and under the phone
+   breakpoint each button shows its name instead of a bare icon.        */
+
+.garden-help-icons {
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.help-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.help-group-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.help-group-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.help-icon-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.help-icon-word { display: none; }
+
+@media (max-width: 560px) {
+  .garden-help-icons { gap: 12px; }
+  .help-group-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .help-icon-btn {
+    width: auto;
+    height: auto;
+    min-height: 32px;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 6px 9px;
+  }
+  .help-icon-word {
+    display: inline;
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+}
+
+/* ===================== REVEAL TOGGLES =====================
+   Show recurring / archived / completed. These used to sit in the Completed
+   section's header, which filed the recurring control under a heading
+   saying "Completed" and opened sections that render above the button just
+   pressed. Their own line, ahead of everything they reveal.           */
+
+.reveal-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 28px 0 6px;
+}
+
+/* ===================== UNDO BUTTON =====================
+   The label names what it will undo, so it can run long. Trimmed with an
+   ellipsis; the full text is on aria-label. */
+
+#undo-btn { max-width: 16rem; }
+
+#undo-btn-label {
+  display: inline-block;
+  max-width: 11.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+@media (max-width: 720px) {
+  #undo-btn { max-width: 9.5rem; }
+  #undo-btn-label { max-width: 5.5rem; }
+}
