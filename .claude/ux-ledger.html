@@ -137,7 +137,7 @@ h1 {
 
 .tally {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 }
 
 .tally-cell {
@@ -156,6 +156,7 @@ h1 {
 .tally-cell.is-approved .tally-n { color: var(--accent); }
 .tally-cell.is-declined .tally-n { color: var(--ink-faint); }
 .tally-cell.is-later    .tally-n { color: var(--sev-low); }
+.tally-cell.is-done     .tally-n { color: var(--brass); }
 
 .tally-k {
   font: 500 10.5px/1.3 var(--f-body);
@@ -300,6 +301,21 @@ h1 {
 .verdict.v-approved { color: var(--accent); }
 .verdict.v-declined { color: var(--ink-faint); }
 .verdict.v-later    { color: var(--sev-low); }
+.verdict.v-done     { color: var(--brass); }
+
+.shipped-note {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-faint);
+}
+.shipped-note code {
+  font: 400 12.5px/1.5 var(--f-mono);
+  color: var(--brass);
+}
+
+.finding.sev-high.is-done .stripe,
+.finding.sev-medium.is-done .stripe,
+.finding.sev-low.is-done .stripe { background: var(--brass); }
 
 h2.f-title {
   font: 600 21px/1.25 var(--f-display);
@@ -486,9 +502,12 @@ h2.f-title {
 
 @media (max-width: 640px) {
   .wrap { padding: 28px 16px 80px; }
+  /* Two per row, with the odd one out spanning the last row so nothing
+     sits alone beside dead space. */
   .tally { grid-template-columns: repeat(2, 1fr); }
-  .tally-cell:nth-child(2) { border-right: 0; }
-  .tally-cell:nth-child(-n+2) { border-bottom: 1px solid var(--edge-soft); }
+  .tally-cell:nth-child(2n) { border-right: 0; }
+  .tally-cell:not(:last-child) { border-bottom: 1px solid var(--edge-soft); }
+  .tally-cell:last-child { grid-column: 1 / -1; border-right: 0; }
   .finding { grid-template-columns: 3px 1fr; gap: 0 14px; }
   .verdict { margin-left: 0; width: 100%; }
 }
@@ -518,6 +537,10 @@ h2.f-title {
       <div class="tally-cell is-approved">
         <span class="tally-n" id="n-approved">&mdash;</span>
         <span class="tally-k">To build</span>
+      </div>
+      <div class="tally-cell is-done">
+        <span class="tally-n" id="n-done">&mdash;</span>
+        <span class="tally-k">Shipped</span>
       </div>
       <div class="tally-cell is-later">
         <span class="tally-n" id="n-later">&mdash;</span>
@@ -567,10 +590,14 @@ h2.f-title {
     { key: "all",      label: "All" },
     { key: "open",     label: "Awaiting you" },
     { key: "approved", label: "To build" },
+    { key: "done",     label: "Shipped" },
     { key: "later",    label: "Later" },
     { key: "declined", label: "Declined" }
   ];
-  var VERDICT_WORD = { approved: "Approved", declined: "Declined", later: "Deferred" };
+  var DECIDED = ["approved", "declined", "later", "done"];
+  var VERDICT_WORD = {
+    approved: "Approved", declined: "Declined", later: "Deferred", done: "Shipped"
+  };
 
   var findings = [];
   var filter = "all";
@@ -605,8 +632,7 @@ h2.f-title {
   }
 
   function statusOf(f) {
-    var s = f.status;
-    return (s === "approved" || s === "declined" || s === "later") ? s : "open";
+    return DECIDED.indexOf(f.status) === -1 ? "open" : f.status;
   }
 
   function sorted() {
@@ -619,7 +645,7 @@ h2.f-title {
   }
 
   function counts() {
-    var c = { all: findings.length, open: 0, approved: 0, declined: 0, later: 0 };
+    var c = { all: findings.length, open: 0, approved: 0, declined: 0, later: 0, done: 0 };
     findings.forEach(function (f) { c[statusOf(f)] += 1; });
     return c;
   }
@@ -628,7 +654,7 @@ h2.f-title {
 
   function renderTally() {
     var c = counts();
-    ["open", "approved", "later", "declined"].forEach(function (k) {
+    ["open", "approved", "done", "later", "declined"].forEach(function (k) {
       document.getElementById("n-" + k).textContent = c[k];
     });
 
@@ -690,6 +716,7 @@ h2.f-title {
     var fix = plainly ? plain.fix : f.fix;
 
     return '<article class="finding sev-' + esc(sev) + (st === "open" ? "" : " settled")
+      + (st === "done" ? " is-done" : "")
       + (plainly ? " plainly" : "")
       + '" data-id="' + esc(f.id) + '">'
       + '<div class="stripe" aria-hidden="true"></div>'
@@ -700,7 +727,9 @@ h2.f-title {
           + '<span class="tag">' + esc(f.area || "app") + "</span>"
           + '<span class="tag">' + esc(f.effort || "?") + " build</span>"
           + (st === "open" ? "" : '<span class="verdict v-' + st + '">'
-              + VERDICT_WORD[st] + "</span>")
+              + VERDICT_WORD[st]
+              + (st === "done" && f.commit ? " &middot; " + esc(f.commit) : "")
+              + "</span>")
         + "</div>"
         + '<h2 class="f-title">' + esc(f.title) + "</h2>"
         + (plainly ? '<div class="plain-mark">In plain words</div>' : "")
@@ -709,12 +738,18 @@ h2.f-title {
           + esc(fix) + "</p></div>"
         + (refs ? '<div class="refs">' + refs + "</div>" : "")
         + plainerBtn(f)
-        + '<div class="actions">'
-          + btn("approve", "approved", st, "Build it")
-          + btn("decline", "declined", st, "Not this")
-          + btn("later", "later", st, "Later")
-          + (st === "open" ? "" : '<span class="undo-hint">Press it again to undecide</span>')
-        + "</div>"
+        /* A shipped finding is history, not a decision to revisit. */
+        + (st === "done"
+            ? '<p class="shipped-note">Built and pushed'
+                + (f.commit ? " in <code>" + esc(f.commit) + "</code>" : "")
+                + (f.shippedAt ? " on " + esc(f.shippedAt) : "") + ".</p>"
+            : '<div class="actions">'
+                + btn("approve", "approved", st, "Build it")
+                + btn("decline", "declined", st, "Not this")
+                + btn("later", "later", st, "Later")
+                + (st === "open" ? ""
+                    : '<span class="undo-hint">Press it again to undecide</span>')
+              + "</div>")
       + "</div></article>";
   }
 
@@ -886,7 +921,8 @@ h2.f-title {
       refs: Array.isArray(v.refs) ? v.refs : [],
       plain: (p && p.problem && p.fix)
         ? { problem: String(p.problem), fix: String(p.fix) } : null,
-      status: v.status, sweep: v.sweep
+      status: v.status, sweep: v.sweep,
+      commit: v.commit, shippedAt: v.shippedAt
     };
   }
 
