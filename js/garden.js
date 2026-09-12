@@ -1660,6 +1660,11 @@ const Garden = (function () {
        it is away and has to be re-fitted on the way back - the window may have
        been resized while it was gone. */
     fitPlot();
+    /* The task list just gained or lost the whole garden track, so the category
+       columns are packed again against the width they actually have. Without
+       this the count stays whatever it was before the switch and three columns
+       flex down to a word per line. */
+    if (typeof App !== 'undefined' && App.packCategoryColumns) App.packCategoryColumns();
   }
 
   function toggleGardenVisibility() {

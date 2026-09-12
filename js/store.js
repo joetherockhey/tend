@@ -1015,6 +1015,31 @@ const Store = (function () {
     else writeCache();
   }
 
+  /* Forgets the account on this device without touching the server: the
+     cached copy, the kv bag and everything in memory. The dirty flags are
+     cleared first, so the pagehide handler cannot try to push to rows that
+     are no longer there. Used after the account itself has been deleted. */
+  function forgetAccountLocally() {
+    dirty = { tickets: false, categories: false, state: false };
+    stopRealtime();
+    if (liveTimer) { clearTimeout(liveTimer); liveTimer = null; }
+    try {
+      const prefixes = [cacheKey(''), kvKey('')];
+      const doomed = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && prefixes.some(p => k.indexOf(p) === 0)) doomed.push(k);
+      }
+      doomed.forEach(k => localStorage.removeItem(k));
+    } catch (e) { /* ignore */ }
+    account = null;
+    tickets = [];
+    categories = [];
+    prefs = {};
+    gardenBag = {};
+    snapshot = { tickets: {}, categories: {}, state: null };
+  }
+
   /* ========================= startup ========================= */
 
   /* Loads the Supabase client from a CDN, but only in cloud mode. */
@@ -1077,6 +1102,6 @@ const Store = (function () {
     listGardens,
 
     /* backup */
-    exportData, importData, eraseAccountData
+    exportData, importData, eraseAccountData, forgetAccountLocally
   };
 })();

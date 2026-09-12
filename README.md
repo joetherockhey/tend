@@ -61,6 +61,21 @@ row-level security, and adds a policy on each one saying *you may only touch row
 where `user_id` is your own id*. That policy is what makes it safe to publish the
 site: the key in the page grants nothing by itself.
 
+### 2a. Let people delete their own account
+
+Open **SQL Editor → New query** again and run
+[`supabase/delete-account.sql`](supabase/delete-account.sql).
+
+That adds one function, `delete_my_account()`, which deletes the caller's own
+row in `auth.users` — and because every table cascades off that row, their
+tasks, categories, garden and Friends entry go with it. It is what the **Delete
+my account** button in Settings calls. Without it that button says so rather
+than failing quietly.
+
+Worth running even on a private instance: the app stores a password, and an
+account nobody can close is a thing you have to close by hand in the Supabase
+dashboard.
+
 ### 2b. Turn on live sync (optional but worth it)
 
 Open **SQL Editor → New query** again and run
@@ -160,9 +175,11 @@ js/garden.js            the garden: sprites, movement, shop, pets, sections
 js/boot.js              wires branding in and starts the gate
 js/qr.js                a small QR encoder, for the install code
 supabase/schema.sql     tables, row-level security, triggers
+supabase/delete-account.sql  lets an account delete itself, cascades and all
 supabase/realtime.sql   optional: instant sync between devices
 supabase/daily-digest.sql   optional daily reminder email, all in SQL
 test/mock-supabase.js   a fake backend, for exercising cloud mode locally
+privacy.html            the privacy policy, served beside the app
 build.py                inlines everything into standalone/tend.html
 standalone/tend.html    the whole app as one file
 ```

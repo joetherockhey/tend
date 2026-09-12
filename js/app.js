@@ -2685,6 +2685,8 @@ const App = (function () {
           ${isCloud ? '<button class="settings-btn" onclick="App.forcePull()">Refresh from server</button>' : ''}
         </div>
         <div class="settings-note" id="settings-data-note"></div>
+        ${location.protocol === 'file:' ? '' :
+          '<div class="settings-note"><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a> &mdash; what is stored, and who can see it.</div>'}
       </div>
 
       <div class="settings-section">
@@ -2701,6 +2703,11 @@ const App = (function () {
         <div class="settings-row">
           <button class="settings-btn danger" onclick="App.eraseEverything()">Erase all my data</button>
         </div>
+        ${isCloud ? `
+        <p>Or close the account altogether &mdash; the sign-in, the tasks, the garden and your entry in Friends, deleted from the server. You will not be able to sign in again.</p>
+        <div class="settings-row">
+          <button class="settings-btn danger" onclick="App.deleteAccount()">Delete my account</button>
+        </div>` : ''}
       </div>`;
     renderWorldSettings();
     renderThemePicker();
@@ -2920,6 +2927,27 @@ const App = (function () {
     Garden.loadAll();
     Garden.render();
     closeSettings();
+  }
+
+  /* Typing the email back, rather than a second confirm box. Erasing your data
+     is survivable with an export; this is not survivable by anything, so the
+     gate is the one thing a mis-tap cannot get through. */
+  async function deleteAccount() {
+    const email = Store.email();
+    const typed = prompt(
+      'This deletes your account and everything in it, on every device, for ever.\n' +
+      'An exported backup is the only way to get any of it back.\n\n' +
+      'Type your email address to confirm:');
+    if (typed == null) return;
+    if (typed.trim().toLowerCase() !== (email || '').trim().toLowerCase()) {
+      alert('That did not match ' + email + ', so nothing has been deleted.');
+      return;
+    }
+    try {
+      await Auth.deleteAccount();
+    } catch (e) {
+      alert((e && e.message) || 'Could not delete the account.');
+    }
   }
 
   /* ---------------------------------------------------------------
@@ -3384,6 +3412,7 @@ const App = (function () {
 
   return {
     boot, renderAll, renderList, renderStats, renderCalendar, renderHeader,
+    packCategoryColumns,
     tickets, categories, categoryColor, DEFAULT_CATEGORY_COLOR,
     addTask, toggleTask, togglePriority, toggleArchive, deleteTask,
     toggleRowMenu, rowMenuAction,
@@ -3402,7 +3431,7 @@ const App = (function () {
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived, toggleShowWaiting,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
-    saveDisplayName, exportBackup, forcePull, eraseEverything,
+    saveDisplayName, exportBackup, forcePull, eraseEverything, deleteAccount,
     setDigest, setDigestHour,
     signOut, switchProfile
   };

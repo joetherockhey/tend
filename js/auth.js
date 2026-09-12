@@ -481,6 +481,29 @@ const Auth = (function () {
     }
   }
 
+  /* Deleting the account for real, not just emptying it. The one RPC removes
+     the row in auth.users and every table cascades off it, so the tasks, the
+     categories, the garden and the Friends entry go with it. Then the device
+     forgets the account and the page reloads into the sign-in gate - a reload
+     rather than showGate(), because nothing in memory should outlive an
+     account that no longer exists. */
+  async function deleteAccount() {
+    const { error } = await Store.client().rpc('delete_my_account');
+    if (error) {
+      /* The one piece of cloud setup a site can be missing. Say which file to
+         run rather than passing on the raw Postgres complaint. */
+      if (/delete_my_account|schema cache|does not exist/i.test(error.message || '')) {
+        throw new Error('Account deletion is not set up on this site yet - supabase/delete-account.sql has not been run.');
+      }
+      throw new Error(friendlyError(error));
+    }
+    Store.forgetAccountLocally();
+    /* The session died with the row, so this usually errors. It is here to
+       clear the token Supabase keeps in localStorage. */
+    try { await Store.client().auth.signOut(); } catch (e) { /* expected */ }
+    location.reload();
+  }
+
   async function switchProfile() {
     await Store.flush();
     Store.close();
@@ -488,5 +511,5 @@ const Auth = (function () {
     showGate();
   }
 
-  return { start, signOut, switchProfile, brandMarkSVG };
+  return { start, signOut, deleteAccount, switchProfile, brandMarkSVG };
 })();

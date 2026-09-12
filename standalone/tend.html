@@ -7816,6 +7816,31 @@ const Store = (function () {
     else writeCache();
   }
 
+  /* Forgets the account on this device without touching the server: the
+     cached copy, the kv bag and everything in memory. The dirty flags are
+     cleared first, so the pagehide handler cannot try to push to rows that
+     are no longer there. Used after the account itself has been deleted. */
+  function forgetAccountLocally() {
+    dirty = { tickets: false, categories: false, state: false };
+    stopRealtime();
+    if (liveTimer) { clearTimeout(liveTimer); liveTimer = null; }
+    try {
+      const prefixes = [cacheKey(''), kvKey('')];
+      const doomed = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && prefixes.some(p => k.indexOf(p) === 0)) doomed.push(k);
+      }
+      doomed.forEach(k => localStorage.removeItem(k));
+    } catch (e) { /* ignore */ }
+    account = null;
+    tickets = [];
+    categories = [];
+    prefs = {};
+    gardenBag = {};
+    snapshot = { tickets: {}, categories: {}, state: null };
+  }
+
   /* ========================= startup ========================= */
 
   /* Loads the Supabase client from a CDN, but only in cloud mode. */
@@ -7878,7 +7903,7 @@ const Store = (function () {
     listGardens,
 
     /* backup */
-    exportData, importData, eraseAccountData
+    exportData, importData, eraseAccountData, forgetAccountLocally
   };
 })();
 
@@ -9469,6 +9494,11 @@ const Garden = (function () {
        it is away and has to be re-fitted on the way back - the window may have
        been resized while it was gone. */
     fitPlot();
+    /* The task list just gained or lost the whole garden track, so the category
+       columns are packed again against the width they actually have. Without
+       this the count stays whatever it was before the switch and three columns
+       flex down to a word per line. */
+    if (typeof App !== 'undefined' && App.packCategoryColumns) App.packCategoryColumns();
   }
 
   function toggleGardenVisibility() {
@@ -14098,6 +14128,8 @@ const App = (function () {
           ${isCloud ? '<button class="settings-btn" onclick="App.forcePull()">Refresh from server</button>' : ''}
         </div>
         <div class="settings-note" id="settings-data-note"></div>
+        ${location.protocol === 'file:' ? '' :
+          '<div class="settings-note"><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a> &mdash; what is stored, and who can see it.</div>'}
       </div>
 
       <div class="settings-section">
@@ -14114,6 +14146,11 @@ const App = (function () {
         <div class="settings-row">
           <button class="settings-btn danger" onclick="App.eraseEverything()">Erase all my data</button>
         </div>
+        ${isCloud ? `
+        <p>Or close the account altogether &mdash; the sign-in, the tasks, the garden and your entry in Friends, deleted from the server. You will not be able to sign in again.</p>
+        <div class="settings-row">
+          <button class="settings-btn danger" onclick="App.deleteAccount()">Delete my account</button>
+        </div>` : ''}
       </div>`;
     renderWorldSettings();
     renderThemePicker();
@@ -14333,6 +14370,27 @@ const App = (function () {
     Garden.loadAll();
     Garden.render();
     closeSettings();
+  }
+
+  /* Typing the email back, rather than a second confirm box. Erasing your data
+     is survivable with an export; this is not survivable by anything, so the
+     gate is the one thing a mis-tap cannot get through. */
+  async function deleteAccount() {
+    const email = Store.email();
+    const typed = prompt(
+      'This deletes your account and everything in it, on every device, for ever.\n' +
+      'An exported backup is the only way to get any of it back.\n\n' +
+      'Type your email address to confirm:');
+    if (typed == null) return;
+    if (typed.trim().toLowerCase() !== (email || '').trim().toLowerCase()) {
+      alert('That did not match ' + email + ', so nothing has been deleted.');
+      return;
+    }
+    try {
+      await Auth.deleteAccount();
+    } catch (e) {
+      alert((e && e.message) || 'Could not delete the account.');
+    }
   }
 
   /* ---------------------------------------------------------------
@@ -14797,6 +14855,7 @@ const App = (function () {
 
   return {
     boot, renderAll, renderList, renderStats, renderCalendar, renderHeader,
+    packCategoryColumns,
     tickets, categories, categoryColor, DEFAULT_CATEGORY_COLOR,
     addTask, toggleTask, togglePriority, toggleArchive, deleteTask,
     toggleRowMenu, rowMenuAction,
@@ -14815,7 +14874,7 @@ const App = (function () {
     closeModal, closeModalOnBackdrop,
     toggleShowCompleted, toggleShowArchived, toggleShowWaiting,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
-    saveDisplayName, exportBackup, forcePull, eraseEverything,
+    saveDisplayName, exportBackup, forcePull, eraseEverything, deleteAccount,
     setDigest, setDigestHour,
     signOut, switchProfile
   };
@@ -15305,6 +15364,29 @@ const Auth = (function () {
     }
   }
 
+  /* Deleting the account for real, not just emptying it. The one RPC removes
+     the row in auth.users and every table cascades off it, so the tasks, the
+     categories, the garden and the Friends entry go with it. Then the device
+     forgets the account and the page reloads into the sign-in gate - a reload
+     rather than showGate(), because nothing in memory should outlive an
+     account that no longer exists. */
+  async function deleteAccount() {
+    const { error } = await Store.client().rpc('delete_my_account');
+    if (error) {
+      /* The one piece of cloud setup a site can be missing. Say which file to
+         run rather than passing on the raw Postgres complaint. */
+      if (/delete_my_account|schema cache|does not exist/i.test(error.message || '')) {
+        throw new Error('Account deletion is not set up on this site yet - supabase/delete-account.sql has not been run.');
+      }
+      throw new Error(friendlyError(error));
+    }
+    Store.forgetAccountLocally();
+    /* The session died with the row, so this usually errors. It is here to
+       clear the token Supabase keeps in localStorage. */
+    try { await Store.client().auth.signOut(); } catch (e) { /* expected */ }
+    location.reload();
+  }
+
   async function switchProfile() {
     await Store.flush();
     Store.close();
@@ -15312,7 +15394,7 @@ const Auth = (function () {
     showGate();
   }
 
-  return { start, signOut, switchProfile, brandMarkSVG };
+  return { start, signOut, deleteAccount, switchProfile, brandMarkSVG };
 })();
 
 /* ===== js/boot.js ===== */
