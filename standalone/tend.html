@@ -27,6 +27,16 @@
   --green: #0f9d6a;
   --green-soft: #e1f9f0;
   --danger: #e0546a;
+  /* The two tinted states - overdue and due - as tokens rather than literals,
+     so the dark block below can flip a surface without hunting the hex down in
+     fifteen places. */
+  --danger-soft: #fbe9ec;
+  --danger-line: #f3c9d1;
+  --danger-ink: #a12b41;
+  --warn: #eda100;
+  --warn-soft: #fdf0d8;
+  --warn-line: #f0d49a;
+  --warn-ink: #8a5500;
   --radius: 10px;
   --series-made: #8c52ff;
   --series-done: #00d68f;
@@ -45,6 +55,37 @@
 }
 
 * { box-sizing: border-box; }
+
+/* ---------------------------------------------------------------------------
+   Dark mode. A separate switch from the header colour: every ribbon but Paper
+   is already dark, and people pick those to sit on a light page, so the two
+   choices are not the same choice. Nothing here but the page tokens - the
+   ribbon keeps whatever theme is set, and the garden keeps its own daylight,
+   because a dimmed lawn just looks broken.
+   --------------------------------------------------------------------------- */
+
+html[data-dark] {
+  --bg: #12141a;
+  --panel: #1a1d25;
+  --border: #2b3040;
+  --text: #e6e8ee;
+  --muted: #98a0b3;
+  /* Lifted off the light-mode accent: #7536ff has too little contrast against
+     a near-black panel to read as a link. */
+  --accent: #9b6bff;
+  --accent-soft: #262040;
+  --green: #2fd39b;
+  --green-soft: #14322a;
+  --danger: #ff7d90;
+  --danger-soft: #3a2028;
+  --danger-line: #5a2c38;
+  --danger-ink: #ffb3c0;
+  --warn: #f0b429;
+  --warn-soft: #3a2e12;
+  --warn-line: #5c4715;
+  --warn-ink: #f4cf7a;
+  color-scheme: dark;
+}
 
 /* A display rule of ours will otherwise beat the browser's own [hidden] rule.
    Stated once here so every hideable element behaves. */
@@ -345,7 +386,7 @@ main {
   font-weight: 600;
 }
 
-.summary-cat.priority { color: #eda100; }
+.summary-cat.priority { color: var(--warn); }
 .summary-cat.active { color: var(--accent); }
 .summary-cat.archived { color: #2aa7b8; }
 
@@ -543,7 +584,7 @@ li.task.done .task-title {
 }
 
 .tag.overdue {
-  background: #fbe9ec;
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -1427,7 +1468,7 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
 }
 
 .star-btn.active {
-  color: #eda100;
+  color: var(--warn);
 }
 
 .star-btn:hover {
@@ -1460,7 +1501,7 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
 
 .delete-btn:hover {
   color: var(--danger);
-  background: #fbe9ec;
+  background: var(--danger-soft);
 }
 
 li.task.archived {
@@ -1521,7 +1562,7 @@ li.task.archived {
 
 .person-remove-btn:hover {
   color: var(--danger);
-  background: #fbe9ec;
+  background: var(--danger-soft);
 }
 
 .person-add-row {
@@ -1968,7 +2009,7 @@ li.task.dragging {
   border: 1px solid var(--border);
   font-size: 0.92rem;
   font-family: inherit;
-  background: white;
+  background: var(--panel);
 }
 
 .modal-form textarea {
@@ -2133,7 +2174,7 @@ body.gated { overflow: hidden; }
 
 .auth-msg.error {
   display: block;
-  background: #fbe9ec;
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -2273,10 +2314,10 @@ body.gated { overflow: hidden; }
 .due-chip-count { font-weight: 700; font-variant-numeric: tabular-nums; }
 .due-chip-label { color: var(--muted); }
 
-.due-chip.has-due { border-color: #f0d49a; background: #fdf6e7; }
+.due-chip.has-due { border-color: var(--warn-line); background: var(--warn-soft); }
 .due-chip.has-due .due-chip-count { color: var(--series-over); }
 
-.due-chip.has-overdue { border-color: #f3c9d1; background: #fdf0f2; }
+.due-chip.has-overdue { border-color: var(--danger-line); background: var(--danger-soft); }
 .due-chip.has-overdue .due-chip-count { color: var(--danger); }
 
 .due-chip-late {
@@ -2420,8 +2461,8 @@ body.gated { overflow: hidden; }
 .settings-btn:hover { background: var(--bg); }
 .settings-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .settings-btn.primary:hover { opacity: 0.92; }
-.settings-btn.danger { color: var(--danger); border-color: #f3c9d1; }
-.settings-btn.danger:hover { background: #fbe9ec; }
+.settings-btn.danger { color: var(--danger); border-color: var(--danger-line); }
+.settings-btn.danger:hover { background: var(--danger-soft); }
 
 .settings-note {
   font-size: 0.75rem;
@@ -2676,7 +2717,7 @@ body.gated { overflow: hidden; }
   vertical-align: middle;
 }
 
-.day-task-note.overdue { background: #fbe9ec; color: var(--danger); }
+.day-task-note.overdue { background: var(--danger-soft); color: var(--danger); }
 .day-task-note.done { background: var(--green-soft); color: var(--green); }
 
 /* ============================================================
@@ -2718,10 +2759,10 @@ body.gated { overflow: hidden; }
 /* Numbers keep the series colour; bubbles pair a soft tint with text dark
    enough to read comfortably against it. */
 .cal-stat.due .cal-stat-num { color: var(--series-over); }
-.cal-stat.due .cal-stat-label { background: #fdf0d8; color: #8a5500; }
+.cal-stat.due .cal-stat-label { background: var(--warn-soft); color: var(--warn-ink); }
 
 .cal-stat.due.overdue .cal-stat-num { color: var(--danger); }
-.cal-stat.due.overdue .cal-stat-label { background: #fbe9ec; color: #a12b41; }
+.cal-stat.due.overdue .cal-stat-label { background: var(--danger-soft); color: var(--danger-ink); }
 
 .cal-stat.completed .cal-stat-num { color: var(--series-done); }
 .cal-stat.completed .cal-stat-label { background: var(--green-soft); color: #0b6b4a; }
@@ -2852,10 +2893,10 @@ body.gated { overflow: hidden; }
   min-width: 0;
 }
 
-.cal-event.due { background: #fdf0d8; color: #8a5500; }
+.cal-event.due { background: var(--warn-soft); color: var(--warn-ink); }
 .cal-event.due .cal-event-dot { background: var(--series-over); }
 
-.cal-event.due.overdue { background: #fbe9ec; color: #a12b41; }
+.cal-event.due.overdue { background: var(--danger-soft); color: var(--danger-ink); }
 .cal-event.due.overdue .cal-event-dot { background: var(--danger); }
 
 .cal-event.completed { background: var(--green-soft); color: #0b6b4a; }
@@ -3063,7 +3104,7 @@ body {
   left: 50%;
   bottom: calc(100% + 6px);
   transform: translateX(-50%);
-  background: #ffffff;
+  background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -3096,7 +3137,7 @@ body {
   height: 5px;
   margin-left: -6px;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--panel);
   border: 1px solid var(--border);
 }
 
@@ -3789,7 +3830,7 @@ html[data-mode="phone"] .cat-toggle button { white-space: nowrap; flex: none; }
 
 .cat-task-star {
   flex: none;
-  color: #eda100;
+  color: var(--warn);
   font-size: 0.76rem;
 }
 
@@ -13840,6 +13881,22 @@ const App = (function () {
     renderThemePicker();
   }
 
+  /* Dark mode is the page, not the ribbon - a separate switch from the header
+     colour above, because seven of the eight ribbons are already dark and are
+     picked to sit on a light page. It lands on <html> as data-dark and the
+     stylesheet answers with one block of token overrides. */
+  function darkOn() { return !!Store.prefs().dark; }
+
+  function applyDark() {
+    document.documentElement.toggleAttribute('data-dark', darkOn());
+  }
+
+  function setDark(on) {
+    Store.prefs().dark = !!on;
+    Store.savePrefs();
+    applyDark();
+  }
+
   /* ---------------------------------------------------------------
      What's new.
 
@@ -14101,6 +14158,15 @@ const App = (function () {
         <h4>Layout</h4>
         <p>Tend has two layouts: a phone one with the sections along the bottom, and a desktop one with tabs at the top and the garden beside your tasks.</p>
         <div id="viewmode-picker"></div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Dark mode</h4>
+        <p>Dims the page under the ribbon &mdash; the lists, the panels, the calendar. The garden keeps its own daylight.</p>
+        <label class="checkbox-row">
+          <input type="checkbox" id="dark-on" ${darkOn() ? 'checked' : ''} onchange="App.setDark(this.checked)">
+          Dark mode
+        </label>
       </div>
 
       <div class="settings-section">
@@ -14750,6 +14816,7 @@ const App = (function () {
   function boot() {
     loadViewPrefs();
     applyTheme();
+    applyDark();
     applyLayoutMode();
 
     const now = new Date();
@@ -14804,6 +14871,7 @@ const App = (function () {
         Store.onChange(function () {
           Garden.loadAll();
           applyTheme();
+          applyDark();
           renderAll();
           applyCalendarWidth();
           Garden.reskin();
@@ -14868,7 +14936,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
-    clearSearch, toggleSearch, setTheme, isAppMode, setViewMode, setCategoryScope,
+    clearSearch, toggleSearch, setTheme, setDark, isAppMode, setViewMode, setCategoryScope,
     setListGrouping, undoLast, pickCategoryColor,
     renderFriends, openFriendGarden, closeFriendGarden,
     closeModal, closeModalOnBackdrop,

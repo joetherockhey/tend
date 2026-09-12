@@ -2397,6 +2397,22 @@ const App = (function () {
     renderThemePicker();
   }
 
+  /* Dark mode is the page, not the ribbon - a separate switch from the header
+     colour above, because seven of the eight ribbons are already dark and are
+     picked to sit on a light page. It lands on <html> as data-dark and the
+     stylesheet answers with one block of token overrides. */
+  function darkOn() { return !!Store.prefs().dark; }
+
+  function applyDark() {
+    document.documentElement.toggleAttribute('data-dark', darkOn());
+  }
+
+  function setDark(on) {
+    Store.prefs().dark = !!on;
+    Store.savePrefs();
+    applyDark();
+  }
+
   /* ---------------------------------------------------------------
      What's new.
 
@@ -2658,6 +2674,15 @@ const App = (function () {
         <h4>Layout</h4>
         <p>Tend has two layouts: a phone one with the sections along the bottom, and a desktop one with tabs at the top and the garden beside your tasks.</p>
         <div id="viewmode-picker"></div>
+      </div>
+
+      <div class="settings-section">
+        <h4>Dark mode</h4>
+        <p>Dims the page under the ribbon &mdash; the lists, the panels, the calendar. The garden keeps its own daylight.</p>
+        <label class="checkbox-row">
+          <input type="checkbox" id="dark-on" ${darkOn() ? 'checked' : ''} onchange="App.setDark(this.checked)">
+          Dark mode
+        </label>
       </div>
 
       <div class="settings-section">
@@ -3307,6 +3332,7 @@ const App = (function () {
   function boot() {
     loadViewPrefs();
     applyTheme();
+    applyDark();
     applyLayoutMode();
 
     const now = new Date();
@@ -3361,6 +3387,7 @@ const App = (function () {
         Store.onChange(function () {
           Garden.loadAll();
           applyTheme();
+          applyDark();
           renderAll();
           applyCalendarWidth();
           Garden.reskin();
@@ -3425,7 +3452,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
-    clearSearch, toggleSearch, setTheme, isAppMode, setViewMode, setCategoryScope,
+    clearSearch, toggleSearch, setTheme, setDark, isAppMode, setViewMode, setCategoryScope,
     setListGrouping, undoLast, pickCategoryColor,
     renderFriends, openFriendGarden, closeFriendGarden,
     closeModal, closeModalOnBackdrop,
