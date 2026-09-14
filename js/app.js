@@ -721,22 +721,38 @@ const App = (function () {
     writeMap(REPEAT_KEY, map);
   }
 
-  /* The next date, counted from the one it was due - or from today when it has
-     no date, since "every week" has to start somewhere. A monthly repeat keeps
-     its day of the month and clamps: the 31st of January comes round on the
-     28th of February, not the 3rd of March. */
-  function nextRepeatDate(from, rule) {
-    const iso = Util.toIsoDate(from) || Util.todayStr();
+  /* `n` turns of the rule on from the date it was due. Always counted from the
+     original, never from the last answer, so a monthly repeat keeps its day of
+     the month instead of walking backwards down the calendar: the 31st of
+     January comes round on the 28th of February and then the 31st of March. */
+  function stepRepeatDate(iso, rule, n) {
     const [y, m, d] = iso.split('-').map(Number);
     if (rule === 'monthly') {
-      const targetMonth = m === 12 ? 0 : m;
-      const targetYear = m === 12 ? y + 1 : y;
-      const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
-      return Util.dateToStr(new Date(targetYear, targetMonth, Math.min(d, lastDay)));
+      const target = new Date(y, m - 1 + n, 1);
+      const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+      return Util.dateToStr(new Date(target.getFullYear(), target.getMonth(), Math.min(d, lastDay)));
     }
     const dt = new Date(y, m - 1, d);
-    dt.setDate(dt.getDate() + (rule === 'weekly' ? 7 : 1));
+    dt.setDate(dt.getDate() + n * (rule === 'weekly' ? 7 : 1));
     return Util.dateToStr(dt);
+  }
+
+  /* The next time it is actually due - or from today when it has no date, since
+     "every week" has to start somewhere.
+
+     It is the next turn that has not been and gone, not simply the one after
+     the date on the task. A daily task left for a week used to hand over to a
+     copy dated six days ago: still overdue, so still in the feed, so ticking it
+     off put the same row straight back on the list - and paid a coin each time
+     round. You tick once, and it is back on its next real day. */
+  function nextRepeatDate(from, rule) {
+    const iso = Util.toIsoDate(from) || Util.todayStr();
+    const today = Util.todayStr();
+    let next = stepRepeatDate(iso, rule, 1);
+    /* Bounded so a task carrying a date from the wrong century cannot hang the
+       tick; it lands in the past, which is no worse than it was. */
+    for (let n = 2; next <= today && n <= 4000; n++) next = stepRepeatDate(iso, rule, n);
+    return next;
   }
 
   /* Called the moment a task is ticked. Returns the new task, or null. */
