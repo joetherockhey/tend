@@ -663,7 +663,7 @@ const Store = (function () {
       world: r.world || 'garden',
       hero: r.hero === 'female' ? 'female' : 'male',
       layout: safeParse(r.layout, {}),
-      sections: Number(r.sections) || 1,
+      sections: unlockedSections(r.sections),
       found: safeParse(r.found, []),
       chopped: safeParse(r.chopped, []),
       movables: safeParse(r.movables, {}),
@@ -676,6 +676,15 @@ const Store = (function () {
       outfits: safeParse(r.outfits, {}),
       heroPos: safeParse(r.hero_pos, null)
     }));
+  }
+
+  /* `garden-sections-v1` counts the bands they *bought*; the plot they walk
+     around is that plus the one everybody starts with. Handing the raw number
+     to the preview cropped a friend's garden one band short - and with it their
+     plants, and the animals that wander past the first section. */
+  function unlockedSections(raw) {
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n + 1 : 1;
   }
 
   function safeParse(raw, fallback) {
@@ -697,7 +706,7 @@ const Store = (function () {
         world: prefsOfProfile.world || 'garden',
         hero: prefsOfProfile.hero === 'female' ? 'female' : 'male',
         layout: safeParse(get('garden-layout-v5'), {}),
-        sections: Number(get('garden-sections-v1')) || 1,
+        sections: unlockedSections(get('garden-sections-v1')),
         found: safeParse(get('garden-found-v1'), []),
         chopped: safeParse(get('garden-chopped-v1'), []),
         movables: safeParse(get('garden-movables-v1'), {}),
@@ -1100,6 +1109,7 @@ const Store = (function () {
 
     /* other people's gardens */
     listGardens,
+    __unlockedSections: unlockedSections,
 
     /* backup */
     exportData, importData, eraseAccountData, forgetAccountLocally

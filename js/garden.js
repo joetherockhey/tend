@@ -94,6 +94,12 @@ const Garden = (function () {
   /* nothing, so looking at a friend's garden cannot disturb your own.     */
   /* ------------------------------------------------------------------ */
 
+  /* How many bands of theirs to draw. Shared with the preview's own life, so
+     the two cannot disagree about where the far edge is. */
+  function previewBands(g) {
+    return Math.max(1, Math.min(12, Number(g && g.sections) || 1));
+  }
+
   function previewPlotHTML(g) {
     g = g || {};
     const world = Worlds.get(g.world || Worlds.DEFAULT_WORLD);
@@ -101,7 +107,7 @@ const Garden = (function () {
     /* Only the land they have actually opened up. The real plot shows one
        locked band ahead as something to save for, which is no use to a
        visitor - it would just be half a panel of grey. */
-    const bands = Math.max(1, Math.min(12, Number(g.sections) || 1));
+    const bands = previewBands(g);
     const rows = bands * SECTION_ROWS;
     const chopped = new Set(g.chopped || []);
     const movables = g.movables || {};
@@ -269,7 +275,11 @@ const Garden = (function () {
     const layer = plot && plot.querySelector('.garden-effects');
     if (!plot || !layer) return;
 
-    const rows = Math.round(plot.offsetHeight / CELL_SIZE) || SECTION_ROWS;
+    /* Taken from their section count, not from the painted height: the plot is
+       measured before the Friends panel has finished opening, so offsetHeight
+       came back 0 and fell through to one band - which fenced their animals and
+       their gardener into the first section of a garden with six. */
+    const rows = previewBands(g) * SECTION_ROWS;
     const bounds = { w: GARDEN_COLS * CELL_SIZE, h: rows * CELL_SIZE };
     const ocean = world.id === 'ocean';
     const layout = g.layout || {};
