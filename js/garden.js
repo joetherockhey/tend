@@ -1535,26 +1535,86 @@ const Garden = (function () {
 
     plotScale = (avail > 0 && avail < natural) ? Math.max(0.35, avail / natural) : 1;
 
-    if (plotScale === 1) {
-      plot.style.transformOrigin = '';
-      return void (wrap.style.height = sizedHeight(1));
-    }
-
-    plot.style.transformOrigin = 'top left';
-    plot.style.transform = 'scale(' + plotScale.toFixed(4) + ')';
     /* A transform paints smaller but still occupies its full width in the
        layout, so without this the wrap thinks it is overflowing and the right
        fence post falls outside the panel. The leftover is pulled back in. */
-    plot.style.marginRight = Math.round(marginR - natural * (1 - plotScale)) + 'px';
-
-    wrap.style.height = sizedHeight(plotScale);
-
-    function sizedHeight(k) {
-      const fullRows = gardenRows || SECTION_ROWS;
-      const shownRows = Math.min(fullRows, plotVisibleRows);
-      wrap.classList.toggle('has-peek', shownRows < fullRows);
-      return Math.round(shownRows * CELL_SIZE * k) + 4 + 'px';
+    if (plotScale < 1) {
+      plot.style.marginRight = Math.round(marginR - natural * (1 - plotScale)) + 'px';
     }
+
+    const fullRows = gardenRows || SECTION_ROWS;
+    const shownRows = Math.min(fullRows, plotVisibleRows);
+    wrap.classList.toggle('has-peek', shownRows < fullRows);
+    const shown = Math.round(shownRows * CELL_SIZE * plotScale) + 4;
+
+    if (cameraMode()) {
+      /* The window's height belongs to the layout here, not to the garden -
+         it is whatever is left of the screen. The cap is still the garden's,
+         so a single unlocked section does not leave the locked band showing
+         underneath it. */
+      wrap.style.height = '';
+      wrap.style.maxHeight = shown + 'px';
+      followHero();
+    } else {
+      wrap.style.maxHeight = '';
+      wrap.style.height = shown + 'px';
+      plotPan = 0;
+    }
+    applyPlotTransform();
+  }
+
+  /* On a phone the garden section fills the screen and nothing scrolls, so a
+     garden taller than the window is seen through it rather than below it.
+     App.switchView puts .garden-full on the root when that is the case; this
+     reads it back rather than keeping a second copy of the same fact. */
+  function cameraMode() {
+    return document.documentElement.classList.contains('garden-full');
+  }
+
+  /* How far the plot is slid up under its wrap, in screen pixels. */
+  let plotPan = 0;
+
+  function applyPlotTransform() {
+    const plot = document.getElementById('garden-plot');
+    if (!plot) return;
+    const parts = [];
+    if (plotPan) parts.push('translateY(' + -Math.round(plotPan) + 'px)');
+    if (plotScale !== 1) parts.push('scale(' + plotScale.toFixed(4) + ')');
+    plot.style.transformOrigin = parts.length ? 'top left' : '';
+    plot.style.transform = parts.join(' ');
+  }
+
+  /* The clamp on its own, so it can be checked without a browser:
+     test/camera.test.js. Centres the gardener's row in a window `viewH` tall,
+     then refuses to show anything above the first row or below the last.
+     Run: node test/camera.test.js */
+  function panFor(row, cell, shownRows, viewH) {
+    const maxPan = Math.max(0, shownRows * cell - viewH);
+    const want = row * cell + cell / 2 - viewH / 2;
+    return Math.max(0, Math.min(maxPan, want));
+  }
+
+  /* The gardener is kept in the middle of the window, which at the top and
+     the bottom of the garden means not moving the ground at all - you walk
+     into the empty half first, and the garden only starts following once
+     there is something above or below worth following to. */
+  function followHero() {
+    const plot = document.getElementById('garden-plot');
+    const wrap = plot && plot.parentElement;
+    if (!plot || !wrap) return false;
+    if (!cameraMode()) {
+      if (!plotPan) return false;
+      plotPan = 0;
+      return true;
+    }
+    const cell = CELL_SIZE * plotScale;
+    const shownRows = Math.min(gardenRows || SECTION_ROWS, plotVisibleRows);
+    const viewH = wrap.clientHeight - 4;
+    if (viewH <= 0) return false;
+    const next = panFor(heroPos.row, cell, shownRows, viewH);
+    if (Math.abs(next - plotPan) < 0.5) return false;
+    plotPan = next;
+    return true;
   }
 
   function cellFromPoint(clientX, clientY) {
@@ -1743,12 +1803,12 @@ const Garden = (function () {
     const holding = isHoldingSomething();
     const pickBtn = document.getElementById('garden-pickup-btn');
     const dropBtn = document.getElementById('garden-putdown-btn');
+    const useBtn = document.getElementById('garden-use-btn');
     if (pickBtn) pickBtn.disabled = holding;
-    if (dropBtn) {
-      dropBtn.disabled = !holding;
-      const label = dropBtn.querySelector('span');
-      if (label) label.textContent = heldIsTool() ? 'Use it' : 'Put down';
-    }
+    if (dropBtn) dropBtn.disabled = !holding;
+    /* Always says Use. The world renames the tools - a coral saw, a sand
+       rake - and any of those names on a four-button row wraps the lot. */
+    if (useBtn) useBtn.disabled = !heldIsTool();
 
   }
 
@@ -1769,6 +1829,7 @@ const Garden = (function () {
         ? `<div class="garden-thought${heroFacing < 0 ? ' mirrored' : ''}"><span>${Util.escapeHtml(activeThought)}</span></div>` : '';
       heroEl.innerHTML = `${thought}${heldWrap}<div class="sprite-shadow"></div>${heroSVG(heroDirection, getEquippedOutfit())}`;
     }
+    if (followHero()) applyPlotTransform();
     renderControls();
   }
 
@@ -2165,7 +2226,7 @@ const Garden = (function () {
     return null;
   }
 
-  function togglePickup() {
+  function togglePickup(opts) {
     if (heldPlantId) {
       const spot = dropSquare();
       if (!spot) { showThought('No room here'); return; }
@@ -2209,65 +2270,10 @@ const Garden = (function () {
     }
 
     if (heldDecoration) {
-      if (heldDecoration.kind === 'hoe') {
-        const key = heroPos.row + ':' + heroPos.col;
-        if (!dugTiles.has(key) && !findPlantAt(heroPos.row, heroPos.col) && !findDecorationAt(heroPos.row, heroPos.col)) {
-          dugTiles.add(key);
-          saveDugTiles();
-          playDirtSound();
-          renderGarden();
-        }
-        return;
-      }
-
-      if (heldDecoration.kind === 'axe') {
-        const sapling = findAdjacentGrownSapling();
-        if (sapling) {
-          saplings = saplings.filter(s => s.id !== sapling.id);
-          saveSaplings();
-          groundLogs.push({ id: 'log-' + hashStr(sapling.id + Date.now() + Math.random()), row: sapling.row, col: sapling.col });
-          saveGroundLogs();
-          spawnSparkleAt(sapling.row, sapling.col);
-          playChopSound();
-          renderGarden();
-          return;
-        }
-        const tree = findAdjacentToolTarget('axe');
-        if (tree) {
-          choppedTrees.add(tree.instanceId);
-          saveChoppedTrees();
-          groundLogs.push({ id: 'log-' + hashStr(tree.instanceId + Date.now() + Math.random()), row: tree.row, col: tree.col });
-          saveGroundLogs();
-          spawnSparkleAt(tree.row, tree.col);
-          playChopSound();
-          renderGarden();
-          return;
-        }
-      }
-
-      if (heldDecoration.kind === 'shovel') {
-        const bush = findAdjacentToolTarget('shovel');
-        if (bush) {
-          choppedTrees.add(bush.instanceId);
-          saveChoppedTrees();
-          spawnSparkleAt(bush.row, bush.col);
-          playChopSound();
-
-          if (heldDecoration.source === 'item') {
-            const item = purchasedItems.find(p => p.id === heldDecoration.sourceId);
-            if (item) { item.row = heroPos.row; item.col = heroPos.col; }
-            savePurchasedItems();
-          } else if (heldDecoration.source === 'theme') {
-            movableLayout[heldDecoration.instanceId] = { row: heroPos.row, col: heroPos.col };
-            saveMovableLayout();
-          }
-
-          heldDecoration = { ...bush, movable: true, choppable: false };
-          playPickupSound();
-          renderGarden();
-          return;
-        }
-      }
+      /* Using it comes first, putting it down second - which is what E has
+         always done. The Use button on a phone calls useHeldTool() straight
+         and never reaches the drop below it. */
+      if ((!opts || opts.use !== false) && useHeldTool()) return;
 
       const spot = dropSquare();
       if (!spot) { showThought('No room here'); return; }
@@ -2293,6 +2299,98 @@ const Garden = (function () {
       renderGarden();
       return;
     }
+
+    return togglePickupRest();
+  }
+
+  /* What the thing in your hands does to the square you are on or facing.
+     Returns false when there was nothing to do, and - the whole point of
+     having it separate - changes nothing at all in that case.
+
+     It used to be inlined in togglePickup, where a miss fell through to
+     putting the tool down. On a desktop that is only ever a keypress away
+     from picking it back up; on a phone Use and Put down were one button, so
+     a swing at a tree one square out of reach dropped the axe instead, and
+     nothing distinguished the two. The hoe had the opposite fault: its branch
+     returned whether or not it dug, so once you were holding one there was no
+     way to set it down again, on any device. */
+  function useHeldTool() {
+    if (!heldDecoration) return false;
+
+    if (heldDecoration.kind === 'hoe') {
+      const key = heroPos.row + ':' + heroPos.col;
+      if (dugTiles.has(key) || findPlantAt(heroPos.row, heroPos.col)
+          || findDecorationAt(heroPos.row, heroPos.col)) return false;
+      dugTiles.add(key);
+      saveDugTiles();
+      playDirtSound();
+      renderGarden();
+      return true;
+    }
+
+    if (heldDecoration.kind === 'axe') {
+      const sapling = findAdjacentGrownSapling();
+      if (sapling) {
+        saplings = saplings.filter(s => s.id !== sapling.id);
+        saveSaplings();
+        groundLogs.push({ id: 'log-' + hashStr(sapling.id + Date.now() + Math.random()), row: sapling.row, col: sapling.col });
+        saveGroundLogs();
+        spawnSparkleAt(sapling.row, sapling.col);
+        playChopSound();
+        renderGarden();
+        return true;
+      }
+      const tree = findAdjacentToolTarget('axe');
+      if (tree) {
+        choppedTrees.add(tree.instanceId);
+        saveChoppedTrees();
+        groundLogs.push({ id: 'log-' + hashStr(tree.instanceId + Date.now() + Math.random()), row: tree.row, col: tree.col });
+        saveGroundLogs();
+        spawnSparkleAt(tree.row, tree.col);
+        playChopSound();
+        renderGarden();
+        return true;
+      }
+    }
+
+    if (heldDecoration.kind === 'shovel') {
+      const bush = findAdjacentToolTarget('shovel');
+      if (bush) {
+        choppedTrees.add(bush.instanceId);
+        saveChoppedTrees();
+        spawnSparkleAt(bush.row, bush.col);
+        playChopSound();
+
+        if (heldDecoration.source === 'item') {
+          const item = purchasedItems.find(p => p.id === heldDecoration.sourceId);
+          if (item) { item.row = heroPos.row; item.col = heroPos.col; }
+          savePurchasedItems();
+        } else if (heldDecoration.source === 'theme') {
+          movableLayout[heldDecoration.instanceId] = { row: heroPos.row, col: heroPos.col };
+          saveMovableLayout();
+        }
+
+        heldDecoration = { ...bush, movable: true, choppable: false };
+        playPickupSound();
+        renderGarden();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /* Why the swing found nothing, in the gardener's own bubble - so a Use that
+     does nothing still says something. */
+  function useMissText() {
+    const kind = heldDecoration && heldDecoration.kind;
+    if (kind === 'axe') return 'Nothing to chop here';
+    if (kind === 'shovel') return 'Nothing to dig up here';
+    if (kind === 'hoe') return 'This square will not turn';
+    return 'Nothing to use';
+  }
+
+  /* The rest of E: the square under you first, then the one you are facing. */
+  function togglePickupRest() {
 
     /* Now that you can walk over things, the square you are standing on comes
        first - walking onto a plant and pressing E is the obvious move, and it
@@ -3389,7 +3487,7 @@ const Garden = (function () {
       cashin: { icon: '\u{1F4B0}', title: 'Cashing in', body: 'Changed your mind about a ' + t.plant + '? Pick it up, then use Cash in at the top of the shop. A seedling gives back the coin it cost; one you have grown is worth two.' },
       coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns gold coins - ' + coinsPerTask() + ' at the moment, because every finished ' + t.build + ' adds one to the rate. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coins go back.' },
       water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
-      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - or stand next to it - and tap Pick up. Tap Put down to set it on a free square, or Use it if it is a tool. The box beside the buttons always shows what you are carrying.' : 'Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - or stand next to it - and press E to pick it up. Standing on it counts first, then whatever you are facing. Press E again to put it down on a free square, or use it if it is a tool. The box beside the plot shows what you are carrying.') },
+      pickup: { icon: '\u{270B}', title: 'Picking things up', body: (phoneControls() ? 'Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - or stand next to it - and tap Pick up. Tap Put down to set it on a free square, or Use to swing a tool at what you are facing. The box beside the buttons always shows what you are carrying.' : 'Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - or stand next to it - and press E to pick it up. Standing on it counts first, then whatever you are facing. Press E again to put it down on a free square, or use it if it is a tool. The box beside the plot shows what you are carrying.') },
       axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
       hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
       shovel: { icon: W().items.shovel.icon, title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
@@ -3483,9 +3581,10 @@ const Garden = (function () {
         + ' to put it down.';
     }
     return 'Walk over your own ' + terms().plants + ' - everything else stops you.'
-      + ' Pick up and Put down are under the '
+      + ' Pick up, Use and Put down are under the '
       + terms().place.replace(/^the\s+/i, '')
-      + ', and the box beside them shows what you are carrying.';
+      + ', and the box beside them shows what you are carrying. Use swings'
+      + ' whatever tool you are holding at the square you are facing.';
   }
 
   /* The hint list, the held-item window and the two buttons all say the same
@@ -3569,7 +3668,14 @@ const Garden = (function () {
   /* Both buttons do what E does - the pair only exists so the phone says out
      loud which of the two E would do next; whichever is not it is disabled. */
   window.gardenPickUp = function () { if (!isHoldingSomething()) togglePickup(); };
-  window.gardenPutDown = function () { if (isHoldingSomething()) togglePickup(); };
+  /* Put down means put down. It used to mean "use it if it is a tool, put it
+     down otherwise", which is why an axe could not be swung on a phone: a
+     miss dropped it, and there was no other button to try. */
+  window.gardenPutDown = function () { if (isHoldingSomething()) togglePickup({ use: false }); };
+  window.gardenUse = function () {
+    if (!heldIsTool()) return;
+    if (!useHeldTool()) showThought(useMissText());
+  };
   window.focusGarden = focusGarden;
   window.toggleGardenVisibility = toggleGardenVisibility;
 

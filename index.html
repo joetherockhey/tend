@@ -72,7 +72,7 @@
 <div class="app-layout">
 
 <div class="garden-col">
-  <div class="panel">
+  <div class="panel" id="garden-panel">
     <h2 id="garden-panel-title">My Garden</h2>
     <div class="garden-gardener-row">
       <div id="garden-gardener"></div>
@@ -95,11 +95,26 @@
         <div class="garden-ctl-btns">
           <button type="button" class="garden-ctl-btn" id="garden-pickup-btn"
                   onclick="gardenPickUp()">&#x270B;<span>Pick up</span></button>
+          <!-- Use is its own button. It used to share Put down, which meant a
+               swing at a tree one square out of reach dropped the axe instead
+               of missing - so an axe was effectively unusable on a phone. -->
+          <button type="button" class="garden-ctl-btn" id="garden-use-btn"
+                  onclick="gardenUse()">&#x1FA93;<span>Use</span></button>
           <button type="button" class="garden-ctl-btn" id="garden-putdown-btn"
                   onclick="gardenPutDown()">&#x1F44C;<span>Put down</span></button>
+          <!-- The shop used to be a second panel below the plot, so buying a
+               seedling on a phone meant scrolling past the whole garden. It is
+               a sheet now, opened from here, next to the other two things the
+               thumb reaches for. -->
+          <button type="button" class="garden-ctl-btn" id="garden-shop-btn"
+                  onclick="App.openShop()">&#x1F6D2;<span>Shop</span></button>
+          <button type="button" class="garden-ctl-btn garden-ctl-narrow" id="garden-help-btn"
+                  onclick="App.openGardenHelp()" aria-label="How the garden works"
+                  title="How the garden works">&#x2753;</button>
         </div>
       </aside>
     </div>
+    <div class="garden-help-block" id="garden-help-block">
     <ul class="garden-hint">
       <li id="garden-move-hint">Click the garden, then move with WASD or the arrow keys.</li>
       <li id="garden-use-hint">Press E to pick up, plant, or use whatever you are next to.</li>
@@ -139,10 +154,11 @@
       </div>
     </div>
     <div class="help-explanation" id="help-explanation"></div>
+    </div>
   </div>
 
-  <div class="panel">
-    <h2>Shop</h2>
+  <div class="panel" id="shop-panel">
+    <h2 id="shop-panel-title">Shop</h2>
     <div class="shop-coins" id="shop-coins-row"><span id="shop-coins-icon"></span> <span id="shop-coins-amt">0</span></div>
     <div class="shop-columns">
       <div class="shop-column">
@@ -282,6 +298,25 @@
 </main>
 
 <!-- ============================ MODALS ============================ -->
+
+<!-- The shop and the garden's help, as sheets. In phone view the panels
+     themselves are moved in here by placeGardenPanels() rather than copied,
+     so there is still only one shop and everything that renders into it goes
+     on working; on a desktop they move back into the garden column. -->
+<div class="modal-backdrop" id="shop-modal-backdrop" onclick="App.closeShopOnBackdrop(event)">
+  <div class="modal garden-sheet" role="dialog" aria-modal="true" aria-labelledby="shop-panel-title">
+    <button class="modal-close" onclick="App.closeShop()" aria-label="Close">&times;</button>
+    <div id="shop-modal-slot"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="garden-help-backdrop" onclick="App.closeGardenHelpOnBackdrop(event)">
+  <div class="modal garden-sheet" role="dialog" aria-modal="true" aria-labelledby="garden-help-title">
+    <button class="modal-close" onclick="App.closeGardenHelp()" aria-label="Close">&times;</button>
+    <h3 id="garden-help-title">How the garden works</h3>
+    <div id="garden-help-slot"></div>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="modal-backdrop" onclick="App.closeModalOnBackdrop(event)">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">

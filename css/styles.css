@@ -4400,3 +4400,102 @@ header :focus-visible,
   #undo-btn { max-width: 9.5rem; }
   #undo-btn-label { max-width: 5.5rem; }
 }
+/* ================= the garden as a screen, not a page =================
+
+   On a phone the garden is a section of its own, and a section you have to
+   scroll is a picture of a garden rather than a place you are standing in.
+   So in that one case the page stops being a page: the header holds the top,
+   the bottom bar holds the bottom, and the plot takes everything between
+   them. Nothing scrolls. The garden is usually taller than what is left, so
+   the plot slides under its window to follow the gardener instead - see
+   followHero() in js/garden.js.
+
+   The two blocks that used to sit below the plot, the shop and the help, have
+   nowhere to be in a screen that does not scroll. They are sheets now, opened
+   from the row of buttons under the plot.                                  */
+
+html.garden-full,
+html.garden-full body { height: 100%; overflow: hidden; }
+
+html.garden-full #app-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+html.garden-full header { flex: none; }
+
+html.garden-full main {
+  flex: 1;
+  /* Without this a flex item refuses to be shorter than its contents, and the
+     garden pushes the bottom of the screen off the bottom of the screen. */
+  min-height: 0;
+  display: flex;
+  padding: 12px 16px calc(84px + env(safe-area-inset-bottom, 0px));
+}
+
+html.garden-full .app-layout,
+html.garden-full .garden-col,
+html.garden-full .garden-col .panel,
+html.garden-full .garden-stage {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+html.garden-full .garden-col .panel { margin: 0; }
+
+/* The window on the garden: whatever height is left after the status line and
+   the buttons have taken theirs. fitPlot() caps it at the garden's own height
+   so a single unlocked section does not leave the locked band showing. */
+html.garden-full .garden-plot-wrap { flex: 1; min-height: 0; }
+
+/* The ground slides rather than jumping, which is the difference between a
+   camera and a cut. Short enough to keep up with a held-down walk. */
+html.garden-full .garden-plot { transition: transform 0.12s linear; }
+
+/* The h2 said "My Garden" above an h1 that already says it. */
+html.garden-full #garden-panel-title { display: none; }
+
+/* Sticky was for a page that scrolled. This one does not. */
+/* Four buttons and the Holding chip do not fit across a 360px screen, so
+   the chip takes a line of its own and the buttons get the full width -
+   paid for by the heading, the hints and the help strip, which the sheets
+   took away. */
+html.garden-full .garden-controls {
+  flex-direction: column;
+  align-items: stretch;
+  position: static;
+  bottom: auto;
+  flex: none;
+  box-shadow: none;
+  background: none;
+  padding: 0;
+  margin-top: 8px;
+}
+
+/* Four across on a 360px screen: the glyph and the word stack, and Help keeps
+   the glyph alone. */
+html[data-mode="phone"] .garden-ctl-btn {
+  padding: 10px 2px;
+  gap: 4px;
+  min-height: 44px;
+}
+
+html[data-mode="phone"] .garden-ctl-btn span { font-size: 0.68rem; }
+
+html.garden-full .garden-holding { justify-content: center; }
+
+html[data-mode="phone"] .garden-ctl-btn.garden-ctl-narrow {
+  flex: 0 0 44px;
+  min-width: 44px;
+}
+
+/* A sheet is a modal that has a whole panel inside it, so it gives up the
+   padding the panel brings with it and takes the width it can get. */
+.garden-sheet { width: 420px; max-height: 80vh; }
+.garden-sheet > div > .panel,
+.garden-sheet #shop-panel { margin: 0; border: none; padding: 0; background: none; box-shadow: none; }
+.garden-sheet .garden-hint { margin-top: 0; }
+

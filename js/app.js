@@ -1614,6 +1614,11 @@ const App = (function () {
     if (phoneView) document.documentElement.setAttribute('data-mode', 'phone');
     else document.documentElement.removeAttribute('data-mode');
 
+    document.documentElement.classList.toggle('garden-full', phoneView && currentView === 'garden');
+    /* The shop and the help live in sheets on a phone and in the column on a
+       desktop, and the window can cross that line at any moment. */
+    placeGardenPanels();
+
     /* The garden is only a section of its own in phone view, so leaving it
        has to put you somewhere that still exists. */
     if (was && !phoneView && currentView === 'garden') switchView('list');
@@ -1697,6 +1702,10 @@ const App = (function () {
     const layout = document.querySelector('.app-layout');
     if (layout) {
       layout.classList.toggle('view-garden', view === 'garden');
+      /* The garden section fills a phone screen and the page stops scrolling
+         behind it, so the plot can pan to follow the gardener instead of the
+         page having to be dragged to find them. See .garden-full. */
+      document.documentElement.classList.toggle('garden-full', phoneView && view === 'garden');
       /* The sidebar belongs to the task list; the other sections take the width. */
       layout.classList.toggle('no-sidebar', view !== 'list');
     }
@@ -2101,6 +2110,46 @@ const App = (function () {
 
   function closeModal() { closeBackdrop('modal-backdrop'); }
   function closeModalOnBackdrop(event) { if (event.target.id === 'modal-backdrop') closeModal(); }
+
+  /* ================= the garden's two sheets =================
+     On a phone the garden is a section of its own that fills the screen and
+     does not scroll, so the two blocks that used to sit below the plot - the
+     shop and the help - have nowhere to be. They become sheets, opened from
+     the button row under the plot. The panels are MOVED into the sheets
+     rather than copied: renderShop(), renderCoins() and showHelpTopic() all
+     write into elements by id, and two of anything would leave one of them
+     silently stale.                                                        */
+
+  function stowPanel(panelId, slotId, homeSelector) {
+    const panel = document.getElementById(panelId);
+    const slot = document.getElementById(slotId);
+    const home = document.querySelector(homeSelector);
+    if (!panel || !slot || !home) return;
+    const target = phoneView ? slot : home;
+    if (panel.parentElement === target) return;
+    /* Only reachable in phone view, so a move always means the sheet is on
+       its way out - closing it first stops the panel being carried off while
+       it is still on screen. */
+    closeShop(); closeGardenHelp();
+    target.appendChild(panel);
+  }
+
+  function placeGardenPanels() {
+    stowPanel('shop-panel', 'shop-modal-slot', '.garden-col');
+    stowPanel('garden-help-block', 'garden-help-slot', '#garden-panel');
+  }
+
+  function openShop() {
+    /* Coins and stock move while the sheet is shut. */
+    if (hasGarden() && Garden.renderShop) Garden.renderShop();
+    openBackdrop('shop-modal-backdrop');
+  }
+  function closeShop() { closeBackdrop('shop-modal-backdrop'); }
+  function closeShopOnBackdrop(e) { if (e.target.id === 'shop-modal-backdrop') closeShop(); }
+
+  function openGardenHelp() { openBackdrop('garden-help-backdrop'); }
+  function closeGardenHelp() { closeBackdrop('garden-help-backdrop'); }
+  function closeGardenHelpOnBackdrop(e) { if (e.target.id === 'garden-help-backdrop') closeGardenHelp(); }
 
   /* ========================= edit modal ========================= */
 
@@ -3445,6 +3494,7 @@ const App = (function () {
       document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
         closeModal(); closeEditModal(); closeNewTaskModal(); closeSettings();
+        closeShop(); closeGardenHelp();
         document.getElementById('account-dropdown').hidden = true;
       });
 
@@ -3472,6 +3522,8 @@ const App = (function () {
     setListGrouping, undoLast, pickCategoryColor,
     renderFriends, openFriendGarden, closeFriendGarden,
     closeModal, closeModalOnBackdrop,
+    openShop, closeShop, closeShopOnBackdrop,
+    openGardenHelp, closeGardenHelp, closeGardenHelpOnBackdrop,
     toggleShowCompleted, toggleShowArchived, toggleShowWaiting,
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
     saveDisplayName, exportBackup, forcePull, eraseEverything, deleteAccount,
