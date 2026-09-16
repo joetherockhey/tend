@@ -8957,6 +8957,20 @@ const Garden = (function () {
       col >= d.col && col < d.col + d.width) || null;
   }
 
+  /* What actually stops you walking: the scenery the world put there, which
+     you clear with an axe or a shovel rather than by picking it up.
+
+     Anything you bought or could pick up does NOT stop you - you walk over
+     your own axe, your own bench, your own everything, the same way you
+     already walked over your own plants, logs and pets. Standing on a thing is
+     also the first place Pick up looks, so walking onto it and taking it is
+     one move. Placement still treats it as taken (see cellOccupied), so
+     nothing ever ends up stacked two deep on one square. */
+  function findBlockingSceneryAt(row, col) {
+    const d = findDecorationAt(row, col);
+    return d && !d.movable ? d : null;
+  }
+
   function isOnDirt(row, col) {
     if (dugTiles.has(row + ':' + col)) return true;
     return placedDecorations.some(d => !d.blocking && d.kind === 'bed' &&
@@ -10485,7 +10499,7 @@ const Garden = (function () {
       return blocked();
     }
 
-    if (findDecorationAt(targetRow, targetCol)) return blocked();
+    if (findBlockingSceneryAt(targetRow, targetCol)) return blocked();
 
     const cabinHere = cabinSites.find(s => s.row === targetRow && s.col === targetCol);
     if (cabinHere && cabinHere.complete) return blocked();
@@ -11830,8 +11844,8 @@ const Garden = (function () {
       },
       pickup: {
         icon: '\u{270B}', title: 'Carrying things',
-        body: 'Stand on something, or next to it, and ' + pick + '.'
-          + ' To set it down again, ' + drop + ' on an empty square.'
+        body: 'You can walk over anything of your own. Stand on it, or next to it, and '
+          + pick + '. To set it down again, ' + drop + ' on an empty square.'
       },
       axe: {
         icon: '\u{1FA93}', title: cap1(W().items.axe.label),
@@ -11942,14 +11956,16 @@ const Garden = (function () {
     return 'Tap any square to ' + verb + ' there, or drag from where you are standing.';
   }
 
+  /* These three lines only show inside the help sheet on a phone now - see
+     .garden-hint in the stylesheet. */
   function useHintText() {
+    const own = 'Walk over anything of your own. Only ' + terms().chopTarget
+      + ' and the like stop you.';
     if (!phoneControls()) {
-      return 'Walk over your own ' + terms().plants + ' - everything else stops you.'
-        + ' Press E to pick up whatever you are standing on or facing, and E again'
-        + ' to put it down.';
+      return own + ' Press E to pick up whatever you are standing on or facing,'
+        + ' and E again to put it down.';
     }
-    return 'Walk over your own ' + terms().plants + ' - everything else stops you.'
-      + ' Pick up, Use and Put down are under the '
+    return own + ' Pick up, Use and Put down are under the '
       + terms().place.replace(/^the\s+/i, '')
       + ', and the box beside them shows what you are carrying. Use swings'
       + ' whatever tool you are holding at the square you are facing.';
