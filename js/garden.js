@@ -3528,21 +3528,85 @@ const Garden = (function () {
 
   /* ---------- Help topics (worded around the current account name) ---------- */
 
+  /* The help panels. Kept SHORT and plain on purpose: these are read by
+     somebody who has just tapped a button wanting one fact, on a phone, with
+     the panel covering the thing they were looking at. Two or three short
+     sentences each, the verb first, no asides. Anything that only explains
+     itself once you already understand the game has been cut.
+
+     The wording still comes from the world, so the reef says swim and kelp
+     where the garden says walk and plants. */
   function helpTopics() {
-    const who = heroName();
     const t = terms();
+    const phone = phoneControls();
+    /* "tap Use" or "press E" - said the same way in every panel. */
+    const use = phone ? 'tap Use' : 'press E';
+    const pick = phone ? 'tap Pick up' : 'press E';
+    const drop = phone ? 'tap Put down' : 'press E';
+    const cap1 = w => w.charAt(0).toUpperCase() + w.slice(1);
+
     return {
-      cashin: { icon: '\u{1F4B0}', title: 'Cashing in', body: 'Changed your mind about a ' + t.plant + '? Pick it up, then use Cash in at the top of the shop. A seedling gives back the coin it cost; one you have grown is worth two.' },
-      coins: { icon: coinSVG(), title: 'Coins and ' + t.plants, body: 'Every task you complete earns gold coins - ' + coinsPerTask() + ' at the moment, because every finished ' + t.build + ' adds one to the rate. Coins buy ' + t.plants + ' from the shop - one coin each - and everything else in there: tools, ' + t.sprout + 's, creatures and outfits. Un-tick a task and its coins go back.' },
-      water: { icon: '\u{1F4A7}', title: 'Watering and growing', body: 'Everything you buy from the shop arrives as a seedling, and they all look the same. Put one down on dug soil or a bed, then move right up against it to water it - once a minute, five times - and it grows into whichever ' + t.plant + ' it was always going to be. Left in its pot it will never grow, however much you water it. Watering a grown ' + t.plant + ' is just for the pleasure of it, and earns no coins.' },
-      pickup: { icon: '\u{270B}', title: 'Moving and picking up', body: (phoneControls() ? moveHintText() + ' Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - or stand next to it - and tap Pick up. Tap Put down to set it on a free square, or Use to swing a tool at what you are facing. The box beside the buttons always shows what you are carrying.' : terms().moveHint + ' Walk onto a ' + t.plant + ', tool, ' + t.log + ' or ' + t.sprout + ' - or stand next to it - and press E to pick it up. Standing on it counts first, then whatever you are facing. Press E again to put it down on a free square, or use it if it is a tool. The box beside the plot shows what you are carrying.') },
-      axe: { icon: '\u{1FA93}', title: W().items.axe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a coral saw' : 'an axe') + ' from the shop. While holding it, press E next to ' + t.chopTarget + ' to cut it down into ' + t.log + ' you can carry off.' },
-      hoe: { icon: '\u{26CF}\u{FE0F}', title: W().items.hoe.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand rake' : 'a hoe') + ' from the shop. While holding it, press E to turn the tile ' + who + ' is on into ' + t.tilled + ' - no need to put it down first.' },
-      shovel: { icon: W().items.shovel.icon, title: W().items.shovel.label, body: 'Buy ' + (W().id === 'ocean' ? 'a sand scoop' : 'a shovel') + '. While holding it, press E next to ' + t.digTarget + ' - ' + who + ' drops the tool and picks the thing up in one go, ready to carry elsewhere.' },
-      sapling: { icon: '\u{1F331}', title: t.sprout.charAt(0).toUpperCase() + t.sprout.slice(1) + 's', body: 'Buy one and it appears at the top. Carry it to an empty spot and press E to plant it. Move into it to water it - five waterings, once a minute, and it grows into ' + t.sprouted + '. Press F to grow every planted one at once.' },
-      cabin: { icon: '\u{1FAB5}', title: 'Building a ' + t.build, body: 'Carry ' + t.log + ' onto a tile that already has some to start a ' + t.build + ' site. Keep bringing more and watch it rise in stages - foundation, walls, roof, then doors and windows once it finishes at 10. Every finished one pays you: each is worth an extra coin on every task you complete from then on. You have ' + completedBuilds() + '.' },
-      pets: { icon: '\u{1F43E}', title: 'Companions', body: 'Buy one, or unlock a random one (10 max). One food suits every animal: buy a bowl, pick it up and walk it over to whichever one you want. Friendly ones stick close, skittish ones flee until you win them over.' },
-      unlock: { icon: '\u{1F512}', title: 'More room', body: 'The next part of ' + t.place + ' is always visible ahead, dimmed, behind a gate. Tap the gate to open it for ' + SECTION_COST + ' coins. There is no limit - keep buying and ' + t.place + ' keeps going.' }
+      moving: {
+        icon: '\u{1F45F}', title: 'Moving about',
+        body: phone
+          ? 'Tap any square to walk there. Or swipe to take one step.'
+          : 'Click the garden once. Then walk with W, A, S, D or the arrow keys.'
+      },
+      coins: {
+        icon: coinSVG(), title: 'Coins',
+        body: 'Finish a task, earn ' + coinsPerTask() + ' coin' + (coinsPerTask() === 1 ? '' : 's') + '.'
+          + ' Spend them in the shop. Un-tick a task and the coins go back.'
+      },
+      water: {
+        icon: '\u{1F4A7}', title: 'Growing things',
+        body: 'Everything from the shop starts as a seedling. Put one down, stand next to it, and water it'
+          + ' 5 times - once a minute. Then it grows into a ' + t.plant + '.'
+      },
+      cashin: {
+        icon: '\u{1F4B0}', title: 'Selling',
+        body: 'Pick up a ' + t.plant + ', then use Cash in at the top of the shop.'
+          + ' A seedling gives 1 coin back. A grown one gives 2.'
+      },
+      unlock: {
+        icon: '\u{1F512}', title: 'More room',
+        body: 'The dim part ahead is closed. ' + (phone ? 'Tap' : 'Click') + ' the gate to open it for ' + SECTION_COST + ' coins.'
+          + ' It never runs out.'
+      },
+      pickup: {
+        icon: '\u{270B}', title: 'Carrying things',
+        body: 'Stand on something, or next to it, and ' + pick + '.'
+          + ' To set it down again, ' + drop + ' on an empty square.'
+      },
+      axe: {
+        icon: '\u{1FA93}', title: cap1(W().items.axe.label),
+        body: 'Buy one from the shop. Hold it, stand next to ' + t.chopTarget + ', and ' + use + '.'
+          + ' It turns into ' + t.logs + ' you can carry off.'
+      },
+      hoe: {
+        icon: '\u{26CF}\u{FE0F}', title: cap1(W().items.hoe.label),
+        body: 'Buy one from the shop. Hold it and ' + use + '.'
+          + ' The square you are standing on turns into ' + t.tilled + '.'
+      },
+      shovel: {
+        icon: W().items.shovel.icon, title: cap1(W().items.shovel.label),
+        body: 'Buy one from the shop. Hold it, stand next to ' + t.digTarget + ', and ' + use + '.'
+          + ' You dig it up and end up holding it.'
+      },
+      sapling: {
+        icon: '\u{1F331}', title: cap1(t.sprout) + 's',
+        body: 'Buy one and it appears at the top. Carry it to an empty square and ' + drop + ' to plant it.'
+          + ' Then water it 5 times and it is fully grown.'
+      },
+      cabin: {
+        icon: '\u{1FAB5}', title: cap1(t.build) + 's',
+        body: 'Carry ' + t.logs + ' onto the same square, over and over. 10 makes a ' + t.build + '.'
+          + ' Each finished one adds a coin to every task you tick off. You have ' + completedBuilds() + '.'
+      },
+      pets: {
+        icon: '\u{1F43E}', title: 'Animals',
+        body: 'Buy one from the shop. To feed it, buy a bowl of food, pick it up and carry it over.'
+          + ' Some follow you about, some keep their distance until they trust you.'
+      }
     };
   }
 
