@@ -1214,6 +1214,7 @@ const Garden = (function () {
   }
 
   function playPickupSound() {
+    Util.buzz(8);
     playTone(520, 0.07, 'triangle', 0.06);
     setTimeout(() => playTone(700, 0.06, 'triangle', 0.05), 40);
   }
@@ -1221,6 +1222,8 @@ const Garden = (function () {
   /* A cash register: the bell struck, then two bright notes ringing over it.
      Played when a task is ticked off, which is the moment a coin is earned. */
   function playCashSound() {
+    /* Two taps, like a coin landing and settling. */
+    Util.buzz([0, 14, 45, 14]);
     playNoiseBurst(0.04, 5200, 0.045);
     playTone(1318.5, 0.14, 'triangle', 0.07);
     setTimeout(() => playTone(1760, 0.34, 'triangle', 0.075), 85);
@@ -1228,10 +1231,12 @@ const Garden = (function () {
   }
 
   function playDirtSound() {
+    Util.buzz(12);
     playNoiseBurst(0.09, 450, 0.07);
   }
 
   function playWaterSound() {
+    Util.buzz(6);
     playNoiseBurst(0.28, 2200, 0.028);
     const drops = 4;
     for (let i = 0; i < drops; i++) {
@@ -1242,12 +1247,15 @@ const Garden = (function () {
   }
 
   function playChopSound() {
+    Util.buzz(22);
     playNoiseBurst(0.06, 900, 0.08);
     setTimeout(() => playTone(160, 0.1, 'sawtooth', 0.05), 40);
   }
 
 
 
+  /* No buzz here on purpose - this fires on every square walked, and a phone
+     that hums the whole way across the garden is a phone you put down. */
   function playStepSound(kind) {
     if (kind === 'water') { playNoiseBurst(0.1, 1400, 0.045); return; }
     if (kind === 'wood') { playTone(190, 0.05, 'triangle', 0.045); playNoiseBurst(0.03, 2500, 0.025); return; }
@@ -1533,14 +1541,20 @@ const Garden = (function () {
     const avail = wrap.clientWidth - padding - marginL - marginR;
     const natural = GARDEN_COLS * CELL_SIZE;
 
-    plotScale = (avail > 0 && avail < natural) ? Math.max(0.35, avail / natural) : 1;
+    /* On a page the plot only ever shrinks to fit its column. On the phone's
+       garden screen it is the screen, so it grows to fill the width too - a
+       272px postage stamp in the middle of a 390px phone was the old look.
+       Capped, so a tablet held in phone mode does not end up with dinner
+       plates for tiles. */
+    if (avail <= 0) plotScale = 1;
+    else if (cameraMode()) plotScale = Math.min(2, Math.max(0.35, avail / natural));
+    else plotScale = avail < natural ? Math.max(0.35, avail / natural) : 1;
 
-    /* A transform paints smaller but still occupies its full width in the
-       layout, so without this the wrap thinks it is overflowing and the right
-       fence post falls outside the panel. The leftover is pulled back in. */
-    if (plotScale < 1) {
-      plot.style.marginRight = Math.round(marginR - natural * (1 - plotScale)) + 'px';
-    }
+    /* A transform paints at a different size but still occupies its natural
+       width in the layout, so the flexbox would centre the wrong box: too far
+       right when shrunk, and overflowing the clip when grown. The difference
+       is handed to the right margin, which works in both directions. */
+    plot.style.marginRight = Math.round(marginR - natural * (1 - plotScale)) + 'px';
 
     const fullRows = gardenRows || SECTION_ROWS;
     const shownRows = Math.min(fullRows, plotVisibleRows);

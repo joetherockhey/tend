@@ -3328,10 +3328,23 @@ const App = (function () {
     armToastTimer(el, Math.min(toastHoldMs, 1200));
   }
 
+  /* Under the header, not across it. The toast comes down from the top now,
+     and the top is where the account chip lives - a pill laid over it is a
+     pill over the only control in the bar. The header scrolls with the page,
+     so this is measured at each showing rather than set once, and clamped, so
+     once the header has scrolled away the toast simply sits at the top of the
+     screen. */
+  function placeToast(el) {
+    const header = document.querySelector('header');
+    const below = header ? header.getBoundingClientRect().bottom : 0;
+    el.style.top = Math.max(12, Math.round(below) + 10) + 'px';
+  }
+
   function showToast(text) {
     const el = toastEl();
     el.setAttribute('aria-live', 'polite');
     el.textContent = text;
+    placeToast(el);
     el.classList.add('show');
     toastHoldMs = 2200;
     armToastTimer(el, toastHoldMs);
@@ -3345,6 +3358,7 @@ const App = (function () {
     el.setAttribute('aria-live', 'assertive');
     el.innerHTML = '<span>' + Util.escapeHtml(text) + '</span>'
       + '<button type="button" class="toast-undo" onclick="App.undoLast()">Undo</button>';
+    placeToast(el);
     el.classList.add('show');
     toastHoldMs = 5000;
     armToastTimer(el, toastHoldMs);

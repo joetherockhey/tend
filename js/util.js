@@ -124,8 +124,21 @@ const Util = (function () {
     return wrapped;
   }
 
+  /* A short buzz, for the moments the app already makes a noise at. Takes
+     milliseconds, or a [buzz, pause, buzz] pattern.
+
+     navigator.vibrate is Android in practice: iOS has no Vibration API at
+     all, in Safari or in an installed PWA, so this is a no-op there rather
+     than something with a fallback. It is also ignored until the page has
+     been tapped once, and throws outright in a few browsers when the tab is
+     hidden - hence the try. Nothing above it ever needs to know. */
+  function buzz(ms) {
+    if (!navigator.vibrate) return;
+    try { navigator.vibrate(ms); } catch (e) { /* blocked, hidden, or unsupported */ }
+  }
+
   return {
     escapeHtml, dateToStr, todayStr, formatDate,
-    hexToRgba, inkShade, toIsoDate, uid, initials, colorFor, debounce
+    hexToRgba, inkShade, toIsoDate, uid, initials, colorFor, debounce, buzz
   };
 })();

@@ -3174,9 +3174,16 @@ body {
 .sync-toast {
   position: fixed;
   left: 50%;
-  bottom: 18px;
-  transform: translate(-50%, 12px);
+  /* At the top, where the eye already is. It used to rise from the bottom,
+     which on a phone put every coin and every Undo under the bottom bar, and
+     under the thumb that had just tapped something. It drops from above now,
+     clear of both. The notch inset is its own because it is fixed to the
+     viewport rather than sitting inside the header. */
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  transform: translate(-50%, -14px);
   background: var(--header-bg);
+  /* It lands over a dark header, where a drop shadow says nothing. */
+  border: 1px solid rgba(255, 255, 255, 0.22);
   color: #ffffff;
   font-size: 0.82rem;
   font-weight: 600;
@@ -3217,10 +3224,6 @@ body {
 .sync-toast.show {
   opacity: 1;
   transform: translate(-50%, 0);
-}
-
-@media (max-width: 900px) {
-  .sync-toast { bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* The install panel: a code to scan and the steps each phone needs. */
@@ -4431,7 +4434,10 @@ html.garden-full main {
      garden pushes the bottom of the screen off the bottom of the screen. */
   min-height: 0;
   display: flex;
-  padding: 12px 16px calc(84px + env(safe-area-inset-bottom, 0px));
+  /* No side padding: the garden goes edge to edge. The lines of text above
+     and the buttons below put their own back, so only the plot is full
+     width. */
+  padding: 8px 0 calc(84px + env(safe-area-inset-bottom, 0px));
 }
 
 html.garden-full .app-layout,
@@ -4444,7 +4450,29 @@ html.garden-full .garden-stage {
   flex: 1;
 }
 
-html.garden-full .garden-col .panel { margin: 0; }
+/* The panel was a card on a page. On its own screen it is the screen, so all
+   of the card goes: the border it was drawn with, the rounding, the shadow
+   and the padding that held the plot away from the edges. */
+html.garden-full .garden-col .panel {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+}
+
+/* Everything that is not the plot puts its own gutter back. */
+html.garden-full .garden-gardener-row,
+html.garden-full .garden-controls { padding-left: 12px; padding-right: 12px; }
+
+/* Same for the frame around the plot - the fence posts are the garden's own
+   edge and are all the edge it needs. */
+html.garden-full .garden-plot-wrap {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
 
 /* The window on the garden: whatever height is left after the status line and
    the buttons have taken theirs. fitPlot() caps it at the garden's own height
@@ -5163,9 +5191,22 @@ const Util = (function () {
     return wrapped;
   }
 
+  /* A short buzz, for the moments the app already makes a noise at. Takes
+     milliseconds, or a [buzz, pause, buzz] pattern.
+
+     navigator.vibrate is Android in practice: iOS has no Vibration API at
+     all, in Safari or in an installed PWA, so this is a no-op there rather
+     than something with a fallback. It is also ignored until the page has
+     been tapped once, and throws outright in a few browsers when the tab is
+     hidden - hence the try. Nothing above it ever needs to know. */
+  function buzz(ms) {
+    if (!navigator.vibrate) return;
+    try { navigator.vibrate(ms); } catch (e) { /* blocked, hidden, or unsupported */ }
+  }
+
   return {
     escapeHtml, dateToStr, todayStr, formatDate,
-    hexToRgba, inkShade, toIsoDate, uid, initials, colorFor, debounce
+    hexToRgba, inkShade, toIsoDate, uid, initials, colorFor, debounce, buzz
   };
 })();
 
@@ -9252,6 +9293,7 @@ const Garden = (function () {
   }
 
   function playPickupSound() {
+    Util.buzz(8);
     playTone(520, 0.07, 'triangle', 0.06);
     setTimeout(() => playTone(700, 0.06, 'triangle', 0.05), 40);
   }
@@ -9259,6 +9301,8 @@ const Garden = (function () {
   /* A cash register: the bell struck, then two bright notes ringing over it.
      Played when a task is ticked off, which is the moment a coin is earned. */
   function playCashSound() {
+    /* Two taps, like a coin landing and settling. */
+    Util.buzz([0, 14, 45, 14]);
     playNoiseBurst(0.04, 5200, 0.045);
     playTone(1318.5, 0.14, 'triangle', 0.07);
     setTimeout(() => playTone(1760, 0.34, 'triangle', 0.075), 85);
@@ -9266,10 +9310,12 @@ const Garden = (function () {
   }
 
   function playDirtSound() {
+    Util.buzz(12);
     playNoiseBurst(0.09, 450, 0.07);
   }
 
   function playWaterSound() {
+    Util.buzz(6);
     playNoiseBurst(0.28, 2200, 0.028);
     const drops = 4;
     for (let i = 0; i < drops; i++) {
@@ -9280,10 +9326,13 @@ const Garden = (function () {
   }
 
   function playChopSound() {
+    Util.buzz(22);
     playNoiseBurst(0.06, 900, 0.08);
     setTimeout(() => playTone(160, 0.1, 'sawtooth', 0.05), 40);
   }
 
+  /* No buzz here on purpose - this fires on every square walked, and a phone
+     that hums the whole way across the garden is a phone you put down. */
   function playStepSound(kind) {
     if (kind === 'water') { playNoiseBurst(0.1, 1400, 0.045); return; }
     if (kind === 'wood') { playTone(190, 0.05, 'triangle', 0.045); playNoiseBurst(0.03, 2500, 0.025); return; }
@@ -9559,14 +9608,20 @@ const Garden = (function () {
     const avail = wrap.clientWidth - padding - marginL - marginR;
     const natural = GARDEN_COLS * CELL_SIZE;
 
-    plotScale = (avail > 0 && avail < natural) ? Math.max(0.35, avail / natural) : 1;
+    /* On a page the plot only ever shrinks to fit its column. On the phone's
+       garden screen it is the screen, so it grows to fill the width too - a
+       272px postage stamp in the middle of a 390px phone was the old look.
+       Capped, so a tablet held in phone mode does not end up with dinner
+       plates for tiles. */
+    if (avail <= 0) plotScale = 1;
+    else if (cameraMode()) plotScale = Math.min(2, Math.max(0.35, avail / natural));
+    else plotScale = avail < natural ? Math.max(0.35, avail / natural) : 1;
 
-    /* A transform paints smaller but still occupies its full width in the
-       layout, so without this the wrap thinks it is overflowing and the right
-       fence post falls outside the panel. The leftover is pulled back in. */
-    if (plotScale < 1) {
-      plot.style.marginRight = Math.round(marginR - natural * (1 - plotScale)) + 'px';
-    }
+    /* A transform paints at a different size but still occupies its natural
+       width in the layout, so the flexbox would centre the wrong box: too far
+       right when shrunk, and overflowing the clip when grown. The difference
+       is handed to the right margin, which works in both directions. */
+    plot.style.marginRight = Math.round(marginR - natural * (1 - plotScale)) + 'px';
 
     const fullRows = gardenRows || SECTION_ROWS;
     const shownRows = Math.min(fullRows, plotVisibleRows);
@@ -15077,10 +15132,23 @@ const App = (function () {
     armToastTimer(el, Math.min(toastHoldMs, 1200));
   }
 
+  /* Under the header, not across it. The toast comes down from the top now,
+     and the top is where the account chip lives - a pill laid over it is a
+     pill over the only control in the bar. The header scrolls with the page,
+     so this is measured at each showing rather than set once, and clamped, so
+     once the header has scrolled away the toast simply sits at the top of the
+     screen. */
+  function placeToast(el) {
+    const header = document.querySelector('header');
+    const below = header ? header.getBoundingClientRect().bottom : 0;
+    el.style.top = Math.max(12, Math.round(below) + 10) + 'px';
+  }
+
   function showToast(text) {
     const el = toastEl();
     el.setAttribute('aria-live', 'polite');
     el.textContent = text;
+    placeToast(el);
     el.classList.add('show');
     toastHoldMs = 2200;
     armToastTimer(el, toastHoldMs);
@@ -15094,6 +15162,7 @@ const App = (function () {
     el.setAttribute('aria-live', 'assertive');
     el.innerHTML = '<span>' + Util.escapeHtml(text) + '</span>'
       + '<button type="button" class="toast-undo" onclick="App.undoLast()">Undo</button>';
+    placeToast(el);
     el.classList.add('show');
     toastHoldMs = 5000;
     armToastTimer(el, toastHoldMs);

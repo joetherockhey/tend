@@ -3167,9 +3167,16 @@ body {
 .sync-toast {
   position: fixed;
   left: 50%;
-  bottom: 18px;
-  transform: translate(-50%, 12px);
+  /* At the top, where the eye already is. It used to rise from the bottom,
+     which on a phone put every coin and every Undo under the bottom bar, and
+     under the thumb that had just tapped something. It drops from above now,
+     clear of both. The notch inset is its own because it is fixed to the
+     viewport rather than sitting inside the header. */
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  transform: translate(-50%, -14px);
   background: var(--header-bg);
+  /* It lands over a dark header, where a drop shadow says nothing. */
+  border: 1px solid rgba(255, 255, 255, 0.22);
   color: #ffffff;
   font-size: 0.82rem;
   font-weight: 600;
@@ -3210,10 +3217,6 @@ body {
 .sync-toast.show {
   opacity: 1;
   transform: translate(-50%, 0);
-}
-
-@media (max-width: 900px) {
-  .sync-toast { bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
 }
 
 
@@ -4437,7 +4440,10 @@ html.garden-full main {
      garden pushes the bottom of the screen off the bottom of the screen. */
   min-height: 0;
   display: flex;
-  padding: 12px 16px calc(84px + env(safe-area-inset-bottom, 0px));
+  /* No side padding: the garden goes edge to edge. The lines of text above
+     and the buttons below put their own back, so only the plot is full
+     width. */
+  padding: 8px 0 calc(84px + env(safe-area-inset-bottom, 0px));
 }
 
 html.garden-full .app-layout,
@@ -4450,7 +4456,29 @@ html.garden-full .garden-stage {
   flex: 1;
 }
 
-html.garden-full .garden-col .panel { margin: 0; }
+/* The panel was a card on a page. On its own screen it is the screen, so all
+   of the card goes: the border it was drawn with, the rounding, the shadow
+   and the padding that held the plot away from the edges. */
+html.garden-full .garden-col .panel {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+}
+
+/* Everything that is not the plot puts its own gutter back. */
+html.garden-full .garden-gardener-row,
+html.garden-full .garden-controls { padding-left: 12px; padding-right: 12px; }
+
+/* Same for the frame around the plot - the fence posts are the garden's own
+   edge and are all the edge it needs. */
+html.garden-full .garden-plot-wrap {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
 
 /* The window on the garden: whatever height is left after the status line and
    the buttons have taken theirs. fitPlot() caps it at the garden's own height
