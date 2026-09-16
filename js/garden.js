@@ -2889,26 +2889,19 @@ const Garden = (function () {
 
     const plantsWrap = document.getElementById('shop-plants');
     if (plantsWrap) {
-      const all = plantIds().map(id => gardenLayout[id]);
-      const growing = all.filter(isSeedling).length;
-      const grown = all.length - growing;
-      const kinds = foundTally();
-      const tally = grown + ' ' + (grown === 1 ? terms().plant : terms().plants)
-        + (growing ? ', ' + growing + ' still growing' : '')
-        + ' \u00b7 found ' + kinds.found + ' of ' + kinds.total + ' kinds';
       const holding = heldPlantId != null;
       const value = heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE;
       const noRoom = !findPottingSpot();
-      const rate = coinsPerTask();
-      const built = completedBuilds();
-      const rateLine = `<div class="shop-info shop-rate">Each task you finish pays <b>${rate}</b> ${rate === 1 ? 'coin' : 'coins'}`
-        + (built
-            ? ` &middot; ${built} ${terms().build}${built === 1 ? '' : 's'} built`
-            : ` &middot; build a ${terms().build} to raise it`)
-        + '</div>';
-      plantsWrap.innerHTML = rateLine +
-        `<div class="shop-info">Growing: ${Util.escapeHtml(tally)}${noRoom ? ' - no room for another' : ''}</div>
-         <div class="shop-grid">
+      /* Two lines of explanation used to sit here under the word Plants: the
+         coin rate with a note about building to raise it, and a tally of what
+         is growing. Both said things that are said better elsewhere - the
+         tally is the sentence at the top of the garden, and the coin rate
+         belongs with the thing that changes it, so it lives in the Building
+         help panel now. What is left is the one line you cannot read anywhere
+         else, and only when it applies. */
+      plantsWrap.innerHTML =
+        (noRoom ? '<div class="shop-info">No room for another - clear a square first.</div>' : '') +
+        `<div class="shop-grid">
            <button class="shop-tile" ${(coins < PLANT_COST || noRoom) ? 'disabled' : ''} onclick="buyPlant()"
              title="${noRoom ? 'The garden is full - plant or cash one in to make room' : ''}">
              <span class="shop-tile-icon">\u{1F331}</span>
@@ -3614,7 +3607,9 @@ const Garden = (function () {
       cabin: {
         icon: '\u{1FAB5}', title: cap1(t.build) + 's',
         body: 'Carry ' + t.logs + ' onto the same square, over and over. 10 makes a ' + t.build + '.'
-          + ' Each finished one adds a coin to every task you tick off. You have ' + completedBuilds() + '.'
+          + ' Each one you finish adds a coin to every task you tick off.'
+          + ' You have ' + completedBuilds() + ', so a task pays ' + coinsPerTask()
+          + (coinsPerTask() === 1 ? ' coin.' : ' coins.')
       },
       pets: {
         icon: '\u{1F43E}', title: 'Animals',

@@ -473,6 +473,26 @@ const Store = (function () {
     dirty.state = false;
   }
 
+  /* What the server held at the last sync that actually landed. It is the only
+     way to tell a setting this device changed from one it simply has an old
+     copy of, which is what stops a merge shouting down the other device. */
+  function lastSyncedPrefs() {
+    if (!snapshot.state) return {};
+    try { return JSON.parse(snapshot.state).prefs || {}; } catch (e) { return {}; }
+  }
+
+  /* Three-way merge, key by key. The server wins by default; a key THIS device
+     changed since the last sync wins over it. So toggling dark mode on the
+     phone while offline does not undo the theme you picked on the laptop in
+     the meantime - only the one key you actually touched comes back with you. */
+  function mergePrefs(mine, theirs, base) {
+    const out = Object.assign({}, theirs || {});
+    Object.keys(mine || {}).forEach(k => {
+      if (JSON.stringify(mine[k]) !== JSON.stringify((base || {})[k])) out[k] = mine[k];
+    });
+    return out;
+  }
+
   /* ---- pull ---- */
 
   async function pull() {
@@ -494,17 +514,32 @@ const Store = (function () {
       .map(r => ({ id: r.id, name: r.name, color: r.color }));
 
     const st = sRes.data;
-    prefs = (st && st.prefs) || {};
+
+    /* A flush that failed leaves changes here the server has never seen, so
+       this copy is the fresher one; otherwise the server's is. */
+    const unsent = dirty.state;
+
+    /* Settings used to be taken from the server whole - `prefs = st.prefs` -
+       and then the dirty flag that would have pushed the local ones was
+       cleared two lines further down. So a setting changed while offline was
+       overwritten AND forgotten the moment the connection came back: dark
+       mode, the theme, haptics, weekends, and the marker that stopped deleted
+       categories coming back. The garden bag beside it has always merged. Now
+       this does too. */
+    const serverPrefs = (st && st.prefs) || {};
+    const mergedPrefs = unsent ? mergePrefs(prefs, serverPrefs, lastSyncedPrefs()) : serverPrefs;
+    /* Anything the merge kept from this device still has to go up, or the
+       setting only ever applies on the machine it was changed on. */
+    const prefsOweAPush = JSON.stringify(mergedPrefs) !== JSON.stringify(serverPrefs);
+    prefs = mergedPrefs;
+
     /* Keep this device's own keys - the server never had them. */
     const keepLocal = {};
     DEVICE_LOCAL_KEYS.forEach(k => { if (gardenBag[k] !== undefined) keepLocal[k] = gardenBag[k]; });
 
     const serverGarden = (st && st.garden) || {};
     const mineGarden = syncableBag();
-    /* A flush that failed leaves changes here the server has never seen, so
-       this copy is the fresher one; otherwise the server's is. Either way the
-       purchases from both sides survive. */
-    const unsent = dirty.state;
+    /* Either way the purchases from both sides survive. */
     const mergedGarden = unsent
       ? mergeGardenBags(mineGarden, serverGarden)
       : mergeGardenBags(serverGarden, mineGarden);
@@ -523,10 +558,10 @@ const Store = (function () {
     });
     /* The snapshot is what the server actually holds, so a merge that changed
        anything still reads as a difference and gets pushed. */
-    snapshot.state = JSON.stringify({ display_name: account.name || '', prefs: prefs, garden: serverGarden });
+    snapshot.state = JSON.stringify({ display_name: account.name || '', prefs: serverPrefs, garden: serverGarden });
 
-    dirty = { tickets: false, categories: false, state: owesAPush };
-    if (owesAPush && CLOUD && account) scheduleFlush();
+    dirty = { tickets: false, categories: false, state: owesAPush || prefsOweAPush };
+    if (dirty.state && CLOUD && account) scheduleFlush();
 
     /* Mirror the pulled garden bag into localStorage for offline use. */
     mirrorGardenBag();
