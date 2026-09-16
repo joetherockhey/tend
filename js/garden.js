@@ -1642,28 +1642,7 @@ const Garden = (function () {
     return { cell, shownRows, viewH, maxPan: Math.max(0, shownRows * cell - viewH) };
   }
 
-  /* Whether there is anywhere to pan to. */
-  function canPan() {
-    if (!cameraMode()) return false;
-    const v = plotViewport();
-    return !!v && v.maxPan > 0.5;
-  }
-
-  /* Put the window somewhere, clamped. Used by the finger; followHero uses the
-     same clamp by way of panFor. */
-  function setPlotPan(px) {
-    const v = plotViewport();
-    if (!v) return;
-    const next = Math.max(0, Math.min(v.maxPan, px));
-    if (Math.abs(next - plotPan) < 0.5) return;
-    plotPan = next;
-    applyPlotTransform();
-  }
-
-  /* The ground moves only when the gardener would otherwise leave the window.
-     Panned away by hand and then walked? The next step that would put them out
-     of sight brings the window back to them, which is the behaviour you want
-     from a free look: it lets go the moment you do something. */
+  /* The ground moves only when the gardener would otherwise leave the window. */
   function followHero() {
     const plot = document.getElementById('garden-plot');
     if (!plot) return false;
@@ -1701,10 +1680,6 @@ const Garden = (function () {
     touchStart = {
       x: t.clientX, y: t.clientY, at: Date.now(),
       firstAxis: null,
-      panning: false,
-      /* Where the window was, so a drag can be measured against it rather
-         than accumulated - accumulating drifts. */
-      startPan: plotPan,
       /* A drag that begins on the gardener is a "walk over there" - the most
          natural way to move a character with a finger. */
       onHero: !!cell && cell.row === heroPos.row && cell.col === heroPos.col
@@ -1715,33 +1690,20 @@ const Garden = (function () {
      direction the finger clearly commits to - up/down or left/right - is
      remembered, so dragging up and then across walks up first, then across.
 
-     A vertical drag that did NOT begin on the gardener is not a walk at all:
-     it is a look around. The ground follows the finger and nobody moves. That
-     is the only way to see the far end of a garden taller than the screen
-     without walking the whole way down it. */
+     A vertical drag off the gardener was briefly a free look, dragging the
+     ground about without walking anywhere. It is a swipe again: every swipe
+     moves the gardener one square, whichever way it leaned. The window keeps
+     up on its own - it moves only at the edges, which is what made the free
+     look unnecessary. */
   function handleGardenTouchMove(event) {
-    if (!touchStart) return;
+    if (!touchStart || touchStart.firstAxis) return;
     const t = event.changedTouches && event.changedTouches[0];
     if (!t) return;
     const dx = t.clientX - touchStart.x;
     const dy = t.clientY - touchStart.y;
-
-    if (!touchStart.firstAxis && (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP)) {
+    if (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP) {
       touchStart.firstAxis = Math.abs(dy) >= Math.abs(dx) ? 'row' : 'col';
     }
-
-    if (touchStart.firstAxis !== 'row' || touchStart.onHero || !canPan()) return;
-
-    if (!touchStart.panning) {
-      touchStart.panning = true;
-      /* No easing while a finger is on it, or the ground lags behind the
-         skin dragging it. */
-      const plot = document.getElementById('garden-plot');
-      if (plot) plot.classList.add('free-look');
-    }
-    /* Drag down, the garden comes down with you. */
-    setPlotPan(touchStart.startPan - dy);
-    if (event.cancelable) event.preventDefault();
   }
 
   function handleGardenTouchEnd(event) {
@@ -1753,15 +1715,6 @@ const Garden = (function () {
     touchStart = null;
 
     const moved = Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP;
-
-    /* That was a look around. The window has already moved with the finger;
-       nothing should walk, and the lift is not a tap. */
-    if (start.panning) {
-      const plot = document.getElementById('garden-plot');
-      if (plot) plot.classList.remove('free-look');
-      if (event.cancelable) event.preventDefault();
-      return;
-    }
 
     /* Dragged from the gardener: walk to wherever the finger was let go. */
     if (start.onHero && moved) {

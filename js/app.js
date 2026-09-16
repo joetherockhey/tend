@@ -2496,6 +2496,26 @@ const App = (function () {
     return p.haptics !== false;
   }
 
+  /* There is no way for a page to ask whether a buzz was actually felt - both
+     navigator.vibrate and the iOS switch tick report nothing back. So the
+     answer to "is it working" is a button that fires one and says what it
+     just tried, leaving the only part a browser cannot know - whether you felt
+     it - to the hand holding the phone. */
+  function testHaptics() {
+    const out = document.getElementById('haptics-test-result');
+    if (!out) return;
+    if (!hapticsOn()) {
+      out.innerHTML = 'Turn the switch on first.';
+      return;
+    }
+    Util.buzz(35);
+    out.innerHTML = navigator.vibrate
+      ? 'Sent a 35ms vibration. Felt it? Then haptics work here.'
+      : 'Tapped the iOS switch. If you felt a single short tick, the iPhone workaround is working '
+        + 'and every buzz in Tend will feel like that one. Nothing at all means this iOS version '
+        + 'has closed it, or System Haptics is off in iOS Settings &rsaquo; Sounds &amp; Haptics.';
+  }
+
   function setHaptics(on) {
     Store.prefs().haptics = !!on;
     Store.savePrefs();
@@ -2787,6 +2807,8 @@ const App = (function () {
           <input type="checkbox" id="haptics-on" ${hapticsOn() ? 'checked' : ''} onchange="App.setHaptics(this.checked)">
           Buzz on garden actions
         </label>
+        <button type="button" class="settings-btn" id="haptics-test" onclick="App.testHaptics()">Try it</button>
+        <div class="settings-note" id="haptics-test-result"></div>
       </div>
 
       <div class="settings-section">
@@ -3583,7 +3605,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
-    clearSearch, toggleSearch, setTheme, setDark, setHaptics, hapticsOn, isAppMode, setViewMode, setCategoryScope,
+    clearSearch, toggleSearch, setTheme, setDark, setHaptics, hapticsOn, testHaptics, isAppMode, setViewMode, setCategoryScope,
     setListGrouping, undoLast, pickCategoryColor,
     renderFriends, openFriendGarden, closeFriendGarden,
     closeModal, closeModalOnBackdrop,
