@@ -1559,7 +1559,8 @@ const Garden = (function () {
     const fullRows = gardenRows || SECTION_ROWS;
     const shownRows = Math.min(fullRows, plotVisibleRows);
     wrap.classList.toggle('has-peek', shownRows < fullRows);
-    const shown = Math.round(shownRows * CELL_SIZE * plotScale) + 4;
+    const wrapPadY = (parseFloat(wrapStyle.paddingTop) || 0) + (parseFloat(wrapStyle.paddingBottom) || 0);
+    const shown = Math.round(shownRows * CELL_SIZE * plotScale + wrapPadY);
 
     if (cameraMode()) {
       /* The window's height belongs to the layout here, not to the garden -
@@ -1598,34 +1599,82 @@ const Garden = (function () {
     plot.style.transform = parts.join(' ');
   }
 
+  /* How much of the window the gardener may not walk into before the ground
+     moves, in rows. 0 means the ground only moves when they would otherwise
+     step out of sight - walk into the bottom row and it comes up by a row,
+     and not before. 1 would keep a row showing beyond them.
+
+     Centring on every step was the first try, and it made the whole garden
+     slide under a single keypress: it reads as the floor moving rather than
+     as the gardener walking. Kept as a knob because how much warning feels
+     right is taste, not arithmetic. */
+  const CAMERA_EDGE_ROWS = 0;
+
   /* The clamp on its own, so it can be checked without a browser:
-     test/camera.test.js. Centres the gardener's row in a window `viewH` tall,
-     then refuses to show anything above the first row or below the last.
-     Run: node test/camera.test.js */
-  function panFor(row, cell, shownRows, viewH) {
+     test/camera.test.js. Given where the window is now, says where it should
+     be: unmoved while the gardener is inside it, and never showing anything
+     above the first row or below the last. Run: node test/camera.test.js */
+  function panFor(row, cell, shownRows, viewH, pan) {
     const maxPan = Math.max(0, shownRows * cell - viewH);
-    const want = row * cell + cell / 2 - viewH / 2;
-    return Math.max(0, Math.min(maxPan, want));
+    /* The band never grows past what a window this tall can spare, or the two
+       edges would fight over a gardener who cannot satisfy either. */
+    const margin = Math.min(CAMERA_EDGE_ROWS * cell, Math.max(0, (viewH - cell) / 2));
+    const top = row * cell;
+    const bottom = top + cell;
+
+    let next = pan;
+    if (top - margin < pan) next = top - margin;             /* off the top */
+    else if (bottom + margin > pan + viewH) next = bottom + margin - viewH;
+    return Math.max(0, Math.min(maxPan, next));
   }
 
-  /* The gardener is kept in the middle of the window, which at the top and
-     the bottom of the garden means not moving the ground at all - you walk
-     into the empty half first, and the garden only starts following once
-     there is something above or below worth following to. */
-  function followHero() {
+  /* The height of the window on the garden, and how far it can travel. */
+  function plotViewport() {
     const plot = document.getElementById('garden-plot');
     const wrap = plot && plot.parentElement;
-    if (!plot || !wrap) return false;
+    if (!plot || !wrap) return null;
+    const ws = window.getComputedStyle(wrap);
+    const padY = (parseFloat(ws.paddingTop) || 0) + (parseFloat(ws.paddingBottom) || 0);
+    const viewH = wrap.clientHeight - padY;
+    if (viewH <= 0) return null;
+    const cell = CELL_SIZE * plotScale;
+    const shownRows = Math.min(gardenRows || SECTION_ROWS, plotVisibleRows);
+    return { cell, shownRows, viewH, maxPan: Math.max(0, shownRows * cell - viewH) };
+  }
+
+  /* Whether there is anywhere to pan to. */
+  function canPan() {
+    if (!cameraMode()) return false;
+    const v = plotViewport();
+    return !!v && v.maxPan > 0.5;
+  }
+
+  /* Put the window somewhere, clamped. Used by the finger; followHero uses the
+     same clamp by way of panFor. */
+  function setPlotPan(px) {
+    const v = plotViewport();
+    if (!v) return;
+    const next = Math.max(0, Math.min(v.maxPan, px));
+    if (Math.abs(next - plotPan) < 0.5) return;
+    plotPan = next;
+    applyPlotTransform();
+  }
+
+  /* The ground moves only when the gardener would otherwise leave the window.
+     Panned away by hand and then walked? The next step that would put them out
+     of sight brings the window back to them, which is the behaviour you want
+     from a free look: it lets go the moment you do something. */
+  function followHero() {
+    const plot = document.getElementById('garden-plot');
+    if (!plot) return false;
     if (!cameraMode()) {
       if (!plotPan) return false;
       plotPan = 0;
       return true;
     }
-    const cell = CELL_SIZE * plotScale;
-    const shownRows = Math.min(gardenRows || SECTION_ROWS, plotVisibleRows);
-    const viewH = wrap.clientHeight - 4;
-    if (viewH <= 0) return false;
-    const next = panFor(heroPos.row, cell, shownRows, viewH);
+    const v = plotViewport();
+    if (!v) return false;
+    const next = panFor(heroPos.row, v.cell, v.shownRows, v.viewH, plotPan);
     if (Math.abs(next - plotPan) < 0.5) return false;
     plotPan = next;
     return true;
@@ -1652,6 +1701,10 @@ const Garden = (function () {
     touchStart = {
       x: t.clientX, y: t.clientY, at: Date.now(),
       firstAxis: null,
+      panning: false,
+      /* Where the window was, so a drag can be measured against it rather
+         than accumulated - accumulating drifts. */
+      startPan: plotPan,
       /* A drag that begins on the gardener is a "walk over there" - the most
          natural way to move a character with a finger. */
       onHero: !!cell && cell.row === heroPos.row && cell.col === heroPos.col
@@ -1660,16 +1713,35 @@ const Garden = (function () {
 
   /* The way the line was drawn decides which leg is walked first. The first
      direction the finger clearly commits to - up/down or left/right - is
-     remembered, so dragging up and then across walks up first, then across. */
+     remembered, so dragging up and then across walks up first, then across.
+
+     A vertical drag that did NOT begin on the gardener is not a walk at all:
+     it is a look around. The ground follows the finger and nobody moves. That
+     is the only way to see the far end of a garden taller than the screen
+     without walking the whole way down it. */
   function handleGardenTouchMove(event) {
-    if (!touchStart || touchStart.firstAxis) return;
+    if (!touchStart) return;
     const t = event.changedTouches && event.changedTouches[0];
     if (!t) return;
     const dx = t.clientX - touchStart.x;
     const dy = t.clientY - touchStart.y;
-    if (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP) {
+
+    if (!touchStart.firstAxis && (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP)) {
       touchStart.firstAxis = Math.abs(dy) >= Math.abs(dx) ? 'row' : 'col';
     }
+
+    if (touchStart.firstAxis !== 'row' || touchStart.onHero || !canPan()) return;
+
+    if (!touchStart.panning) {
+      touchStart.panning = true;
+      /* No easing while a finger is on it, or the ground lags behind the
+         skin dragging it. */
+      const plot = document.getElementById('garden-plot');
+      if (plot) plot.classList.add('free-look');
+    }
+    /* Drag down, the garden comes down with you. */
+    setPlotPan(touchStart.startPan - dy);
+    if (event.cancelable) event.preventDefault();
   }
 
   function handleGardenTouchEnd(event) {
@@ -1681,6 +1753,15 @@ const Garden = (function () {
     touchStart = null;
 
     const moved = Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP;
+
+    /* That was a look around. The window has already moved with the finger;
+       nothing should walk, and the lift is not a tap. */
+    if (start.panning) {
+      const plot = document.getElementById('garden-plot');
+      if (plot) plot.classList.remove('free-look');
+      if (event.cancelable) event.preventDefault();
+      return;
+    }
 
     /* Dragged from the gardener: walk to wherever the finger was let go. */
     if (start.onHero && moved) {

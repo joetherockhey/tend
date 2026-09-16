@@ -134,6 +134,14 @@ const Util = (function () {
      hidden - hence the try. Nothing above it ever needs to know. */
   function buzz(ms) {
     if (!navigator.vibrate) return;
+    /* The switch in Settings. Asked here rather than at each call site, so
+       there is one place that can turn every buzz in the app off.
+
+       `typeof App`, not `window.App`: App is declared with const at the top
+       level of a classic script, which puts it in the global lexical scope and
+       NOT on window - so window.App is undefined and a guard written that way
+       silently never fires. js/garden.js reaches for App the same way. */
+    if (typeof App !== 'undefined' && App.hapticsOn && !App.hapticsOn()) return;
     try { navigator.vibrate(ms); } catch (e) { /* blocked, hidden, or unsupported */ }
   }
 

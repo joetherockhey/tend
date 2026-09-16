@@ -1823,10 +1823,13 @@ const App = (function () {
     applyCalendarWidth();
   }
 
-  /* Weekends on by default; a working week of five columns is wider per day,
-     which matters most on a phone. */
+  /* Weekends off by default: five columns are wider per day than seven, which
+     matters most on a phone, and most of what goes in here is weekday work.
+     Reading `=== true` rather than `!== false` is what flips it without a
+     migration - nobody who has already chosen loses their choice, because
+     only an explicit true now means shown. */
   function showWeekends() {
-    return Store.prefs().calWeekends !== false;
+    return Store.prefs().calWeekends === true;
   }
 
   function toggleWeekends() {
@@ -2478,6 +2481,28 @@ const App = (function () {
     applyDark();
   }
 
+  /* Haptics ride the sounds the garden already makes. Default on, because a
+     phone that answers a tap is the point of it; stored per account with the
+     rest of the preferences, so it follows you to another device the way the
+     theme does. Util.buzz asks this before every buzz, so one switch covers
+     every place in the app that could vibrate. */
+  /* Whether this device can vibrate at all. Android can; iOS has no Vibration
+     API in Safari or in an installed PWA, so the switch is honest about it
+     rather than silently doing nothing. */
+  function hapticsSupported() { return !!navigator.vibrate; }
+
+  function hapticsOn() {
+    const p = Store.prefs();
+    return p.haptics !== false;
+  }
+
+  function setHaptics(on) {
+    Store.prefs().haptics = !!on;
+    Store.savePrefs();
+    /* Answer the switch with the thing it controls. */
+    if (on) Util.buzz(18);
+  }
+
   /* ---------------------------------------------------------------
      What's new.
 
@@ -2747,6 +2772,15 @@ const App = (function () {
         <label class="checkbox-row">
           <input type="checkbox" id="dark-on" ${darkOn() ? 'checked' : ''} onchange="App.setDark(this.checked)">
           Dark mode
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <h4>Haptics</h4>
+        <p>A short buzz when something happens in the garden &mdash; picking up, digging, watering, chopping, and the coin for a finished task. Walking is left alone. ${hapticsSupported() ? '' : '<strong>This device has no vibration, so the switch will do nothing here.</strong> iPhones have no vibration for web apps at all.'}</p>
+        <label class="checkbox-row">
+          <input type="checkbox" id="haptics-on" ${hapticsOn() ? 'checked' : ''} onchange="App.setHaptics(this.checked)">
+          Buzz on garden actions
         </label>
       </div>
 
@@ -3532,7 +3566,7 @@ const App = (function () {
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
-    clearSearch, toggleSearch, setTheme, setDark, isAppMode, setViewMode, setCategoryScope,
+    clearSearch, toggleSearch, setTheme, setDark, setHaptics, hapticsOn, isAppMode, setViewMode, setCategoryScope,
     setListGrouping, undoLast, pickCategoryColor,
     renderFriends, openFriendGarden, closeFriendGarden,
     closeModal, closeModalOnBackdrop,

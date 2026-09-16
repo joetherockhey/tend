@@ -4489,6 +4489,10 @@ html.garden-full .garden-plot-wrap { flex: 1; min-height: 0; }
    camera and a cut. Short enough to keep up with a held-down walk. */
 html.garden-full .garden-plot { transition: transform 0.12s linear; }
 
+/* Except while a finger is dragging it, where any easing at all reads as the
+   ground lagging behind the skin moving it. */
+html.garden-full .garden-plot.free-look { transition: none; }
+
 /* The h2 said "My Garden" above an h1 that already says it. */
 html.garden-full #garden-panel-title { display: none; }
 
