@@ -3553,6 +3553,18 @@ const App = (function () {
 
       /* Keeps Tab inside whichever modal is on top. */
       document.addEventListener('keydown', trapModalTab);
+
+      /* A tap on the bottom bar answers back. Delegated to the bar rather than
+         put on the five buttons, and hung on the click rather than on
+         switchView, so it fires for a tap and not for the switches the app
+         makes for itself - coming back from the garden on a resize, or landing
+         on the task list at boot. The bar only exists in phone view. */
+      const bnav = document.getElementById('bottom-nav');
+      if (bnav) {
+        bnav.addEventListener('click', function (e) {
+          if (e.target.closest('.bnav-btn')) Util.buzz(10);
+        });
+      }
     }
   }
 
