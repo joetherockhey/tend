@@ -1261,7 +1261,13 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
   100% { transform: translateY(-24px) scale(0.8); opacity: 0; }
 }
 
+/* Three lines of instructions used to sit under the plot on every device -
+   the web page explaining itself. On a desktop they are permanent furniture
+   for something you learn once, and the help strip right below them says all
+   of it properly and on demand. They are kept for the phone's help sheet,
+   which is the one place they are read rather than skipped. */
 .garden-hint {
+  display: none;
   font-size: 0.7rem;
   color: var(--muted);
   margin-top: 8px;
@@ -4497,5 +4503,5 @@ html[data-mode="phone"] .garden-ctl-btn.garden-ctl-narrow {
 .garden-sheet { width: 420px; max-height: 80vh; }
 .garden-sheet > div > .panel,
 .garden-sheet #shop-panel { margin: 0; border: none; padding: 0; background: none; box-shadow: none; }
-.garden-sheet .garden-hint { margin-top: 0; }
+.garden-sheet .garden-hint { display: block; margin-top: 0; }
 
