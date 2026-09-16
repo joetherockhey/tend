@@ -41,7 +41,7 @@ Second sweep, 2026-09-11. Nine new findings, awaiting a decision.
 | ux-0013 | Going offline is invisible on a phone | sync | medium | small | open |
 | ux-0014 | A new version reloads the page out from under whatever is half-typed | sync | medium | medium | open |
 | ux-0015 | Segmented toggles say which one is chosen with colour alone | a11y | medium | small | open |
-| ux-0016 | An empty "Completed" heading sits under the task list for ever | tasks | low | small | open |
+| ux-0016 | An empty "Completed" heading sits under the task list for ever | tasks | low | small | done |
 
 ---
 
@@ -384,7 +384,7 @@ removing it from the rest. `App.pickCategoryColor` already does exactly this
 ---
 
 ### ux-0016 — An empty "Completed" heading sits under the task list for ever
-**tasks · low · small · open · swept 2026-09-11**
+**tasks · low · small · done · swept 2026-09-11**
 
 Show recurring and Show archived hide their whole `section` (`js/app.js:1165`,
 `js/app.js:1169`). Show completed hides only the `ul` inside it
@@ -400,5 +400,8 @@ into and find empty.
 matching the two lines beside it. That also makes `aria-controls` true as
 written, and leaves the reveal-toggle row as the last thing on the page when all
 three are collapsed.
+
+**Shipped** in `Coins and Others on Friends, a garden that scrolls on its own,
+no empty heading` (2026-09-16), asked for directly rather than off the ledger.
 
 **Refs:** `js/app.js:1160`, `js/app.js:1169`, `index.html:225`, `index.html:209`
