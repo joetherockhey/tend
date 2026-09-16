@@ -8054,37 +8054,26 @@ const Store = (function () {
     else writeCache();
   }
 
-  /* Bumped whenever a category is added to the list above. An account that
-     has not seen this version yet gets the new ones added; after that the
-     marker stops it happening again, so deleting one makes it stay deleted. */
-  const DEFAULTS_VERSION = 2;
+  /* Defaults are offered ONCE, to an account that has no categories at all.
+     An account that has any is left alone for ever.
 
+     There used to be a top-up beside this: an account created before a default
+     existed had the new ones added, guarded by a DEFAULTS_VERSION marker in
+     prefs so it only happened once. The marker was the whole of its memory,
+     and prefs are replaced wholesale by a pull - so on any account whose
+     server row did not carry the marker yet, every load added back every
+     default the person had deleted. Delete Errands and Fun on the overview
+     page, reload, and there they are again at the top of the list.
+
+     The top-up is gone rather than repaired. A guard that has to remember
+     something to avoid undoing a deliberate deletion will keep finding ways to
+     forget; not re-adding anything cannot. An old account misses out on a
+     default added later, which it can add itself in a second, and which is a
+     far smaller thing than a category refusing to stay deleted. */
   function seedDefaultsIfEmpty() {
-    if (!Array.isArray(categories) || !categories.length) {
-      categories = DEFAULT_CATEGORIES.map(c => ({ id: Util.uid(), name: c.name, color: c.color }));
-      prefs.categoryDefaults = DEFAULTS_VERSION;
-      if (CLOUD) { markDirty('categories'); markDirty('state'); }
-      else writeCache();
-      return;
-    }
-    topUpDefaultCategories();
-  }
-
-  /* An account created before a default existed never gets it, because seeding
-     only ever ran on an empty list. This adds the ones it has not been offered,
-     once. */
-  function topUpDefaultCategories() {
-    if ((prefs.categoryDefaults || 0) >= DEFAULTS_VERSION) return;
-    const have = new Set(categories.map(c => String(c.name || '').trim().toLowerCase()));
-    const missing = DEFAULT_CATEGORIES.filter(c => !have.has(c.name.toLowerCase()));
-    prefs.categoryDefaults = DEFAULTS_VERSION;
-    if (missing.length) {
-      /* Added at the front, where the newest defaults belong. */
-      categories = missing.map(c => ({ id: Util.uid(), name: c.name, color: c.color })).concat(categories);
-      console.info('[Tend] added ' + missing.map(c => c.name).join(', ') + ' to your categories');
-      if (CLOUD) markDirty('categories');
-    }
-    if (CLOUD) markDirty('state');
+    if (Array.isArray(categories) && categories.length) return;
+    categories = DEFAULT_CATEGORIES.map(c => ({ id: Util.uid(), name: c.name, color: c.color }));
+    if (CLOUD) markDirty('categories');
     else writeCache();
   }
 
