@@ -653,7 +653,7 @@ const Store = (function () {
     if (!CLOUD || !client) return localGardens();
     const { data, error } = await client
       .from('gardens')
-      .select('user_id, display_name, world, hero, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets, outfits, hero_pos')
+      .select('user_id, display_name, world, hero, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets, outfits, hero_pos, coins')
       .order('display_name');
     if (error) throw error;
     return (data || []).map(r => ({
@@ -674,7 +674,10 @@ const Store = (function () {
       dug: safeParse(r.dug, []),
       pets: safeParse(r.pets, []),
       outfits: safeParse(r.outfits, {}),
-      heroPos: safeParse(r.hero_pos, null)
+      heroPos: safeParse(r.hero_pos, null),
+      /* A garden that predates the coins column on the view reads as null; the
+         Friends tab shows a dash rather than a confident zero. */
+      coins: r.coins == null ? null : (parseInt(r.coins, 10) || 0)
     }));
   }
 
@@ -717,7 +720,8 @@ const Store = (function () {
         dug: safeParse(get('garden-dug-v1'), []),
         pets: safeParse(get('garden-pets-v1'), []),
         outfits: safeParse(get('garden-outfits-v1'), {}),
-        heroPos: safeParse(get('garden-hero-v5'), null)
+        heroPos: safeParse(get('garden-hero-v5'), null),
+        coins: parseInt(get('coins-v1'), 10) || 0
       };
     });
   }

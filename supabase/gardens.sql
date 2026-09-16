@@ -50,6 +50,10 @@ select
   s.garden ->> 'garden-pets-v1'                           as pets,
   s.garden ->> 'garden-outfits-v1'                        as outfits,
   s.garden ->> 'garden-hero-v5'                           as hero_pos,
+  -- The balance only. The two ledgers behind it stay out: coins-spent-v1 and
+  -- coins-bonus-v1 are fine on their own, but the awarded set they are counted
+  -- against holds task ids, and nothing that names a task belongs in here.
+  s.garden ->> 'coins-v1'                                 as coins,
   s.updated_at
 from public.app_state s;
 

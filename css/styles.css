@@ -384,6 +384,9 @@ main {
    genuinely sits beside the content. */
 @media (max-width: 1275px) {
   .garden-col { position: static; }
+  /* Stacked under the content, not stuck beside it - so it is part of the
+     page again and must not be a scrolling pane of its own. */
+  .garden-col { max-height: none; overflow-y: visible; }
 }
 
 @media (max-width: 600px) {
@@ -782,7 +785,25 @@ li.task.done .task-title {
   max-width: 100%;
   position: sticky;
   top: 24px;
+  /* The column is a pane of its own: as tall as the screen and no taller, with
+     its own scroll. Show a hundred completed tasks and the page gets long, and
+     the garden used to stick to the top of it with the shop stranded below the
+     fold - the only way down to it was to scroll the whole page to the bottom.
+     Now the wheel does whatever is under the pointer: over the tasks the page
+     moves and the garden holds still, over the garden the garden moves and the
+     tasks hold still. Scroll chaining is left on, so running out of garden
+     carries on down the page rather than stopping dead. */
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  /* No bar beside it. It is a garden, not a document. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* A sticky box that scrolls needs a scroll padding of its own or the last
+     thing in it sits under the bottom edge. */
+  padding-bottom: 2px;
 }
+
+.garden-col::-webkit-scrollbar { width: 0; height: 0; }
 
 .garden-gardener-row {
   display: flex;
@@ -2484,7 +2505,7 @@ body.gated { overflow: hidden; }
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "content" "garden";
   }
-  .garden-col { position: static; top: auto; }
+  .garden-col { position: static; top: auto; max-height: none; overflow-y: visible; }
 
   /* The plot is a fixed pixel grid, so let the whole thing scroll sideways
      inside its panel rather than stretching the page. */
@@ -2922,7 +2943,7 @@ body.gated { overflow: hidden; }
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "content" "garden";
 }
-.app-layout.cal-wide .garden-col { position: static; top: auto; }
+.app-layout.cal-wide .garden-col { position: static; top: auto; max-height: none; overflow-y: visible; }
 
 /* ============================================================
    Subtasks
@@ -4639,3 +4660,24 @@ html[data-mode="phone"] .garden-ctl-btn.garden-ctl-narrow {
   .tend-s3 { opacity: 1; }
   .tend-can { transform: translate(-16px, -6px); }
 }
+
+/* Coins on a friend's row, beside how much they have grown. */
+.friend-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.friend-coins svg { width: 12px; height: 12px; }
+
+/* An account with nothing planted: shown only behind Others, and dimmed, so
+   the list still reads as "gardens first". */
+.friend-bare .friend-row { opacity: 0.66; }
+
+.friends-others-btn { margin-top: 12px; }
+
+/* The phone's garden section is its own screen with its own layout - the
+   desktop pane's height and scrolling have no business there. */
+html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }

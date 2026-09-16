@@ -1173,7 +1173,13 @@ const App = (function () {
         : `<li class="empty-note">${noWaitingMsg}</li>`;
     }
 
-    completedList.style.display = showCompleted ? '' : 'none';
+    /* The SECTION, not the list inside it. Hiding only the ul left an
+       uppercase COMPLETED heading and 28px of margin sitting under the feed
+       for ever, a heading for a section that is shut - and made
+       aria-expanded="false" a lie, because aria-controls points at the
+       section, which a screen reader could still walk into and find empty.
+       The two lines below it have always done it this way. */
+    document.getElementById('completed-section').style.display = showCompleted ? '' : 'none';
     setRevealBtn('toggle-completed-btn', showCompleted,
       'Hide completed', `Show completed (${completed.length})`);
 
@@ -3150,6 +3156,24 @@ const App = (function () {
     paintFriends();
   }
 
+  /* Whether the accounts with nothing planted are being shown. Deliberately
+     not remembered between visits: it is a "who else is here" question you ask
+     once, not a setting. */
+  let showOtherGardens = false;
+
+  function othersButtonHtml(empty) {
+    if (!empty.length) return '';
+    return `<button type="button" class="section-toggle-btn friends-others-btn"
+              onclick="App.toggleOtherGardens()" aria-expanded="${showOtherGardens}">`
+      + (showOtherGardens ? 'Hide others' : `Others (${empty.length})`)
+      + '</button>';
+  }
+
+  function toggleOtherGardens() {
+    showOtherGardens = !showOtherGardens;
+    paintFriends();
+  }
+
   function paintFriends() {
     const host = document.getElementById('friends-list');
     if (!host) return;
@@ -3159,20 +3183,30 @@ const App = (function () {
       return;
     }
 
-    /* Only gardens with something in them. An account that has signed up and
-       not planted anything is a row with nothing to look at, and the tab is for
-       looking at gardens. */
+    /* Gardens with something in them come first and always. An account that
+       has signed up and planted nothing is a row with nothing to look at, so
+       it used to be dropped entirely - which quietly meant the tab could not
+       tell you who else is here. They are behind Others now rather than gone. */
     const growing = friendsCache.filter(f => plantsIn(f.layout) > 0);
-    if (!growing.length) {
-      host.innerHTML = '<p class="cat-empty">Nobody has planted anything yet.</p>';
+    const empty = friendsCache.filter(f => plantsIn(f.layout) === 0);
+
+    if (!growing.length && !showOtherGardens) {
+      host.innerHTML = '<p class="cat-empty">Nobody has planted anything yet.</p>'
+        + othersButtonHtml(empty);
       if (hasGarden() && Garden.stopPreviewLife) Garden.stopPreviewLife();
       return;
     }
 
-    /* Biggest gardens first - it is a list you scroll to compare. */
+    /* Biggest gardens first - it is a list you scroll to compare. Then, if
+       asked for, everyone else in name order, because there is nothing to rank
+       them by. */
     const sorted = growing.slice().sort((a, b) => plantsIn(b.layout) - plantsIn(a.layout));
+    const others = showOtherGardens
+      ? empty.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)))
+      : [];
+    const rows = sorted.concat(others);
 
-    host.innerHTML = `<div class="friend-list">${sorted.map(f => {
+    host.innerHTML = `<div class="friend-list">${rows.map(f => {
       const plants = plantsIn(f.layout);
       const found = Array.isArray(f.found) ? f.found.length : 0;
       const open = openFriendId === f.id;
@@ -3182,7 +3216,7 @@ const App = (function () {
          the server actually thinks it is. */
       const theirWorld = Worlds.get(f.world);
       const worldTag = `<span class="friend-world ${theirWorld.id}">${Util.escapeHtml(theirWorld.label)}</span>`;
-      return `<div class="friend-item ${open ? 'open' : ''}">
+      return `<div class="friend-item ${open ? 'open' : ''}${plants ? '' : ' friend-bare'}">
           <button type="button" class="friend-row ${open ? 'on' : ''}" onclick="App.openFriendGarden('${f.id}')">
             <span class="friend-avatar">${Util.escapeHtml(friendInitials(f.name))}</span>
             <span class="friend-name">${Util.escapeHtml(f.name)}${f.isMe ? ' <span class="friend-you">you</span>' : ''}</span>
@@ -3190,11 +3224,12 @@ const App = (function () {
             <span class="friend-counts">
               <b>${plants}</b> ${plants === 1 ? 'plant' : 'plants'}
               <span class="friend-kinds">&middot; ${found} of ${theirWorld.plants.length} kinds</span>
+              <span class="friend-coins" title="Coins in hand">${Garden.coinSVG()}${f.coins == null ? '&ndash;' : f.coins}</span>
             </span>
           </button>
           ${open ? friendGardenHtml(f) : ''}
         </div>`;
-    }).join('')}</div>`;
+    }).join('')}</div>` + othersButtonHtml(empty);
 
     /* The plot only exists once it has been painted, so its butterflies, fish,
        animals and gardener are started here rather than in the click. */
@@ -3607,7 +3642,7 @@ const App = (function () {
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
     clearSearch, toggleSearch, setTheme, setDark, setHaptics, hapticsOn, testHaptics, isAppMode, setViewMode, setCategoryScope,
     setListGrouping, undoLast, pickCategoryColor,
-    renderFriends, openFriendGarden, closeFriendGarden,
+    renderFriends, openFriendGarden, closeFriendGarden, toggleOtherGardens,
     closeModal, closeModalOnBackdrop,
     openShop, closeShop, closeShopOnBackdrop,
     openGardenHelp, closeGardenHelp, closeGardenHelpOnBackdrop,
