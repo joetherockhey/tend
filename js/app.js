@@ -2489,7 +2489,7 @@ const App = (function () {
   /* Whether this device can vibrate at all. Android can; iOS has no Vibration
      API in Safari or in an installed PWA, so the switch is honest about it
      rather than silently doing nothing. */
-  function hapticsSupported() { return !!navigator.vibrate; }
+  function hapticsSupported() { return Util.canBuzz(); }
 
   function hapticsOn() {
     const p = Store.prefs();
@@ -2777,7 +2777,12 @@ const App = (function () {
 
       <div class="settings-section">
         <h4>Haptics</h4>
-        <p>A short buzz when something happens in the garden &mdash; picking up, digging, watering, chopping, and the coin for a finished task. Walking is left alone. ${hapticsSupported() ? '' : '<strong>This device has no vibration, so the switch will do nothing here.</strong> iPhones have no vibration for web apps at all.'}</p>
+        <p>A short buzz when something happens in the garden &mdash; picking up, digging, watering, chopping, and the coin for a finished task. Walking is left alone.</p>
+        <p class="settings-note">${hapticsSupported()
+          ? (navigator.vibrate
+              ? 'This device vibrates, so each action buzzes for its own length.'
+              : 'This device has no vibration for web pages. On an iPhone, Tend borrows the system switch tick instead &mdash; one short tap, the same for every action. If you feel nothing, check Settings &rsaquo; Sounds &amp; Haptics &rsaquo; System Haptics is on; if it is, then this iOS version has closed the trick and nothing here can reach the Taptic Engine.')
+          : '<strong>This device cannot vibrate, so the switch will do nothing here.</strong>'}</p>
         <label class="checkbox-row">
           <input type="checkbox" id="haptics-on" ${hapticsOn() ? 'checked' : ''} onchange="App.setHaptics(this.checked)">
           Buzz on garden actions

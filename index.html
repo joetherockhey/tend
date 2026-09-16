@@ -297,6 +297,18 @@
 </div>
 </main>
 
+<!-- iPhones have no Vibration API - not in Safari, not in an installed web
+     app - so navigator.vibrate does not exist there and never has. What iOS
+     17.4 did add is `switch` on a checkbox, which draws the native iOS toggle
+     AND plays the system's own haptic when it flips. Clicking this hidden one
+     borrows that tick: it is the only haptic a web page can ask an iPhone for.
+     Unsupported anywhere else, and a no-op if Apple ever closes it.
+
+     Kept out of the tab order and out of the accessibility tree - it is a
+     noise-maker, not a control, and there is a real switch for this in
+     Settings. -->
+<label id="ios-haptic" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
+
 <!-- ============================ MODALS ============================ -->
 
 <!-- The shop and the garden's help, as sheets. In phone view the panels

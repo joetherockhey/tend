@@ -4531,6 +4531,21 @@ html[data-mode="phone"] .garden-ctl-btn.garden-ctl-narrow {
 .garden-sheet #shop-panel { margin: 0; border: none; padding: 0; background: none; box-shadow: none; }
 .garden-sheet .garden-hint { display: block; margin-top: 0; }
 
+/* The iPhone's borrowed haptic - see index.html. Out of sight and out of the
+   way of every pointer, but NOT display:none or visibility:hidden: a control
+   the browser considers unrendered does not tick. */
+#ios-haptic {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
 </style>
 </head>
 <body class="gated">
@@ -4812,6 +4827,18 @@ html[data-mode="phone"] .garden-ctl-btn.garden-ctl-narrow {
 
 </div>
 </main>
+
+<!-- iPhones have no Vibration API - not in Safari, not in an installed web
+     app - so navigator.vibrate does not exist there and never has. What iOS
+     17.4 did add is `switch` on a checkbox, which draws the native iOS toggle
+     AND plays the system's own haptic when it flips. Clicking this hidden one
+     borrows that tick: it is the only haptic a web page can ask an iPhone for.
+     Unsupported anywhere else, and a no-op if Apple ever closes it.
+
+     Kept out of the tab order and out of the accessibility tree - it is a
+     noise-maker, not a control, and there is a real switch for this in
+     Settings. -->
+<label id="ios-haptic" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
 
 <!-- ============================ MODALS ============================ -->
 
@@ -5203,8 +5230,26 @@ const Util = (function () {
      than something with a fallback. It is also ignored until the page has
      been tapped once, and throws outright in a few browsers when the tab is
      hidden - hence the try. Nothing above it ever needs to know. */
+  /* The iOS switch tick described in index.html.
+
+     Deliberately NOT feature-detected. The obvious test - `'switch' in
+     document.createElement('input')` - reports false in WebKit 26.6, so
+     whether the attribute reflects as an IDL property is not something to
+     hang this on; a detect that is wrong the other way would switch the trick
+     off on the one device it exists for. Clicking a hidden checkbox costs
+     nothing anywhere else, so it is simply attempted. */
+  let iosHaptic;
+  function iosHapticEl() {
+    if (iosHaptic === undefined) iosHaptic = document.getElementById('ios-haptic');
+    return iosHaptic;
+  }
+
+  function canBuzz() {
+    return !!navigator.vibrate || !!iosHapticEl();
+  }
+
   function buzz(ms) {
-    if (!navigator.vibrate) return;
+    if (!canBuzz()) return;
     /* The switch in Settings. Asked here rather than at each call site, so
        there is one place that can turn every buzz in the app off.
 
@@ -5213,12 +5258,19 @@ const Util = (function () {
        NOT on window - so window.App is undefined and a guard written that way
        silently never fires. js/garden.js reaches for App the same way. */
     if (typeof App !== 'undefined' && App.hapticsOn && !App.hapticsOn()) return;
+
+    if (!navigator.vibrate) {
+      /* The iPhone's one tick. It has no length and no pattern - it is the
+         system switch sound, so every buzz feels the same there. */
+      try { iosHapticEl().click(); } catch (e) { /* closed off */ }
+      return;
+    }
     try { navigator.vibrate(ms); } catch (e) { /* blocked, hidden, or unsupported */ }
   }
 
   return {
     escapeHtml, dateToStr, todayStr, formatDate,
-    hexToRgba, inkShade, toIsoDate, uid, initials, colorFor, debounce, buzz
+    hexToRgba, inkShade, toIsoDate, uid, initials, colorFor, debounce, buzz, canBuzz
   };
 })();
 
@@ -14386,7 +14438,7 @@ const App = (function () {
   /* Whether this device can vibrate at all. Android can; iOS has no Vibration
      API in Safari or in an installed PWA, so the switch is honest about it
      rather than silently doing nothing. */
-  function hapticsSupported() { return !!navigator.vibrate; }
+  function hapticsSupported() { return Util.canBuzz(); }
 
   function hapticsOn() {
     const p = Store.prefs();
@@ -14674,7 +14726,12 @@ const App = (function () {
 
       <div class="settings-section">
         <h4>Haptics</h4>
-        <p>A short buzz when something happens in the garden &mdash; picking up, digging, watering, chopping, and the coin for a finished task. Walking is left alone. ${hapticsSupported() ? '' : '<strong>This device has no vibration, so the switch will do nothing here.</strong> iPhones have no vibration for web apps at all.'}</p>
+        <p>A short buzz when something happens in the garden &mdash; picking up, digging, watering, chopping, and the coin for a finished task. Walking is left alone.</p>
+        <p class="settings-note">${hapticsSupported()
+          ? (navigator.vibrate
+              ? 'This device vibrates, so each action buzzes for its own length.'
+              : 'This device has no vibration for web pages. On an iPhone, Tend borrows the system switch tick instead &mdash; one short tap, the same for every action. If you feel nothing, check Settings &rsaquo; Sounds &amp; Haptics &rsaquo; System Haptics is on; if it is, then this iOS version has closed the trick and nothing here can reach the Taptic Engine.')
+          : '<strong>This device cannot vibrate, so the switch will do nothing here.</strong>'}</p>
         <label class="checkbox-row">
           <input type="checkbox" id="haptics-on" ${hapticsOn() ? 'checked' : ''} onchange="App.setHaptics(this.checked)">
           Buzz on garden actions

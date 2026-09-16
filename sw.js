@@ -15,7 +15,7 @@
    through, so your data is never served from a stale cache.
    ============================================================================ */
 
-const VERSION = 'tend-3d866238eeb7';
+const VERSION = 'tend-b3b6c739b9eb';
 const APP_SHELL = [
   './',
   './index.html',

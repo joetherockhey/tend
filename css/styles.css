@@ -4537,3 +4537,18 @@ html[data-mode="phone"] .garden-ctl-btn.garden-ctl-narrow {
 .garden-sheet #shop-panel { margin: 0; border: none; padding: 0; background: none; box-shadow: none; }
 .garden-sheet .garden-hint { display: block; margin-top: 0; }
 
+
+/* The iPhone's borrowed haptic - see index.html. Out of sight and out of the
+   way of every pointer, but NOT display:none or visibility:hidden: a control
+   the browser considers unrendered does not tick. */
+#ios-haptic {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}

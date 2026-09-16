@@ -132,8 +132,26 @@ const Util = (function () {
      than something with a fallback. It is also ignored until the page has
      been tapped once, and throws outright in a few browsers when the tab is
      hidden - hence the try. Nothing above it ever needs to know. */
+  /* The iOS switch tick described in index.html.
+
+     Deliberately NOT feature-detected. The obvious test - `'switch' in
+     document.createElement('input')` - reports false in WebKit 26.6, so
+     whether the attribute reflects as an IDL property is not something to
+     hang this on; a detect that is wrong the other way would switch the trick
+     off on the one device it exists for. Clicking a hidden checkbox costs
+     nothing anywhere else, so it is simply attempted. */
+  let iosHaptic;
+  function iosHapticEl() {
+    if (iosHaptic === undefined) iosHaptic = document.getElementById('ios-haptic');
+    return iosHaptic;
+  }
+
+  function canBuzz() {
+    return !!navigator.vibrate || !!iosHapticEl();
+  }
+
   function buzz(ms) {
-    if (!navigator.vibrate) return;
+    if (!canBuzz()) return;
     /* The switch in Settings. Asked here rather than at each call site, so
        there is one place that can turn every buzz in the app off.
 
@@ -142,11 +160,18 @@ const Util = (function () {
        NOT on window - so window.App is undefined and a guard written that way
        silently never fires. js/garden.js reaches for App the same way. */
     if (typeof App !== 'undefined' && App.hapticsOn && !App.hapticsOn()) return;
+
+    if (!navigator.vibrate) {
+      /* The iPhone's one tick. It has no length and no pattern - it is the
+         system switch sound, so every buzz feels the same there. */
+      try { iosHapticEl().click(); } catch (e) { /* closed off */ }
+      return;
+    }
     try { navigator.vibrate(ms); } catch (e) { /* blocked, hidden, or unsupported */ }
   }
 
   return {
     escapeHtml, dateToStr, todayStr, formatDate,
-    hexToRgba, inkShade, toIsoDate, uid, initials, colorFor, debounce, buzz
+    hexToRgba, inkShade, toIsoDate, uid, initials, colorFor, debounce, buzz, canBuzz
   };
 })();
