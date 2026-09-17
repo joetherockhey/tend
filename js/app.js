@@ -820,6 +820,22 @@ const App = (function () {
      behind for ever. Swept once on boot rather than tracked, which also
      tidies up after a task deleted on another device. */
   function pruneRepeats() {
+    /* ONLY against the account's real list.
+
+       boot() runs after Store.open() resolves - including the branch where the
+       pull FAILED and open() fell back to whatever was in the cache, which on
+       a new device, a cleared browser or a bad connection is short or empty.
+       Pruning against that read every repeating task as deleted, wiped its
+       rule, and wrote the emptied map straight back; the write marks the
+       garden bag dirty, so the next sync pushed the wipe to the server and
+       every repeat on the account stopped repeating, everywhere, for good. The
+       task itself survived - it simply never spawned another copy again.
+
+       These two maps growing a few dead entries is the thing this sweep was
+       written to avoid. Losing somebody's recurring tasks is not a fair price
+       for it, so it now waits for a list it can trust. */
+    if (!Store.hasSynced()) return;
+
     const live = {};
     tickets().forEach(t => { live[t.id] = true; });
 

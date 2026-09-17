@@ -59,6 +59,12 @@ const Store = (function () {
      it synced, moving on the laptop would drag the phone's farmer around. */
   const DEVICE_LOCAL_KEYS = ['garden-hero-v5', 'garden-visible-v1'];
 
+  /* Whether the tickets in memory are the account's real list, or a cached
+     stand-in that may be short or empty. Anything that DELETES data keyed by
+     task id has to ask, because deciding a task no longer exists on the
+     strength of a list that never arrived destroys the real one. */
+  let pulledOk = false;
+
   function isDeviceLocal(key) {
     return DEVICE_LOCAL_KEYS.indexOf(key) !== -1;
   }
@@ -566,6 +572,7 @@ const Store = (function () {
     /* Mirror the pulled garden bag into localStorage for offline use. */
     mirrorGardenBag();
     writeCache();
+    pulledOk = true;
   }
 
   function mirrorGardenBag() {
@@ -775,6 +782,9 @@ const Store = (function () {
       seedDefaultsIfEmpty();
       normaliseTicketDates();
       setStatus('local');
+      /* On a device the local copy IS the real list - there is nowhere else
+         for one to arrive from. */
+      pulledOk = true;
       return { fromCache: false };
     }
 
@@ -808,6 +818,7 @@ const Store = (function () {
   }
 
   function close() {
+    pulledOk = false;
     scheduleFlush.flush();
     stopRealtime();
     if (liveTimer) { clearTimeout(liveTimer); liveTimer = null; }
@@ -1127,6 +1138,7 @@ const Store = (function () {
     /* sync */
     flush: function () { scheduleFlush.flush(); return flush(); },
     status: function () { return status; },
+    hasSynced: function () { return pulledOk; },
     onStatus,
     pull,
     refresh,
