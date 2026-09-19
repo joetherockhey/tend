@@ -1136,6 +1136,118 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
   z-index: 1;
 }
 
+/* ---------------------------------------------------------------------------
+   Seasons. Every section you open is the next season along, so the plot runs
+   Spring, Summer, Autumn, Winter and round again as you buy your way down it.
+   The ground colour itself is mixed in JS - the season is a tint over whatever
+   the theme already paints, so a greenhouse stays a greenhouse. What is in
+   here is the light sitting over that ground, the things falling through it,
+   the one prop standing in the corner, and the sign saying where you are.
+   --------------------------------------------------------------------------- */
+
+.season-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.season-spring .season-wash {
+  background: linear-gradient(180deg, rgba(186, 240, 168, 0.30), rgba(255, 255, 255, 0));
+}
+.season-summer .season-wash {
+  background: linear-gradient(180deg, rgba(255, 222, 122, 0.34), rgba(255, 240, 180, 0.05));
+}
+.season-autumn .season-wash {
+  background: linear-gradient(180deg, rgba(226, 140, 50, 0.26), rgba(150, 90, 34, 0.08));
+}
+.season-winter .season-wash {
+  background: linear-gradient(180deg, rgba(228, 244, 255, 0.46), rgba(196, 222, 244, 0.16));
+}
+
+/* Petals, pollen, leaves, snow. Seven per band, placed and timed from the
+   band's own hash so they do not reshuffle on every render, and started at a
+   negative delay so a band you scroll to is already mid-fall rather than
+   waiting to begin. */
+.season-drift {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.season-drift i {
+  position: absolute;
+  top: -12px;
+  width: 5px;
+  height: 5px;
+  opacity: 0;
+  animation-name: season-drift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes season-drift {
+  0%   { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(var(--drift-scale, 1)); }
+  12%  { opacity: 0.8; }
+  86%  { opacity: 0.8; }
+  100% { opacity: 0; transform: translate(26px, 290px) rotate(180deg) scale(var(--drift-scale, 1)); }
+}
+
+.season-spring .season-drift i { background: #f7bcd6; border-radius: 60% 40% 60% 40%; }
+.season-summer .season-drift i { background: #f8e394; border-radius: 50%; width: 3px; height: 3px; }
+.season-autumn .season-drift i { background: #c8772c; border-radius: 40% 60% 40% 60%; width: 7px; height: 5px; }
+.season-winter .season-drift i {
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.9);
+}
+
+/* One thing standing in the bottom-left corner of every band - a snowman, a
+   pumpkin, a parasol. Scenery only: it is not a decoration, so you walk
+   through it and it can never be in the way of a bed or a plant. */
+.season-prop {
+  position: absolute;
+  left: 3px;
+  bottom: 8px;
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.22));
+}
+
+/* The section's name, which until now was loaded and never drawn. */
+.season-sign {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 8px);
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(52, 34, 18, 0.60);
+  color: #fdf6e8;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.season-sign-icon { font-size: 11px; }
+
+/* Asked for stillness, a season keeps its colour, its prop and its sign, and
+   nothing falls through it. */
+@media (prefers-reduced-motion: reduce) {
+  .season-drift { display: none; }
+}
+
 .garden-gate {
   position: absolute;
   left: 0;
@@ -7114,6 +7226,74 @@ const Worlds = (function () {
     maze: 'water', water: 'water', soil: 'dirt', orchard: 'water'
   };
 
+  /* ======================================================================
+     SEASONS
+     ----------------------------------------------------------------------
+     The second axis. A section's theme says where it is - a greenhouse, a
+     pond, a hedge maze - and its season says when. Section i is season
+     i % 4, so the ground you open up runs Spring, Summer, Autumn, Winter
+     and round again, the way a calendar does.
+
+     A season is a tint over a theme, never a replacement for one. The
+     decorations, beds, walls, roofs and step sounds all still come from the
+     theme, so every garden already saved reads exactly as it did - it is
+     just wearing a different month. "tint" is the colour every painted
+     surface in the band is mixed toward and "tintStrength" is how far;
+     "detail" overrides the scatter colours outright where the season has a
+     stronger opinion than a mix can carry (straw in autumn, frost in
+     winter); "prop" is one piece of scenery that stands in the band.
+
+     The four ids are fixed - the CSS hangs its wash and its falling things
+     off them - but the labels and the colours are the world's own, so the
+     reef gets a Storm where the garden gets an Autumn.
+     ====================================================================== */
+
+  const SEASONS = [
+    { id: 'spring', label: 'Spring', icon: '\u{1F338}',
+      tint: [138, 200, 122], tintStrength: 0.13,
+      detail: { tuft: '#8ed079', tuft2: '#5fae4f', patch: '#d9f2cc' },
+      propName: 'Blossom tree',
+      prop: '<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="12" width="2" height="8" fill="#6b4423"/><rect x="3" y="4" width="10" height="8" fill="#f2a0c4"/><rect x="5" y="2" width="6" height="2" fill="#f7bcd6"/><rect x="2" y="7" width="1" height="3" fill="#e87ba4"/><rect x="13" y="7" width="1" height="3" fill="#e87ba4"/><rect x="6" y="6" width="2" height="2" fill="#f7f7f2"/></svg>' },
+    { id: 'summer', label: 'Summer', icon: '\u{2600}\u{FE0F}',
+      tint: [246, 204, 92], tintStrength: 0.12,
+      detail: { tuft: '#6fae56', tuft2: '#4b8234', patch: '#e2eeb4' },
+      propName: 'Parasol',
+      prop: '<svg width="30" height="34" viewBox="0 0 16 18" shape-rendering="crispEdges"><rect x="7" y="6" width="1" height="11" fill="#8a5a2e"/><rect x="2" y="4" width="12" height="2" fill="#d0353a"/><rect x="4" y="2" width="8" height="2" fill="#f7f7f2"/><rect x="6" y="1" width="4" height="1" fill="#d0353a"/><rect x="4" y="6" width="2" height="1" fill="#d0353a"/><rect x="9" y="6" width="2" height="1" fill="#f7f7f2"/></svg>' },
+    { id: 'autumn', label: 'Autumn', icon: '\u{1F342}',
+      tint: [196, 118, 46], tintStrength: 0.28,
+      detail: { tuft: '#c28c44', tuft2: '#9b6c2e', pebble: '#d9c7a6', patch: '#e2c48f', edge: '#9e7644' },
+      propName: 'Pumpkin',
+      prop: '<svg width="30" height="26" viewBox="0 0 16 14" shape-rendering="crispEdges"><rect x="7" y="1" width="2" height="3" fill="#4c8c3c"/><rect x="3" y="4" width="10" height="9" fill="#eb8a34"/><rect x="2" y="6" width="1" height="5" fill="#d9752a"/><rect x="13" y="6" width="1" height="5" fill="#d9752a"/><rect x="6" y="4" width="1" height="9" fill="#d9752a"/><rect x="9" y="4" width="1" height="9" fill="#d9752a"/></svg>' },
+    { id: 'winter', label: 'Winter', icon: '\u{2744}\u{FE0F}',
+      tint: [230, 240, 250], tintStrength: 0.45,
+      detail: { tuft: '#b7c7c2', tuft2: '#93a7a3', pebble: '#f0f6fa', patch: '#e8f0f4', edge: '#b0bec6' },
+      propName: 'Snowman',
+      prop: '<svg width="30" height="34" viewBox="0 0 16 18" shape-rendering="crispEdges"><rect x="4" y="10" width="8" height="7" fill="#f2f7fb"/><rect x="5" y="4" width="6" height="6" fill="#f7fbfe"/><rect x="4" y="2" width="8" height="2" fill="#3b3f45"/><rect x="5" y="0" width="6" height="2" fill="#3b3f45"/><rect x="6" y="6" width="1" height="1" fill="#3b3f45"/><rect x="9" y="6" width="1" height="1" fill="#3b3f45"/><rect x="7" y="7" width="2" height="1" fill="#eb6834"/><rect x="6" y="12" width="1" height="1" fill="#3b3f45"/><rect x="8" y="14" width="1" height="1" fill="#3b3f45"/></svg>' }
+  ];
+
+  /* The reef keeps the same four ids and the same running order - a season is
+     a season whichever world you are in - and changes only what it is called
+     and what it looks like. Spread over the garden's, so anything added to a
+     season above is picked up here without a second edit. */
+  const OCEAN_SEASONS = [
+    { label: 'Bloom', tint: [112, 212, 172], tintStrength: 0.16,
+      detail: { tuft: '#7fd9b4', tuft2: '#4fae8c', patch: '#c9f0e2' },
+      propName: 'Anemone',
+      prop: '<svg width="30" height="26" viewBox="0 0 16 14" shape-rendering="crispEdges"><rect x="4" y="8" width="8" height="5" fill="#d4526b"/><rect x="2" y="4" width="2" height="5" fill="#f2a0c4"/><rect x="5" y="2" width="2" height="7" fill="#e87ba4"/><rect x="9" y="2" width="2" height="7" fill="#e87ba4"/><rect x="12" y="4" width="2" height="5" fill="#f2a0c4"/></svg>' },
+    { label: 'Warm Current', tint: [250, 210, 100], tintStrength: 0.13,
+      detail: { tuft: '#6fc6b0', tuft2: '#489a88', patch: '#dcecc8' },
+      propName: 'Jellyfish',
+      prop: '<svg width="26" height="34" viewBox="0 0 16 18" shape-rendering="crispEdges"><rect x="3" y="3" width="10" height="5" fill="#c4aee6"/><rect x="5" y="1" width="6" height="2" fill="#d8c8f0"/><rect x="4" y="8" width="1" height="6" fill="#b39cdd"/><rect x="7" y="8" width="1" height="8" fill="#b39cdd"/><rect x="10" y="8" width="1" height="5" fill="#b39cdd"/></svg>' },
+    { label: 'Storm', tint: [92, 116, 130], tintStrength: 0.28,
+      detail: { tuft: '#7f97a0', tuft2: '#5e7680', pebble: '#b8c6cc', patch: '#9fb3ba', edge: '#6f858e' },
+      propName: 'Torn kelp',
+      prop: '<svg width="30" height="26" viewBox="0 0 16 14" shape-rendering="crispEdges"><rect x="2" y="9" width="12" height="4" fill="#5e7680"/><rect x="4" y="5" width="2" height="4" fill="#3f8f5c"/><rect x="8" y="3" width="2" height="6" fill="#2f6b46"/><rect x="11" y="6" width="2" height="3" fill="#3f8f5c"/><rect x="2" y="7" width="2" height="2" fill="#c9b892"/></svg>' },
+    { label: 'Ice', tint: [218, 238, 252], tintStrength: 0.44,
+      detail: { tuft: '#aec8d4', tuft2: '#8aa6b4', pebble: '#eef6fc', patch: '#dceaf2', edge: '#a6bcc8' },
+      propName: 'Ice floe',
+      prop: '<svg width="30" height="26" viewBox="0 0 16 14" shape-rendering="crispEdges"><rect x="2" y="6" width="12" height="7" fill="#dbeef8"/><rect x="4" y="3" width="7" height="3" fill="#eef7fc"/><rect x="6" y="1" width="4" height="2" fill="#f7fcff"/><rect x="2" y="9" width="12" height="1" fill="#b8d6e6"/><rect x="9" y="6" width="2" height="7" fill="#c6e2f0"/></svg>' }
+  ].map(function (o, i) { return Object.assign({}, SEASONS[i], o); });
+
   const GARDEN_WORLD = {
     id: 'garden',
     label: 'Garden',
@@ -7132,6 +7312,7 @@ const Worlds = (function () {
       moveHint: 'Click the garden once to take control, then walk with W, A, S, D or the arrow keys.'
     },
     sections: SECTIONS,
+    seasons: SEASONS,
     themeColors: THEME_COLORS,
     themeDetail: THEME_DETAIL,
     themeOrder: THEME_ORDER,
@@ -7184,6 +7365,7 @@ const Worlds = (function () {
       moveHint: 'Click the reef once to take control, then swim with W, A, S, D or the arrow keys.'
     },
     sections: OCEAN_SECTIONS,
+    seasons: OCEAN_SEASONS,
     themeColors: OCEAN_THEME_COLORS,
     themeDetail: OCEAN_THEME_DETAIL,
     themeOrder: THEME_ORDER,
@@ -8489,20 +8671,90 @@ const Garden = (function () {
      glimpse of what is behind it, not a whole empty panel. */
   const LOCKED_PEEK_ROWS = 3;
 
-  function sectionInfo(i) {
-    if (W().sections[i]) return W().sections[i];
+  /* Which season a band is in. They run in calendar order and repeat, so the
+     ground you buy goes Spring, Summer, Autumn, Winter, Spring again - the
+     fourth section you open is the one where it snows. The fallback is a
+     season with no opinion at all, so a world that has not declared any still
+     renders rather than throwing on `.id`. */
+  const NO_SEASON = { id: '', label: '', icon: '', tint: [0, 0, 0], tintStrength: 0, detail: {} };
+
+  function seasonInfo(i, world) {
+    const list = (world || W()).seasons;
+    if (!list || !list.length) return NO_SEASON;
+    return list[i % list.length];
+  }
+
+  /* Where a section is, and when. The theme is the place - greenhouse, pond,
+     hedge maze - and comes from the world; the season is laid over it, so the
+     two are independent and a saved garden keeps every last thing in it. */
+  function sectionInfo(i, world) {
+    const w = world || W();
     /* Past the named sections the themes repeat. THEME_ORDER itself lives in
        worlds.js, so the length has to come from the world, not from a name
        this file cannot see - which used to throw the moment anyone unlocked a
        ninth section. */
-    const order = W().themeOrder;
-    return { name: `Garden Plot ${i + 1}`, icon: '\u{1FAB4}', theme: order[i % order.length] };
+    const order = w.themeOrder;
+    const base = w.sections[i]
+      || { name: `Plot ${i + 1}`, icon: '\u{1FAB4}', theme: order[i % order.length] };
+    const season = seasonInfo(i, w);
+    if (!season.id) return base;
+    /* Season first, because that is how you would say it out loud - "the
+       autumn greenhouse" - and the icon is the season's, because that is the
+       part that changes from one section to the next. */
+    return Object.assign({}, base, {
+      season: season,
+      name: season.label + ' ' + base.name,
+      icon: season.icon
+    });
   }
 
-  function checkerBackground(theme) {
-    const [c1, c2] = W().themeColors[theme];
+  /* Mix a colour toward another one. Every painted surface in a band goes
+     through here on its way to the screen, which is how one number in a
+     season moves a whole section from May to November. */
+  function mixHex(hex, to, amount) {
+    const h = String(hex || '#888888').replace('#', '');
+    const a = Math.max(0, Math.min(1, amount));
+    const mix = (c, t) => Math.round(c + (t - c) * a);
+    return `rgb(${mix(parseInt(h.slice(0, 2), 16), to[0])}, ${mix(parseInt(h.slice(2, 4), 16), to[1])}, ${mix(parseInt(h.slice(4, 6), 16), to[2])})`;
+  }
+
+  function tinted(hex, season) {
+    if (!season || !season.tintStrength) return hex;
+    return mixHex(hex, season.tint, season.tintStrength);
+  }
+
+  function seasonClass(info) {
+    return info.season && info.season.id ? ' season-' + info.season.id : '';
+  }
+
+  function checkerBackground(theme, season, world) {
+    const [c1, c2] = (world || W()).themeColors[theme].map(c => tinted(c, season));
     const size = CELL_SIZE * 2;
     return `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
+  }
+
+  /* The seasonal layer over a band: the light of that season, a few things
+     drifting through it, one prop standing in the corner, and a sign naming
+     the section. None of it goes into placedDecorations, so none of it can
+     block a step, sit on a bed or push a plant around - it is scenery you
+     walk straight through. */
+  function seasonLayerHtml(bandIndex, info) {
+    const s = info.season;
+    if (!s || !s.id) return '';
+    let drift = '';
+    for (let n = 0; n < 7; n++) {
+      const h = tileHash(bandIndex, n, 101);
+      const scale = (0.6 + ((h >> 5) % 8) / 10).toFixed(2);
+      drift += `<i style="left:${h % 96}%;--drift-scale:${scale};`
+        + `animation-delay:-${((h >> 7) % 110) / 10}s;`
+        + `animation-duration:${9 + ((h >> 11) % 9)}s;"></i>`;
+    }
+    const prop = s.prop
+      ? `<div class="season-prop" title="${Util.escapeHtml(s.propName || s.label)}">${s.prop}</div>`
+      : '';
+    return `<div class="season-wash"></div>${prop}`
+      + `<div class="season-drift">${drift}</div>`
+      + `<div class="season-sign"><span class="season-sign-icon">${s.icon}</span>${Util.escapeHtml(info.name)}</div>`;
   }
 
   /* ------------------------------------------------------------------ */
@@ -8532,8 +8784,7 @@ const Garden = (function () {
     const dug = new Set((g.dug || []).map(String));
     const px = n => n * CELL_SIZE;
 
-    const themeOf = i => (world.sections[i] && world.sections[i].theme)
-      || world.themeOrder[i % world.themeOrder.length];
+    const themeOf = i => sectionInfo(i, world).theme;
 
     /* Every theme decoration, resolved the way the real plot resolves it -
        felled ones gone, moved ones where they were moved to. */
@@ -8567,10 +8818,9 @@ const Garden = (function () {
     /* --- the bands, with their texture, edging, walls and roofs --- */
     let bandsHtml = '';
     for (let i = 0; i < bands; i++) {
-      const theme = themeOf(i);
-      const [c1, c2] = world.themeColors[theme];
-      const size = CELL_SIZE * 2;
-      const checker = `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
+      const info = sectionInfo(i, world);
+      const theme = info.theme;
+      const checker = checkerBackground(theme, info.season, world);
       const roofHtml = (theme === 'glass' || theme === 'wood')
         ? `<div class="garden-section-roof ${theme}"></div>` : '';
 
@@ -8582,12 +8832,13 @@ const Garden = (function () {
         return `<div class="garden-surface" style="left:${px(d.col)}px; top:${relTop}px; width:${px(d.width)}px; height:${px(d.height)}px; background:${world.surfaceBackground(d.kind)};"></div>`;
       }).join('');
 
-      bandsHtml += `<div class="garden-section-band" style="top:${px(i * SECTION_ROWS)}px; height:${px(SECTION_ROWS)}px; ${checker}">
-        ${scatterHtml(i, theme, world)}
-        ${i > 0 ? edgingHtml(theme, world) : ''}
+      bandsHtml += `<div class="garden-section-band${seasonClass(info)}" style="top:${px(i * SECTION_ROWS)}px; height:${px(SECTION_ROWS)}px; ${checker}">
+        ${scatterHtml(i, theme, world, info.season)}
+        ${i > 0 ? edgingHtml(theme, world, info.season) : ''}
         ${bandDecor}
         ${roofHtml}
         <div class="garden-section-wall" style="background:${world.wallPattern(theme)};"></div>
+        ${seasonLayerHtml(i, info)}
       </div>`;
     }
 
@@ -9525,12 +9776,11 @@ const Garden = (function () {
     return Math.abs(h ^ (h >>> 16));
   }
 
+  /* Toward black or toward white - the same mix the seasons use, aimed at
+     one end of the greyscale instead of at a colour. */
   function shade(hex, amount) {
-    const h = String(hex || '#888888').replace('#', '');
     const to = amount < 0 ? 0 : 255;
-    const a = Math.abs(amount);
-    const mix = c => Math.round(c + (to - c) * a);
-    return `rgb(${mix(parseInt(h.slice(0,2),16))}, ${mix(parseInt(h.slice(2,4),16))}, ${mix(parseInt(h.slice(4,6),16))})`;
+    return mixHex(hex, [to, to, to], Math.abs(amount));
   }
 
   function hashStr(s) {
@@ -10991,16 +11241,24 @@ const Garden = (function () {
   /* place rather than a checkerboard.                                    */
   /* ------------------------------------------------------------------ */
 
-  function detail(theme, world) {
+  function detail(theme, world, season) {
     const d = (world || W()).themeDetail || {};
-    return d[theme] || d.grass ||
+    const base = d[theme] || d.grass ||
       { tuft: '#7cb86f', tuft2: '#57964e', pebble: '#c4cbbd', path: '#cdb68c', patch: '#cbe4c3', edge: '#b9a179' };
+    if (!season || !season.id) return base;
+    /* Everything is nudged toward the season, so a summer pond still reads as
+       a pond; then the season's own colours win outright where it has a
+       stronger opinion than a mix can carry - grass does not go straw-coloured
+       in autumn by being blended, it has to be told. */
+    const out = {};
+    Object.keys(base).forEach(k => { out[k] = tinted(base[k], season); });
+    return Object.assign(out, season.detail || {});
   }
 
   /* Tufts and pebbles, scattered from the tile's own hash so they stay put
      between renders. Sparse on purpose - this is texture, not decoration. */
-  function scatterHtml(bandIndex, theme, world) {
-    const d = detail(theme, world);
+  function scatterHtml(bandIndex, theme, world, season) {
+    const d = detail(theme, world, season);
     let out = '';
     for (let r = 0; r < SECTION_ROWS; r++) {
       for (let c = 0; c < GARDEN_COLS; c++) {
@@ -11026,8 +11284,8 @@ const Garden = (function () {
 
   /* A worn track down the middle, so the eye has somewhere to walk. Two tiles
      wide, between the beds, and it lines up from one section to the next. */
-  function edgingHtml(theme, world) {
-    const d = detail(theme, world);
+  function edgingHtml(theme, world, season) {
+    const d = detail(theme, world, season);
     let stones = '';
     const stoneW = CELL_SIZE / 2;
     for (let c = 0; c < GARDEN_COLS * 2; c++) {
@@ -11750,12 +12008,13 @@ const Garden = (function () {
           return `<div class="garden-surface" style="left:${d.col * CELL_SIZE}px; top:${relTop}px; width:${w}px; height:${h}px; background:${W().surfaceBackground(d.kind)};"></div>`;
         }).join('');
 
-      bandsHtml += `<div class="garden-section-band${dimClass}" style="top:${top}px;height:${height}px;${checkerBackground(info.theme)}">
-        ${scatterHtml(i, info.theme)}
-        ${i > 0 ? edgingHtml(info.theme) : ''}
+      bandsHtml += `<div class="garden-section-band${seasonClass(info)}${dimClass}" style="top:${top}px;height:${height}px;${checkerBackground(info.theme, info.season)}">
+        ${scatterHtml(i, info.theme, null, info.season)}
+        ${i > 0 ? edgingHtml(info.theme, null, info.season) : ''}
         ${decorHtml}
         ${roofHtml}
         ${wallHtml}
+        ${seasonLayerHtml(i, info)}
       </div>`;
 
       if (i === unlockedCount) {
@@ -14751,6 +15010,12 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-09-19', items: [
+      'Every section of the garden is now a season. The one you start in is Spring, the ground you buy next is Summer, then Autumn, then Winter, then Spring again - so working your way down the plot reads as a year going past.',
+      'Each season brings its own light, its own colour in the grass and the stones, something falling through the air, and one thing standing in the corner: blossom, a parasol, a pumpkin, a snowman. In the reef they are Bloom, Warm Current, Storm and Ice.',
+      'Every section now has a sign saying which one you are in - "Autumn House", "Winter Orchard" - including the dim one behind the gate you have not opened yet.',
+      'Nothing in your garden moved. The greenhouse is still a greenhouse and the pond is still a pond; the season is laid over the top of them.',
+    ] },
     { date: '2026-09-05', items: [
       'Tasks can repeat. Choose every day, week or month when you make one - tick it off and the next one is waiting on its date, with its steps unticked and its coin already earned.',
       'A repeat whose day has not come yet stays out of the feed, so a weekly task ticked on Monday is gone until next Monday. Show recurring, beside Show completed, lists what is waiting and when it is back.',

@@ -69,20 +69,90 @@ const Garden = (function () {
 
 
 
-  function sectionInfo(i) {
-    if (W().sections[i]) return W().sections[i];
+  /* Which season a band is in. They run in calendar order and repeat, so the
+     ground you buy goes Spring, Summer, Autumn, Winter, Spring again - the
+     fourth section you open is the one where it snows. The fallback is a
+     season with no opinion at all, so a world that has not declared any still
+     renders rather than throwing on `.id`. */
+  const NO_SEASON = { id: '', label: '', icon: '', tint: [0, 0, 0], tintStrength: 0, detail: {} };
+
+  function seasonInfo(i, world) {
+    const list = (world || W()).seasons;
+    if (!list || !list.length) return NO_SEASON;
+    return list[i % list.length];
+  }
+
+  /* Where a section is, and when. The theme is the place - greenhouse, pond,
+     hedge maze - and comes from the world; the season is laid over it, so the
+     two are independent and a saved garden keeps every last thing in it. */
+  function sectionInfo(i, world) {
+    const w = world || W();
     /* Past the named sections the themes repeat. THEME_ORDER itself lives in
        worlds.js, so the length has to come from the world, not from a name
        this file cannot see - which used to throw the moment anyone unlocked a
        ninth section. */
-    const order = W().themeOrder;
-    return { name: `Garden Plot ${i + 1}`, icon: '\u{1FAB4}', theme: order[i % order.length] };
+    const order = w.themeOrder;
+    const base = w.sections[i]
+      || { name: `Plot ${i + 1}`, icon: '\u{1FAB4}', theme: order[i % order.length] };
+    const season = seasonInfo(i, w);
+    if (!season.id) return base;
+    /* Season first, because that is how you would say it out loud - "the
+       autumn greenhouse" - and the icon is the season's, because that is the
+       part that changes from one section to the next. */
+    return Object.assign({}, base, {
+      season: season,
+      name: season.label + ' ' + base.name,
+      icon: season.icon
+    });
   }
 
-  function checkerBackground(theme) {
-    const [c1, c2] = W().themeColors[theme];
+  /* Mix a colour toward another one. Every painted surface in a band goes
+     through here on its way to the screen, which is how one number in a
+     season moves a whole section from May to November. */
+  function mixHex(hex, to, amount) {
+    const h = String(hex || '#888888').replace('#', '');
+    const a = Math.max(0, Math.min(1, amount));
+    const mix = (c, t) => Math.round(c + (t - c) * a);
+    return `rgb(${mix(parseInt(h.slice(0, 2), 16), to[0])}, ${mix(parseInt(h.slice(2, 4), 16), to[1])}, ${mix(parseInt(h.slice(4, 6), 16), to[2])})`;
+  }
+
+  function tinted(hex, season) {
+    if (!season || !season.tintStrength) return hex;
+    return mixHex(hex, season.tint, season.tintStrength);
+  }
+
+  function seasonClass(info) {
+    return info.season && info.season.id ? ' season-' + info.season.id : '';
+  }
+
+  function checkerBackground(theme, season, world) {
+    const [c1, c2] = (world || W()).themeColors[theme].map(c => tinted(c, season));
     const size = CELL_SIZE * 2;
     return `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
+  }
+
+  /* The seasonal layer over a band: the light of that season, a few things
+     drifting through it, one prop standing in the corner, and a sign naming
+     the section. None of it goes into placedDecorations, so none of it can
+     block a step, sit on a bed or push a plant around - it is scenery you
+     walk straight through. */
+  function seasonLayerHtml(bandIndex, info) {
+    const s = info.season;
+    if (!s || !s.id) return '';
+    let drift = '';
+    for (let n = 0; n < 7; n++) {
+      const h = tileHash(bandIndex, n, 101);
+      const scale = (0.6 + ((h >> 5) % 8) / 10).toFixed(2);
+      drift += `<i style="left:${h % 96}%;--drift-scale:${scale};`
+        + `animation-delay:-${((h >> 7) % 110) / 10}s;`
+        + `animation-duration:${9 + ((h >> 11) % 9)}s;"></i>`;
+    }
+    const prop = s.prop
+      ? `<div class="season-prop" title="${Util.escapeHtml(s.propName || s.label)}">${s.prop}</div>`
+      : '';
+    return `<div class="season-wash"></div>${prop}`
+      + `<div class="season-drift">${drift}</div>`
+      + `<div class="season-sign"><span class="season-sign-icon">${s.icon}</span>${Util.escapeHtml(info.name)}</div>`;
   }
 
 
@@ -114,8 +184,7 @@ const Garden = (function () {
     const dug = new Set((g.dug || []).map(String));
     const px = n => n * CELL_SIZE;
 
-    const themeOf = i => (world.sections[i] && world.sections[i].theme)
-      || world.themeOrder[i % world.themeOrder.length];
+    const themeOf = i => sectionInfo(i, world).theme;
 
     /* Every theme decoration, resolved the way the real plot resolves it -
        felled ones gone, moved ones where they were moved to. */
@@ -149,10 +218,9 @@ const Garden = (function () {
     /* --- the bands, with their texture, edging, walls and roofs --- */
     let bandsHtml = '';
     for (let i = 0; i < bands; i++) {
-      const theme = themeOf(i);
-      const [c1, c2] = world.themeColors[theme];
-      const size = CELL_SIZE * 2;
-      const checker = `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
+      const info = sectionInfo(i, world);
+      const theme = info.theme;
+      const checker = checkerBackground(theme, info.season, world);
       const roofHtml = (theme === 'glass' || theme === 'wood')
         ? `<div class="garden-section-roof ${theme}"></div>` : '';
 
@@ -164,12 +232,13 @@ const Garden = (function () {
         return `<div class="garden-surface" style="left:${px(d.col)}px; top:${relTop}px; width:${px(d.width)}px; height:${px(d.height)}px; background:${world.surfaceBackground(d.kind)};"></div>`;
       }).join('');
 
-      bandsHtml += `<div class="garden-section-band" style="top:${px(i * SECTION_ROWS)}px; height:${px(SECTION_ROWS)}px; ${checker}">
-        ${scatterHtml(i, theme, world)}
-        ${i > 0 ? edgingHtml(theme, world) : ''}
+      bandsHtml += `<div class="garden-section-band${seasonClass(info)}" style="top:${px(i * SECTION_ROWS)}px; height:${px(SECTION_ROWS)}px; ${checker}">
+        ${scatterHtml(i, theme, world, info.season)}
+        ${i > 0 ? edgingHtml(theme, world, info.season) : ''}
         ${bandDecor}
         ${roofHtml}
         <div class="garden-section-wall" style="background:${world.wallPattern(theme)};"></div>
+        ${seasonLayerHtml(i, info)}
       </div>`;
     }
 
@@ -1161,12 +1230,11 @@ const Garden = (function () {
     return Math.abs(h ^ (h >>> 16));
   }
 
+  /* Toward black or toward white - the same mix the seasons use, aimed at
+     one end of the greyscale instead of at a colour. */
   function shade(hex, amount) {
-    const h = String(hex || '#888888').replace('#', '');
     const to = amount < 0 ? 0 : 255;
-    const a = Math.abs(amount);
-    const mix = c => Math.round(c + (to - c) * a);
-    return `rgb(${mix(parseInt(h.slice(0,2),16))}, ${mix(parseInt(h.slice(2,4),16))}, ${mix(parseInt(h.slice(4,6),16))})`;
+    return mixHex(hex, [to, to, to], Math.abs(amount));
   }
 
   function hashStr(s) {
@@ -2641,16 +2709,24 @@ const Garden = (function () {
   /* place rather than a checkerboard.                                    */
   /* ------------------------------------------------------------------ */
 
-  function detail(theme, world) {
+  function detail(theme, world, season) {
     const d = (world || W()).themeDetail || {};
-    return d[theme] || d.grass ||
+    const base = d[theme] || d.grass ||
       { tuft: '#7cb86f', tuft2: '#57964e', pebble: '#c4cbbd', path: '#cdb68c', patch: '#cbe4c3', edge: '#b9a179' };
+    if (!season || !season.id) return base;
+    /* Everything is nudged toward the season, so a summer pond still reads as
+       a pond; then the season's own colours win outright where it has a
+       stronger opinion than a mix can carry - grass does not go straw-coloured
+       in autumn by being blended, it has to be told. */
+    const out = {};
+    Object.keys(base).forEach(k => { out[k] = tinted(base[k], season); });
+    return Object.assign(out, season.detail || {});
   }
 
   /* Tufts and pebbles, scattered from the tile's own hash so they stay put
      between renders. Sparse on purpose - this is texture, not decoration. */
-  function scatterHtml(bandIndex, theme, world) {
-    const d = detail(theme, world);
+  function scatterHtml(bandIndex, theme, world, season) {
+    const d = detail(theme, world, season);
     let out = '';
     for (let r = 0; r < SECTION_ROWS; r++) {
       for (let c = 0; c < GARDEN_COLS; c++) {
@@ -2676,8 +2752,8 @@ const Garden = (function () {
 
   /* A worn track down the middle, so the eye has somewhere to walk. Two tiles
      wide, between the beds, and it lines up from one section to the next. */
-  function edgingHtml(theme, world) {
-    const d = detail(theme, world);
+  function edgingHtml(theme, world, season) {
+    const d = detail(theme, world, season);
     let stones = '';
     const stoneW = CELL_SIZE / 2;
     for (let c = 0; c < GARDEN_COLS * 2; c++) {
@@ -3400,12 +3476,13 @@ const Garden = (function () {
           return `<div class="garden-surface" style="left:${d.col * CELL_SIZE}px; top:${relTop}px; width:${w}px; height:${h}px; background:${W().surfaceBackground(d.kind)};"></div>`;
         }).join('');
 
-      bandsHtml += `<div class="garden-section-band${dimClass}" style="top:${top}px;height:${height}px;${checkerBackground(info.theme)}">
-        ${scatterHtml(i, info.theme)}
-        ${i > 0 ? edgingHtml(info.theme) : ''}
+      bandsHtml += `<div class="garden-section-band${seasonClass(info)}${dimClass}" style="top:${top}px;height:${height}px;${checkerBackground(info.theme, info.season)}">
+        ${scatterHtml(i, info.theme, null, info.season)}
+        ${i > 0 ? edgingHtml(info.theme, null, info.season) : ''}
         ${decorHtml}
         ${roofHtml}
         ${wallHtml}
+        ${seasonLayerHtml(i, info)}
       </div>`;
 
       if (i === unlockedCount) {

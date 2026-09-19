@@ -811,6 +811,74 @@ const Worlds = (function () {
     maze: 'water', water: 'water', soil: 'dirt', orchard: 'water'
   };
 
+  /* ======================================================================
+     SEASONS
+     ----------------------------------------------------------------------
+     The second axis. A section's theme says where it is - a greenhouse, a
+     pond, a hedge maze - and its season says when. Section i is season
+     i % 4, so the ground you open up runs Spring, Summer, Autumn, Winter
+     and round again, the way a calendar does.
+
+     A season is a tint over a theme, never a replacement for one. The
+     decorations, beds, walls, roofs and step sounds all still come from the
+     theme, so every garden already saved reads exactly as it did - it is
+     just wearing a different month. "tint" is the colour every painted
+     surface in the band is mixed toward and "tintStrength" is how far;
+     "detail" overrides the scatter colours outright where the season has a
+     stronger opinion than a mix can carry (straw in autumn, frost in
+     winter); "prop" is one piece of scenery that stands in the band.
+
+     The four ids are fixed - the CSS hangs its wash and its falling things
+     off them - but the labels and the colours are the world's own, so the
+     reef gets a Storm where the garden gets an Autumn.
+     ====================================================================== */
+
+  const SEASONS = [
+    { id: 'spring', label: 'Spring', icon: '\u{1F338}',
+      tint: [138, 200, 122], tintStrength: 0.13,
+      detail: { tuft: '#8ed079', tuft2: '#5fae4f', patch: '#d9f2cc' },
+      propName: 'Blossom tree',
+      prop: '<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="12" width="2" height="8" fill="#6b4423"/><rect x="3" y="4" width="10" height="8" fill="#f2a0c4"/><rect x="5" y="2" width="6" height="2" fill="#f7bcd6"/><rect x="2" y="7" width="1" height="3" fill="#e87ba4"/><rect x="13" y="7" width="1" height="3" fill="#e87ba4"/><rect x="6" y="6" width="2" height="2" fill="#f7f7f2"/></svg>' },
+    { id: 'summer', label: 'Summer', icon: '\u{2600}\u{FE0F}',
+      tint: [246, 204, 92], tintStrength: 0.12,
+      detail: { tuft: '#6fae56', tuft2: '#4b8234', patch: '#e2eeb4' },
+      propName: 'Parasol',
+      prop: '<svg width="30" height="34" viewBox="0 0 16 18" shape-rendering="crispEdges"><rect x="7" y="6" width="1" height="11" fill="#8a5a2e"/><rect x="2" y="4" width="12" height="2" fill="#d0353a"/><rect x="4" y="2" width="8" height="2" fill="#f7f7f2"/><rect x="6" y="1" width="4" height="1" fill="#d0353a"/><rect x="4" y="6" width="2" height="1" fill="#d0353a"/><rect x="9" y="6" width="2" height="1" fill="#f7f7f2"/></svg>' },
+    { id: 'autumn', label: 'Autumn', icon: '\u{1F342}',
+      tint: [196, 118, 46], tintStrength: 0.28,
+      detail: { tuft: '#c28c44', tuft2: '#9b6c2e', pebble: '#d9c7a6', patch: '#e2c48f', edge: '#9e7644' },
+      propName: 'Pumpkin',
+      prop: '<svg width="30" height="26" viewBox="0 0 16 14" shape-rendering="crispEdges"><rect x="7" y="1" width="2" height="3" fill="#4c8c3c"/><rect x="3" y="4" width="10" height="9" fill="#eb8a34"/><rect x="2" y="6" width="1" height="5" fill="#d9752a"/><rect x="13" y="6" width="1" height="5" fill="#d9752a"/><rect x="6" y="4" width="1" height="9" fill="#d9752a"/><rect x="9" y="4" width="1" height="9" fill="#d9752a"/></svg>' },
+    { id: 'winter', label: 'Winter', icon: '\u{2744}\u{FE0F}',
+      tint: [230, 240, 250], tintStrength: 0.45,
+      detail: { tuft: '#b7c7c2', tuft2: '#93a7a3', pebble: '#f0f6fa', patch: '#e8f0f4', edge: '#b0bec6' },
+      propName: 'Snowman',
+      prop: '<svg width="30" height="34" viewBox="0 0 16 18" shape-rendering="crispEdges"><rect x="4" y="10" width="8" height="7" fill="#f2f7fb"/><rect x="5" y="4" width="6" height="6" fill="#f7fbfe"/><rect x="4" y="2" width="8" height="2" fill="#3b3f45"/><rect x="5" y="0" width="6" height="2" fill="#3b3f45"/><rect x="6" y="6" width="1" height="1" fill="#3b3f45"/><rect x="9" y="6" width="1" height="1" fill="#3b3f45"/><rect x="7" y="7" width="2" height="1" fill="#eb6834"/><rect x="6" y="12" width="1" height="1" fill="#3b3f45"/><rect x="8" y="14" width="1" height="1" fill="#3b3f45"/></svg>' }
+  ];
+
+  /* The reef keeps the same four ids and the same running order - a season is
+     a season whichever world you are in - and changes only what it is called
+     and what it looks like. Spread over the garden's, so anything added to a
+     season above is picked up here without a second edit. */
+  const OCEAN_SEASONS = [
+    { label: 'Bloom', tint: [112, 212, 172], tintStrength: 0.16,
+      detail: { tuft: '#7fd9b4', tuft2: '#4fae8c', patch: '#c9f0e2' },
+      propName: 'Anemone',
+      prop: '<svg width="30" height="26" viewBox="0 0 16 14" shape-rendering="crispEdges"><rect x="4" y="8" width="8" height="5" fill="#d4526b"/><rect x="2" y="4" width="2" height="5" fill="#f2a0c4"/><rect x="5" y="2" width="2" height="7" fill="#e87ba4"/><rect x="9" y="2" width="2" height="7" fill="#e87ba4"/><rect x="12" y="4" width="2" height="5" fill="#f2a0c4"/></svg>' },
+    { label: 'Warm Current', tint: [250, 210, 100], tintStrength: 0.13,
+      detail: { tuft: '#6fc6b0', tuft2: '#489a88', patch: '#dcecc8' },
+      propName: 'Jellyfish',
+      prop: '<svg width="26" height="34" viewBox="0 0 16 18" shape-rendering="crispEdges"><rect x="3" y="3" width="10" height="5" fill="#c4aee6"/><rect x="5" y="1" width="6" height="2" fill="#d8c8f0"/><rect x="4" y="8" width="1" height="6" fill="#b39cdd"/><rect x="7" y="8" width="1" height="8" fill="#b39cdd"/><rect x="10" y="8" width="1" height="5" fill="#b39cdd"/></svg>' },
+    { label: 'Storm', tint: [92, 116, 130], tintStrength: 0.28,
+      detail: { tuft: '#7f97a0', tuft2: '#5e7680', pebble: '#b8c6cc', patch: '#9fb3ba', edge: '#6f858e' },
+      propName: 'Torn kelp',
+      prop: '<svg width="30" height="26" viewBox="0 0 16 14" shape-rendering="crispEdges"><rect x="2" y="9" width="12" height="4" fill="#5e7680"/><rect x="4" y="5" width="2" height="4" fill="#3f8f5c"/><rect x="8" y="3" width="2" height="6" fill="#2f6b46"/><rect x="11" y="6" width="2" height="3" fill="#3f8f5c"/><rect x="2" y="7" width="2" height="2" fill="#c9b892"/></svg>' },
+    { label: 'Ice', tint: [218, 238, 252], tintStrength: 0.44,
+      detail: { tuft: '#aec8d4', tuft2: '#8aa6b4', pebble: '#eef6fc', patch: '#dceaf2', edge: '#a6bcc8' },
+      propName: 'Ice floe',
+      prop: '<svg width="30" height="26" viewBox="0 0 16 14" shape-rendering="crispEdges"><rect x="2" y="6" width="12" height="7" fill="#dbeef8"/><rect x="4" y="3" width="7" height="3" fill="#eef7fc"/><rect x="6" y="1" width="4" height="2" fill="#f7fcff"/><rect x="2" y="9" width="12" height="1" fill="#b8d6e6"/><rect x="9" y="6" width="2" height="7" fill="#c6e2f0"/></svg>' }
+  ].map(function (o, i) { return Object.assign({}, SEASONS[i], o); });
+
   const GARDEN_WORLD = {
     id: 'garden',
     label: 'Garden',
@@ -829,6 +897,7 @@ const Worlds = (function () {
       moveHint: 'Click the garden once to take control, then walk with W, A, S, D or the arrow keys.'
     },
     sections: SECTIONS,
+    seasons: SEASONS,
     themeColors: THEME_COLORS,
     themeDetail: THEME_DETAIL,
     themeOrder: THEME_ORDER,
@@ -881,6 +950,7 @@ const Worlds = (function () {
       moveHint: 'Click the reef once to take control, then swim with W, A, S, D or the arrow keys.'
     },
     sections: OCEAN_SECTIONS,
+    seasons: OCEAN_SEASONS,
     themeColors: OCEAN_THEME_COLORS,
     themeDetail: OCEAN_THEME_DETAIL,
     themeOrder: THEME_ORDER,

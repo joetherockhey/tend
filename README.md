@@ -2,9 +2,11 @@
 
 A personal task tracker where finishing things grows a garden. Every task you
 complete earns a gold coin; coins buy plants, tools, saplings and pets from the
-shop; and every ten completed tasks unlocks another section of the garden,
-which you walk around with the arrow keys. Watering a plant costs nothing and
-earns nothing - it is just a sparkle and a splash.
+shop; and ten coins at the gate opens another section of the garden, which you
+walk around with the arrow keys. Each section you open is the next season along
+- Spring, Summer, Autumn, Winter and round again - so the plot reads as a year
+going by as you work down it. Watering a plant costs nothing and earns nothing -
+it is just a sparkle and a splash.
 
 Pick your world when you sign up, and change it whenever you like: a **garden**
 tended by a farmer, or an **ocean** reef tended by a merman or mermaid. Same
@@ -233,9 +235,12 @@ laptop would drag the phone's character around.
   `DEFAULT_CATEGORIES` in `js/store.js`. Users can add and remove their own from
   the Categories panel, and each one colour-codes both its tasks and its plant
   pots in the garden.
-- **Garden sections** — `SECTIONS` at the top of `js/garden.js`. Add entries and
-  every ten completed tasks keeps unlocking new ground.
-- **The unlock rate** — `TICKETS_PER_SECTION` in `js/garden.js`.
+- **Garden sections** — `SECTIONS` in each world in `js/worlds.js`: the places,
+  in the order you unlock them. Past the last named one the themes repeat.
+- **Seasons** — `SEASONS` and `OCEAN_SEASONS` in `js/worlds.js`: the tint, the
+  scatter colours and the prop for each of the four. The ids are fixed because
+  the CSS hangs off them; everything else is the world's own.
+- **What new ground costs** — `SECTION_COST` in `js/garden.js`.
 - **What a plant costs** — `PLANT_COST` in `js/garden.js`, alongside
   `SAPLING_COST` and the pet and item prices.
 - **The app's name and icon on a phone** — `manifest.webmanifest` and `icons/`.
@@ -264,6 +269,34 @@ that the current world resolves when drawing.
 
 To add a third world, copy one of the two objects in `worlds.js` and keep the
 keys and array lengths the same. Nothing else needs to change.
+
+### Seasons
+
+A section has two things about it, and they are independent. Its **theme** says
+where it is - a greenhouse, a pond, a hedge maze - and comes from `SECTIONS`.
+Its **season** says when, and is simply `i % 4`: the first section you have is
+Spring, the ground you buy next is Summer, then Autumn, then Winter, then Spring
+again. Section three is the Autumn House; its porch and its tables are exactly
+where they always were, under amber light with leaves coming down through it.
+
+Because the season is a layer and not a replacement, nothing saved moves. Plants,
+felled trees, dug soil and shifted wheelbarrows are all keyed by theme and band
+index, and neither changes. A season contributes four things and no rules at all:
+
+- a **tint** every colour in the band is mixed toward (`mixHex` in `garden.js`),
+  so the checker, the tufts, the pebbles and the path all shift together;
+- **detail** overrides for the few colours a mix cannot reach - grass has to be
+  told to go straw-coloured in autumn, it will not get there by blending;
+- a **prop** standing in the bottom-left corner: a snowman, a pumpkin, a parasol.
+  It is scenery, never a decoration, so you walk straight through it and it can
+  never end up on top of a bed or in the way of a plant;
+- a **wash**, the things **drifting** through it and the **sign** naming the
+  section, all in `css/styles.css` off a `season-<id>` class on the band. The
+  drifting stops under `prefers-reduced-motion`; the colour and the sign stay.
+
+The reef runs the same four in the same order under its own names - Bloom, Warm
+Current, Storm, Ice - because `OCEAN_SEASONS` spreads over `SEASONS` and changes
+only what it is called and what it looks like.
 
 ### Installing it as a phone app
 

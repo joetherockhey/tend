@@ -2553,6 +2553,12 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-09-19', items: [
+      'Every section of the garden is now a season. The one you start in is Spring, the ground you buy next is Summer, then Autumn, then Winter, then Spring again - so working your way down the plot reads as a year going past.',
+      'Each season brings its own light, its own colour in the grass and the stones, something falling through the air, and one thing standing in the corner: blossom, a parasol, a pumpkin, a snowman. In the reef they are Bloom, Warm Current, Storm and Ice.',
+      'Every section now has a sign saying which one you are in - "Autumn House", "Winter Orchard" - including the dim one behind the gate you have not opened yet.',
+      'Nothing in your garden moved. The greenhouse is still a greenhouse and the pond is still a pond; the season is laid over the top of them.',
+    ] },
     { date: '2026-09-05', items: [
       'Tasks can repeat. Choose every day, week or month when you make one - tick it off and the next one is waiting on its date, with its steps unticked and its coin already earned.',
       'A repeat whose day has not come yet stays out of the feed, so a weekly task ticked on Monday is gone until next Monday. Show recurring, beside Show completed, lists what is waiting and when it is back.',
