@@ -1648,22 +1648,6 @@ const App = (function () {
     const label = document.getElementById('bnav-garden-label');
     if (label && hasGarden() && Garden.shortLabel) label.textContent = Garden.shortLabel();
 
-    /* With the sections in the bottom bar the tab row is empty, so search
-       moves up beside the account chip rather than sitting on a row of its
-       own. Moved in the DOM rather than duplicated, so there is only ever
-       one search box and one piece of state. */
-    const search = document.getElementById('nav-search');
-    const topRow = document.querySelector('.header-top-row');
-    const tabs = document.querySelector('nav.tabs');
-    const gardenBtn = document.getElementById('garden-toggle-btn');
-    if (search && topRow && tabs) {
-      if (phoneView) {
-        if (search.parentElement !== topRow) topRow.appendChild(search);
-      } else if (search.parentElement !== tabs) {
-        tabs.insertBefore(search, gardenBtn);
-      }
-    }
-
     updateAppTitle(currentView);
     renderFriendsBadge();
     if (hasGarden() && Garden.applyVisibility) Garden.applyVisibility();

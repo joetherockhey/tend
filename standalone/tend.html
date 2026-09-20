@@ -197,9 +197,6 @@ nav.tabs button.active {
   color: var(--header-text);
 }
 
-/* On the calendar there is no search box, so the button takes the space. */
-.nav-search[hidden] + .garden-toggle-btn { margin-left: auto; }
-
 main {
   max-width: 1440px;
   margin: 0 auto;
@@ -726,8 +723,12 @@ li.task.done .task-title {
   color: var(--muted);
 }
 
-/* Search sits in the header ribbon beside the tabs, so it costs the ticket
-   list no height at all. It is narrow until you use it. */
+/* Search sits on the header's top line beside the account chip, so it costs
+   the ticket list no height at all. It is narrow until you use it.
+
+   The auto margin is for the phone's wrapped row; on the top line the account
+   chip is already holding that end of the bar, and a second auto margin here
+   would split the gap between them. */
 .nav-search {
   margin-left: auto;
   align-self: center;
@@ -2381,6 +2382,11 @@ body.gated { overflow: hidden; }
 
 .account-menu { margin-left: auto; position: relative; }
 
+/* Past the chip rather than before it: hidden on every view but the list, a
+   search box that held this end of the bar would drop the chip back into the
+   middle of the header every time you opened the calendar. */
+.header-top-row .nav-search { margin-left: 4px; }
+
 /* The section's first line, rather than a sidebar that wraps: the list's
    grouping toggle on the left and Due today / New Task on the right, on one
    line. It is the first child of the content column, so its right edge is the
@@ -2637,6 +2643,10 @@ body.gated { overflow: hidden; }
      shrinks to just its magnifier, sitting on the tab line. Tapping it opens
      the field; it closes again when emptied. */
   nav.tabs { flex-wrap: wrap; }
+  /* Opened, search takes a full line; it needs somewhere to wrap to. A window
+     narrowed this far is usually in phone mode, but the view can be pinned to
+     desktop, and then this is the only rule that gives it the room. */
+  .header-top-row { flex-wrap: wrap; }
 
   .nav-search {
     /* Last in the row, so the magnifier sits hard against the right edge
@@ -2672,8 +2682,6 @@ body.gated { overflow: hidden; }
     background: var(--series-made);
     border-color: var(--series-made);
   }
-
-  .garden-toggle-btn { order: 4; margin-left: auto; }
 
   /* Open: the full row, but only while it is being used. */
   .nav-search.open {
@@ -3659,8 +3667,7 @@ html[data-mode="phone"] .header-top-row { flex-wrap: wrap; margin-bottom: 12px; 
 
 /* The magnifier goes to the far right, past the account chip, so it is under
    the thumb rather than stranded in the middle of the bar. */
-html[data-mode="phone"] .header-top-row .account-menu { margin-left: auto; }
-html[data-mode="phone"] .header-top-row .nav-search { order: 5; margin-left: 4px; }
+html[data-mode="phone"] .header-top-row .nav-search { order: 5; }
 
 /* Opened, the box needs the width, so it drops to a line of its own. */
 html[data-mode="phone"] .header-top-row .nav-search.open {
@@ -4927,6 +4934,17 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
       <button class="account-btn" id="account-btn" onclick="App.toggleAccountMenu(event)"></button>
       <div class="account-dropdown" id="account-dropdown" hidden></div>
     </div>
+    <!-- Search lives on the top line beside the account chip, not down in the
+         tab row: the tabs are places to go and this is not one of them. It
+         used to be moved here by hand on a phone and left in the tab row
+         everywhere else - now there is one place for it. -->
+    <div class="nav-search" id="nav-search">
+      <button type="button" class="nav-search-icon" id="search-icon" onclick="App.toggleSearch()"
+              title="Search tasks" aria-label="Search tasks">&#128269;</button>
+      <input type="search" class="search-input" id="search-input" placeholder="Search tasks"
+             aria-label="Search tasks by title, notes or category">
+      <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
+    </div>
   </div>
   <h1 id="page-title">Tasks</h1>
   <p class="subtitle" id="page-subtitle">Every task you finish earns a coin. Coins buy plants for the garden.</p>
@@ -4935,13 +4953,6 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
     <button id="tab-overview" onclick="App.switchView('overview')">Overview</button>
     <button id="tab-friends" onclick="App.switchView('friends')">Friends</button>
-    <div class="nav-search" id="nav-search">
-      <button type="button" class="nav-search-icon" id="search-icon" onclick="App.toggleSearch()"
-              title="Search tasks" aria-label="Search tasks">&#128269;</button>
-      <input type="search" class="search-input" id="search-input" placeholder="Search tasks"
-             aria-label="Search tasks by title, notes or category">
-      <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
-    </div>
     <!-- The label says what it will undo, on the button itself. It used to say
          so only in a title attribute, which touch never shows and a screen
          reader never reads out while the button is disabled. -->
@@ -14167,22 +14178,6 @@ const App = (function () {
 
     const label = document.getElementById('bnav-garden-label');
     if (label && hasGarden() && Garden.shortLabel) label.textContent = Garden.shortLabel();
-
-    /* With the sections in the bottom bar the tab row is empty, so search
-       moves up beside the account chip rather than sitting on a row of its
-       own. Moved in the DOM rather than duplicated, so there is only ever
-       one search box and one piece of state. */
-    const search = document.getElementById('nav-search');
-    const topRow = document.querySelector('.header-top-row');
-    const tabs = document.querySelector('nav.tabs');
-    const gardenBtn = document.getElementById('garden-toggle-btn');
-    if (search && topRow && tabs) {
-      if (phoneView) {
-        if (search.parentElement !== topRow) topRow.appendChild(search);
-      } else if (search.parentElement !== tabs) {
-        tabs.insertBefore(search, gardenBtn);
-      }
-    }
 
     updateAppTitle(currentView);
     renderFriendsBadge();

@@ -95,6 +95,17 @@
       <button class="account-btn" id="account-btn" onclick="App.toggleAccountMenu(event)"></button>
       <div class="account-dropdown" id="account-dropdown" hidden></div>
     </div>
+    <!-- Search lives on the top line beside the account chip, not down in the
+         tab row: the tabs are places to go and this is not one of them. It
+         used to be moved here by hand on a phone and left in the tab row
+         everywhere else - now there is one place for it. -->
+    <div class="nav-search" id="nav-search">
+      <button type="button" class="nav-search-icon" id="search-icon" onclick="App.toggleSearch()"
+              title="Search tasks" aria-label="Search tasks">&#128269;</button>
+      <input type="search" class="search-input" id="search-input" placeholder="Search tasks"
+             aria-label="Search tasks by title, notes or category">
+      <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
+    </div>
   </div>
   <h1 id="page-title">Tasks</h1>
   <p class="subtitle" id="page-subtitle">Every task you finish earns a coin. Coins buy plants for the garden.</p>
@@ -103,13 +114,6 @@
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
     <button id="tab-overview" onclick="App.switchView('overview')">Overview</button>
     <button id="tab-friends" onclick="App.switchView('friends')">Friends</button>
-    <div class="nav-search" id="nav-search">
-      <button type="button" class="nav-search-icon" id="search-icon" onclick="App.toggleSearch()"
-              title="Search tasks" aria-label="Search tasks">&#128269;</button>
-      <input type="search" class="search-input" id="search-input" placeholder="Search tasks"
-             aria-label="Search tasks by title, notes or category">
-      <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
-    </div>
     <!-- The label says what it will undo, on the button itself. It used to say
          so only in a title attribute, which touch never shows and a screen
          reader never reads out while the button is disabled. -->

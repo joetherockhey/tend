@@ -180,9 +180,6 @@ nav.tabs button.active {
   color: var(--header-text);
 }
 
-/* On the calendar there is no search box, so the button takes the space. */
-.nav-search[hidden] + .garden-toggle-btn { margin-left: auto; }
-
 main {
   max-width: 1440px;
   margin: 0 auto;
@@ -709,8 +706,12 @@ li.task.done .task-title {
   color: var(--muted);
 }
 
-/* Search sits in the header ribbon beside the tabs, so it costs the ticket
-   list no height at all. It is narrow until you use it. */
+/* Search sits on the header's top line beside the account chip, so it costs
+   the ticket list no height at all. It is narrow until you use it.
+
+   The auto margin is for the phone's wrapped row; on the top line the account
+   chip is already holding that end of the bar, and a second auto margin here
+   would split the gap between them. */
 .nav-search {
   margin-left: auto;
   align-self: center;
@@ -2367,6 +2368,11 @@ body.gated { overflow: hidden; }
 
 .account-menu { margin-left: auto; position: relative; }
 
+/* Past the chip rather than before it: hidden on every view but the list, a
+   search box that held this end of the bar would drop the chip back into the
+   middle of the header every time you opened the calendar. */
+.header-top-row .nav-search { margin-left: 4px; }
+
 /* The section's first line, rather than a sidebar that wraps: the list's
    grouping toggle on the left and Due today / New Task on the right, on one
    line. It is the first child of the content column, so its right edge is the
@@ -2623,6 +2629,10 @@ body.gated { overflow: hidden; }
      shrinks to just its magnifier, sitting on the tab line. Tapping it opens
      the field; it closes again when emptied. */
   nav.tabs { flex-wrap: wrap; }
+  /* Opened, search takes a full line; it needs somewhere to wrap to. A window
+     narrowed this far is usually in phone mode, but the view can be pinned to
+     desktop, and then this is the only rule that gives it the room. */
+  .header-top-row { flex-wrap: wrap; }
 
   .nav-search {
     /* Last in the row, so the magnifier sits hard against the right edge
@@ -2659,7 +2669,6 @@ body.gated { overflow: hidden; }
     border-color: var(--series-made);
   }
 
-  .garden-toggle-btn { order: 4; margin-left: auto; }
 
   /* Open: the full row, but only while it is being used. */
   .nav-search.open {
@@ -3658,8 +3667,7 @@ html[data-mode="phone"] .header-top-row { flex-wrap: wrap; margin-bottom: 12px; 
 
 /* The magnifier goes to the far right, past the account chip, so it is under
    the thumb rather than stranded in the middle of the bar. */
-html[data-mode="phone"] .header-top-row .account-menu { margin-left: auto; }
-html[data-mode="phone"] .header-top-row .nav-search { order: 5; margin-left: 4px; }
+html[data-mode="phone"] .header-top-row .nav-search { order: 5; }
 
 /* Opened, the box needs the width, so it drops to a line of its own. */
 html[data-mode="phone"] .header-top-row .nav-search.open {
