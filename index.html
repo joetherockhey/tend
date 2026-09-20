@@ -91,10 +91,6 @@
   <div class="header-top-row">
     <div class="brand-row" id="header-brand"></div>
     <span class="sync-badge" id="sync-badge"><span class="sync-dot"></span></span>
-    <div class="account-menu">
-      <button class="account-btn" id="account-btn" onclick="App.toggleAccountMenu(event)"></button>
-      <div class="account-dropdown" id="account-dropdown" hidden></div>
-    </div>
     <!-- Search lives on the top line beside the account chip, not down in the
          tab row: the tabs are places to go and this is not one of them. It
          used to be moved here by hand on a phone and left in the tab row
@@ -105,6 +101,10 @@
       <input type="search" class="search-input" id="search-input" placeholder="Search tasks"
              aria-label="Search tasks by title, notes or category">
       <button type="button" class="nav-search-clear" id="search-clear" onclick="App.clearSearch()" title="Clear the search" hidden>&times;</button>
+    </div>
+    <div class="account-menu">
+      <button class="account-btn" id="account-btn" onclick="App.toggleAccountMenu(event)"></button>
+      <div class="account-dropdown" id="account-dropdown" hidden></div>
     </div>
   </div>
   <h1 id="page-title">Tasks</h1>

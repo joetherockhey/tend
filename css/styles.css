@@ -2364,14 +2364,15 @@ body.gated { overflow: hidden; }
   margin-bottom: 16px;
 }
 
-.header-top-row .brand-row { margin-bottom: 0; }
+/* Everything after the brand is a right-hand group. The gap is held open
+   here rather than by an auto margin on the chip, because search comes before
+   the chip now and only exists on the task list - hang the alignment off it
+   and the whole group jumps about as you change tab. */
+.header-top-row .brand-row { margin-bottom: 0; margin-right: auto; }
 
-.account-menu { margin-left: auto; position: relative; }
+.account-menu { position: relative; }
 
-/* Past the chip rather than before it: hidden on every view but the list, a
-   search box that held this end of the bar would drop the chip back into the
-   middle of the header every time you opened the calendar. */
-.header-top-row .nav-search { margin-left: 4px; }
+.header-top-row .nav-search { margin-left: 0; margin-right: 4px; }
 
 /* The section's first line, rather than a sidebar that wraps: the list's
    grouping toggle on the left and Due today / New Task on the right, on one
@@ -3667,7 +3668,7 @@ html[data-mode="phone"] .header-top-row { flex-wrap: wrap; margin-bottom: 12px; 
 
 /* The magnifier goes to the far right, past the account chip, so it is under
    the thumb rather than stranded in the middle of the bar. */
-html[data-mode="phone"] .header-top-row .nav-search { order: 5; }
+html[data-mode="phone"] .header-top-row .nav-search { order: 5; margin: 0 0 0 4px; }
 
 /* Opened, the box needs the width, so it drops to a line of its own. */
 html[data-mode="phone"] .header-top-row .nav-search.open {
