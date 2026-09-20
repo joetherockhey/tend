@@ -4660,6 +4660,61 @@ html[data-mode="phone"] .garden-ctl-btn.garden-ctl-narrow {
   min-width: 44px;
 }
 
+/* ===================== the thumb row =====================
+
+   Four flat grey rectangles under a garden read as a form, not a game. On a
+   phone they get a painted face, a darker lip under it and a press that moves
+   the whole button down onto the lip - the arcade button in two box-shadows.
+
+   The colours are the same in light and dark on purpose, like the garden's own
+   daylight: these are toys sitting on the page, not part of its chrome. Each
+   button gets its own, so the thumb learns the position by colour rather than
+   by reading four words at a glance. */
+html[data-mode="phone"] .garden-ctl-btn {
+  --gbtn: #2fa36b;
+  --gbtn-lit: #46bd82;
+  --gbtn-lip: #1d7a4e;
+  background: linear-gradient(180deg, var(--gbtn-lit) 0%, var(--gbtn) 62%);
+  border: none;
+  border-radius: 13px;
+  min-height: 48px;
+  font-size: 1.3rem;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
+  /* The lip, then the shadow it casts on the page. */
+  box-shadow: 0 4px 0 var(--gbtn-lip), 0 5px 10px rgba(20, 24, 40, 0.22),
+              inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform 0.06s ease-out, box-shadow 0.06s ease-out;
+}
+
+html[data-mode="phone"] #garden-use-btn { --gbtn: #4a7fa8; --gbtn-lit: #6b9cc2; --gbtn-lip: #2f5877; }
+html[data-mode="phone"] #garden-putdown-btn { --gbtn: #7f56f0; --gbtn-lit: #9b7bf7; --gbtn-lip: #5a34c0; }
+html[data-mode="phone"] #garden-shop-btn { --gbtn: #e0ab24; --gbtn-lit: #f0c649; --gbtn-lip: #a8770c; }
+html[data-mode="phone"] #garden-help-btn { --gbtn: #6b7280; --gbtn-lit: #858c99; --gbtn-lip: #474d57; }
+
+html[data-mode="phone"] .garden-ctl-btn span {
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Down onto the lip: move by exactly what the lip is worth and take it off the
+   shadow, or the button appears to sink into the page instead of being held. */
+html[data-mode="phone"] .garden-ctl-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  background: linear-gradient(180deg, var(--gbtn) 0%, var(--gbtn-lit) 100%);
+  box-shadow: 0 1px 0 var(--gbtn-lip), 0 1px 3px rgba(20, 24, 40, 0.24),
+              inset 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+
+/* Nothing to press means nothing sticking up to press. */
+html[data-mode="phone"] .garden-ctl-btn:disabled {
+  opacity: 0.45;
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--gbtn-lip);
+}
+
 /* A sheet is a modal that has a whole panel inside it, so it gives up the
    padding the panel brings with it and takes the width it can get. */
 .garden-sheet { width: 420px; max-height: 80vh; }

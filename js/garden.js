@@ -1623,14 +1623,10 @@ const Garden = (function () {
     const avail = wrap.clientWidth - padding - marginL - marginR;
     const natural = GARDEN_COLS * CELL_SIZE;
 
-    /* On a page the plot only ever shrinks to fit its column. On the phone's
-       garden screen it is the screen, so it grows to fill the width too - a
-       272px postage stamp in the middle of a 390px phone was the old look.
-       Capped, so a tablet held in phone mode does not end up with dinner
-       plates for tiles. */
-    if (avail <= 0) plotScale = 1;
-    else if (cameraMode()) plotScale = Math.min(2, Math.max(0.35, avail / natural));
-    else plotScale = avail < natural ? Math.max(0.35, avail / natural) : 1;
+    /* The plot only ever shrinks to fit. Growing it to fill a phone's width
+       was tried and the tiles came out too big to read as a garden, so a
+       narrow screen scrolls the camera over tiles of their own size instead. */
+    plotScale = (avail > 0 && avail < natural) ? Math.max(0.35, avail / natural) : 1;
 
     /* A transform paints at a different size but still occupies its natural
        width in the layout, so the flexbox would centre the wrong box: too far
