@@ -150,9 +150,12 @@ const Garden = (function () {
     const prop = s.prop
       ? `<div class="season-prop" title="${Util.escapeHtml(s.propName || s.label)}">${s.prop}</div>`
       : '';
+    /* No name plate. It sat in the top-left corner of every section, which on
+       a phone is a caption pinned over the bit of garden you are walking in.
+       The wash, the prop and the drift say which season it is without taking
+       a square to do it. */
     return `<div class="season-wash"></div>${prop}`
-      + `<div class="season-drift">${drift}</div>`
-      + `<div class="season-sign"><span class="season-sign-icon">${s.icon}</span>${Util.escapeHtml(info.name)}</div>`;
+      + `<div class="season-drift">${drift}</div>`;
   }
 
 

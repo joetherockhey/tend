@@ -949,7 +949,8 @@ li.task.done .task-title {
 
 /* Buttons are a phone thing. On a desktop the two actions are the same key,
    and a pair of buttons for it is clutter next to "Press E". */
-.garden-ctl-btns { display: none; }
+.garden-ctl-btns,
+.garden-top-btns { display: none; }
 
 .garden-ctl-btn {
   display: flex;
@@ -1216,34 +1217,8 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.22));
 }
 
-/* The section's name, which until now was loaded and never drawn. */
-.season-sign {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  z-index: 4;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: calc(100% - 8px);
-  padding: 2px 7px;
-  border-radius: 4px;
-  background: rgba(52, 34, 18, 0.60);
-  color: #fdf6e8;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.5;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
-  pointer-events: none;
-}
-
-.season-sign-icon { font-size: 11px; }
-
-/* Asked for stillness, a season keeps its colour, its prop and its sign, and
-   nothing falls through it. */
+/* Asked for stillness, a season keeps its colour and its prop, and nothing
+   falls through it. */
 @media (prefers-reduced-motion: reduce) {
   .season-drift { display: none; }
 }
@@ -4653,6 +4628,37 @@ html[data-mode="phone"] .garden-ctl-btn.garden-ctl-narrow {
   min-width: 44px;
 }
 
+/* The coin count already has the auto margin that pushes this end of the row
+   right; a second one here would split the gap and strand the coins in the
+   middle instead. */
+html[data-mode="phone"] .garden-top-btns {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+/* The status line gives up whatever the buttons need rather than pushing
+   them off. */
+html[data-mode="phone"] .garden-gardener-row .garden-status { min-width: 0; }
+
+/* Up here they are reached deliberately, not in the middle of a walk, so they
+   are the smaller pair - the thumb row keeps the full-height buttons. */
+html[data-mode="phone"] .garden-top-btns .garden-ctl-btn {
+  flex: none;
+  width: auto;
+  min-height: 38px;
+  padding: 7px 11px;
+  font-size: 1.05rem;
+  border-radius: 11px;
+}
+
+html[data-mode="phone"] .garden-top-btns .garden-ctl-btn.garden-ctl-narrow {
+  flex: none;
+  width: 38px;
+  min-width: 38px;
+  padding: 7px 0;
+}
+
 /* ===================== the thumb row =====================
 
    Four flat grey rectangles under a garden read as a form, not a game. On a
@@ -4956,6 +4962,18 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
       <div id="garden-gardener"></div>
       <div class="garden-status" id="garden-status"></div>
       <div class="garden-coins" id="garden-coins">0</div>
+      <!-- Shop and Help are things you go and open, not things you do to the
+           square you are standing on - so they sit up here away from the thumb
+           row, where a walk cannot fat-finger them. Phone only: on a desktop
+           the shop is a panel of its own and the help is a strip under the
+           plot. -->
+      <div class="garden-top-btns">
+        <button type="button" class="garden-ctl-btn" id="garden-shop-btn"
+                onclick="App.openShop()">&#x1F6D2;<span>Shop</span></button>
+        <button type="button" class="garden-ctl-btn garden-ctl-narrow" id="garden-help-btn"
+                onclick="App.openGardenHelp()" aria-label="How the garden works"
+                title="How the garden works">&#x2753;</button>
+      </div>
     </div>
     <div class="garden-stage">
       <div class="garden-plot-wrap">
@@ -4980,15 +4998,6 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
                   onclick="gardenUse()">&#x1FA93;<span>Use</span></button>
           <button type="button" class="garden-ctl-btn" id="garden-putdown-btn"
                   onclick="gardenPutDown()">&#x1F44C;<span>Put down</span></button>
-          <!-- The shop used to be a second panel below the plot, so buying a
-               seedling on a phone meant scrolling past the whole garden. It is
-               a sheet now, opened from here, next to the other two things the
-               thumb reaches for. -->
-          <button type="button" class="garden-ctl-btn" id="garden-shop-btn"
-                  onclick="App.openShop()">&#x1F6D2;<span>Shop</span></button>
-          <button type="button" class="garden-ctl-btn garden-ctl-narrow" id="garden-help-btn"
-                  onclick="App.openGardenHelp()" aria-label="How the garden works"
-                  title="How the garden works">&#x2753;</button>
         </div>
       </aside>
     </div>
@@ -8807,9 +8816,12 @@ const Garden = (function () {
     const prop = s.prop
       ? `<div class="season-prop" title="${Util.escapeHtml(s.propName || s.label)}">${s.prop}</div>`
       : '';
+    /* No name plate. It sat in the top-left corner of every section, which on
+       a phone is a caption pinned over the bit of garden you are walking in.
+       The wash, the prop and the drift say which season it is without taking
+       a square to do it. */
     return `<div class="season-wash"></div>${prop}`
-      + `<div class="season-drift">${drift}</div>`
-      + `<div class="season-sign"><span class="season-sign-icon">${s.icon}</span>${Util.escapeHtml(info.name)}</div>`;
+      + `<div class="season-drift">${drift}</div>`;
   }
 
   /* ------------------------------------------------------------------ */

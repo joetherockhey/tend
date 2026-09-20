@@ -77,7 +77,7 @@ const layer = new Function('tileHash', 'Util', [
 
 const html = layer(2, g.sectionInfo(2, world));
 assert.ok(html.includes('season-wash'), 'the band gets its light');
-assert.ok(html.includes('Autumn House'), 'the sign names the section');
+assert.ok(!html.includes('Autumn House'), 'no name plate pinned over the garden');
 assert.strictEqual((html.match(/<i /g) || []).length, 7, 'seven things drifting through it');
 assert.ok(html.includes('title="Prop"'), 'the prop stands in the corner, named');
 assert.ok(!/NaN|undefined/.test(html), 'and no holes in the generated style');

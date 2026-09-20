@@ -932,7 +932,8 @@ li.task.done .task-title {
 
 /* Buttons are a phone thing. On a desktop the two actions are the same key,
    and a pair of buttons for it is clutter next to "Press E". */
-.garden-ctl-btns { display: none; }
+.garden-ctl-btns,
+.garden-top-btns { display: none; }
 
 .garden-ctl-btn {
   display: flex;
@@ -1202,34 +1203,8 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.22));
 }
 
-/* The section's name, which until now was loaded and never drawn. */
-.season-sign {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  z-index: 4;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: calc(100% - 8px);
-  padding: 2px 7px;
-  border-radius: 4px;
-  background: rgba(52, 34, 18, 0.60);
-  color: #fdf6e8;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.5;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
-  pointer-events: none;
-}
-
-.season-sign-icon { font-size: 11px; }
-
-/* Asked for stillness, a season keeps its colour, its prop and its sign, and
-   nothing falls through it. */
+/* Asked for stillness, a season keeps its colour and its prop, and nothing
+   falls through it. */
 @media (prefers-reduced-motion: reduce) {
   .season-drift { display: none; }
 }
@@ -4658,6 +4633,37 @@ html.garden-full .garden-holding { justify-content: center; }
 html[data-mode="phone"] .garden-ctl-btn.garden-ctl-narrow {
   flex: 0 0 44px;
   min-width: 44px;
+}
+
+/* The coin count already has the auto margin that pushes this end of the row
+   right; a second one here would split the gap and strand the coins in the
+   middle instead. */
+html[data-mode="phone"] .garden-top-btns {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+/* The status line gives up whatever the buttons need rather than pushing
+   them off. */
+html[data-mode="phone"] .garden-gardener-row .garden-status { min-width: 0; }
+
+/* Up here they are reached deliberately, not in the middle of a walk, so they
+   are the smaller pair - the thumb row keeps the full-height buttons. */
+html[data-mode="phone"] .garden-top-btns .garden-ctl-btn {
+  flex: none;
+  width: auto;
+  min-height: 38px;
+  padding: 7px 11px;
+  font-size: 1.05rem;
+  border-radius: 11px;
+}
+
+html[data-mode="phone"] .garden-top-btns .garden-ctl-btn.garden-ctl-narrow {
+  flex: none;
+  width: 38px;
+  min-width: 38px;
+  padding: 7px 0;
 }
 
 /* ===================== the thumb row =====================

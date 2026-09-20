@@ -130,6 +130,18 @@
       <div id="garden-gardener"></div>
       <div class="garden-status" id="garden-status"></div>
       <div class="garden-coins" id="garden-coins">0</div>
+      <!-- Shop and Help are things you go and open, not things you do to the
+           square you are standing on - so they sit up here away from the thumb
+           row, where a walk cannot fat-finger them. Phone only: on a desktop
+           the shop is a panel of its own and the help is a strip under the
+           plot. -->
+      <div class="garden-top-btns">
+        <button type="button" class="garden-ctl-btn" id="garden-shop-btn"
+                onclick="App.openShop()">&#x1F6D2;<span>Shop</span></button>
+        <button type="button" class="garden-ctl-btn garden-ctl-narrow" id="garden-help-btn"
+                onclick="App.openGardenHelp()" aria-label="How the garden works"
+                title="How the garden works">&#x2753;</button>
+      </div>
     </div>
     <div class="garden-stage">
       <div class="garden-plot-wrap">
@@ -154,15 +166,6 @@
                   onclick="gardenUse()">&#x1FA93;<span>Use</span></button>
           <button type="button" class="garden-ctl-btn" id="garden-putdown-btn"
                   onclick="gardenPutDown()">&#x1F44C;<span>Put down</span></button>
-          <!-- The shop used to be a second panel below the plot, so buying a
-               seedling on a phone meant scrolling past the whole garden. It is
-               a sheet now, opened from here, next to the other two things the
-               thumb reaches for. -->
-          <button type="button" class="garden-ctl-btn" id="garden-shop-btn"
-                  onclick="App.openShop()">&#x1F6D2;<span>Shop</span></button>
-          <button type="button" class="garden-ctl-btn garden-ctl-narrow" id="garden-help-btn"
-                  onclick="App.openGardenHelp()" aria-label="How the garden works"
-                  title="How the garden works">&#x2753;</button>
         </div>
       </aside>
     </div>
