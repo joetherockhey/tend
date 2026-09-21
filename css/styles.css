@@ -584,10 +584,9 @@ li.task.done .task-title {
   white-space: nowrap;
 }
 
-.category-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+.category-emoji {
+  font-size: 0.85em;
+  line-height: 1;
   flex: none;
 }
 

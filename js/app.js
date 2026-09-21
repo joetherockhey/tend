@@ -128,13 +128,65 @@ const App = (function () {
 
   /* ========================= category key panel ========================= */
 
+  /* The little emoji on a category bubble. Nothing stores one - it is read off
+     the name, so every account that already exists has them the moment this
+     ships, a category invented on a phone looks the same on a laptop, and there
+     is no column to add to Postgres and no picker to explain.
+
+     The list is in order and the first match wins, so a row that would swallow
+     another sits above it: `workout` before `work`, `vacation` before `cat`.
+     Each keyword matches at a word start, which is why `homework` is study
+     rather than work and `Education` is not a pet. A name nothing recognises
+     gets a sprout picked from its own letters - arbitrary, but the same one
+     every time, on every device. */
+  const CATEGORY_EMOJI = [
+    ['💪', 'workout|gym|fit|exercis|health|run|jog|yoga|sport|swim'],
+    ['📚', 'school|stud|educat|uni|class|course|exam|homework|lesson|learn|revis'],
+    ['💼', 'work|job|office|career|meeting|client|business'],
+    ['💰', 'money|bill|financ|budget|bank|tax|invoice|pay|save|debt'],
+    ['🛒', 'errand|shop|grocer|store|market|buy'],
+    ['🏠', 'home|house|chore|tidy|repair|diy|fix|maintenance'],
+    ['🧺', 'clean|laundry|wash|dish|iron'],
+    ['🎉', 'fun|social|party|game|friend|hobby|play'],
+    ['👪', 'family|kid|child|parent|mum|mom|dad|baby|partner'],
+    ['🍳', 'food|cook|meal|recipe|kitchen|eat|dinner|lunch|bak'],
+    ['✈️', 'travel|trip|holiday|vacation|flight|pack|adventure'],
+    ['🚗', 'car|driv|bike|cycl|vehicle|transport|commut'],
+    ['🐾', 'pet|dog|cat|animal|puppy|kitten'],
+    ['🌻', 'garden|plant|yard|lawn|grow|allotment'],
+    ['📖', 'read|book|library|novel'],
+    ['🎵', 'music|guitar|piano|sing|band|practice'],
+    ['🎨', 'art|draw|paint|craft|design|photo|sew|knit'],
+    ['✍️', 'writ|blog|journal|diary|note'],
+    ['💻', 'code|dev|program|tech|comput|side project'],
+    ['🩺', 'doctor|medic|dentist|appoint|therap|hospital|pharmac'],
+    ['🧘', 'mind|medit|rest|sleep|calm|spirit|pray|faith|church|self'],
+    ['🎁', 'gift|birthday|present|celebrat|christmas|wedding'],
+    ['💡', 'idea|someday|maybe|dream|goal|plan'],
+    ['📮', 'email|mail|admin|paperwork|form|call|phone|post']
+  ].map(([emoji, keys]) => [emoji, new RegExp('\\b(' + keys + ')', 'i')]);
+
+  const CATEGORY_SPROUTS = ['🌱', '🌿', '🍀', '🌼', '⭐', '🔖', '📌', '🧩'];
+
+  function categoryEmoji(name) {
+    const n = String(name || '');
+    const hit = CATEGORY_EMOJI.find(([, re]) => re.test(n));
+    if (hit) return hit[0];
+    let h = 0;
+    for (let i = 0; i < n.length; i++) h += n.charCodeAt(i);
+    return CATEGORY_SPROUTS[h % CATEGORY_SPROUTS.length];
+  }
+
   /* A category always looks the same wherever it appears: a small bubble, in
-     the category's own colour, the same shape as the steps counter beside it. */
+     the category's own colour, the same shape as the steps counter beside it.
+     The emoji stands where the colour dot used to - the bubble is already
+     tinted, bordered and inked in that colour, so the dot was saying a third
+     time what the pill already says twice. */
   function categoryPill(name, color) {
     const c = color || DEFAULT_CATEGORY_COLOR;
     return `<span class="tag category-tag" style="background:${Util.hexToRgba(c, 0.13)};`
       + `border-color:${Util.hexToRgba(c, 0.45)};color:${Util.inkShade(c, 0.35)}">`
-      + `<span class="category-dot" style="background:${c}"></span>${Util.escapeHtml(name)}</span>`;
+      + `<span class="category-emoji">${categoryEmoji(name)}</span>${Util.escapeHtml(name)}</span>`;
   }
 
   function renderCategoryKey() {
