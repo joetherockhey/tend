@@ -33,9 +33,10 @@ function build(nowMinutes, prefsObj, ticketList) {
     CONSTS,
     grab('planState'),
     grab('planTasks'),
+    grab('planDoneToday'),
     'function planMinutesNow() { return NOW; }',
     grab('planSlots'),
-    'return { planState, planTasks, planSlots };'
+    'return { planState, planTasks, planDoneToday, planSlots };'
   ].join('\n'));
   return factory(Store, Util, tickets, nowMinutes);
 }
@@ -84,10 +85,19 @@ assert.deepStrictEqual(api.planTasks().map(t => t.id), ['new', 'c', 'a', 'b'],
 assert.ok(!api.planTasks().some(t => t.id === 'plain'), 'an unstarred task is not on the plan');
 assert.ok(!api.planTasks().some(t => t.id === 'old'), 'nor is an archived one');
 
-const DONE = [{ id: 'x', priority: true, completedAt: '2026-09-21' }];
-assert.deepStrictEqual(
-  build(9 * 60, { plan: { date: '2026-09-21', order: ['x'], times: {} } }, DONE).planTasks().map(t => t.id),
-  ['x'], 'ticking something off does not make it vanish off the plan');
+/* A plan is what is left to do: ticking something off crosses it out, the same
+   as it would on paper. It is still counted, though - "2 done, 3 to go" is the
+   reason to look at the page twice. */
+const DONE = [
+  { id: 'x', priority: true, completedAt: '2026-09-21' },
+  { id: 'y', priority: true, completedAt: null },
+  { id: 'z', priority: true, completedAt: '2026-09-14' }
+];
+api = build(9 * 60, { plan: { date: '2026-09-21', order: ['x', 'y', 'z'], times: {} } }, DONE);
+assert.deepStrictEqual(api.planTasks().map(t => t.id), ['y'],
+  'a task ticked off comes off the plan');
+assert.deepStrictEqual(api.planDoneToday().map(t => t.id), ['x'],
+  'and is counted as done today - but one finished last week is not');
 
 /* --- the half hours on offer --- */
 

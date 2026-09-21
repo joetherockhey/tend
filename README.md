@@ -305,8 +305,11 @@ only what it is called and what it looks like.
 
 The task list is everything you have to do. **Plan My Day** is the much shorter
 question of what you are doing today, and it holds exactly one thing: the tasks
-you have starred. Star something on the Tasks page and it appears; unstar it -
-the star on its row, or the one on the plan - and it goes.
+you have starred that are still outstanding. Star something on the Tasks page
+and it appears; unstar it - the star on its row, or the one on the plan - and it
+goes. Tick it off and it goes too: a plan is what is left, the same as crossing
+a line out on paper. The subtitle keeps the score ("3 done, 2 to go"), and when
+the last one goes the page says so.
 
 It has two shapes of the same list, chosen with the toggle in its corner:
 
@@ -327,6 +330,20 @@ Ticking a task off here is the same tick as on the Tasks page: the same coin,
 the same confetti, the same repeat handed on to tomorrow. **+ New Task** works
 from the plan and opens with *Priority* already ticked, so something you think
 of while planning lands on the day it was thought of.
+
+Three things make the dragging feel like moving a card rather than operating a
+list, and they are all in `planDragFrame` and its neighbours: the row stays
+glued to the finger instead of snapping to wherever the list has put it; the
+rows it displaces slide out of the way using FLIP (measure, mutate, invert,
+release) rather than jumping; and all of it runs once per animation frame
+however fast the finger moves, because hit-testing and measuring on every
+`pointermove` is what makes a drag feel gritty. The "before" measurement is
+taken with any transform still on, so a row caught mid-slide carries on from
+where it looks rather than starting again.
+
+On a phone the section's icon is a calendar with one day in it, and the day is
+today's date, written in by `renderPlanIcon()` so a page left open overnight is
+not still advertising yesterday.
 
 The arrangement lives in `prefs.plan`, under the date it was made:
 

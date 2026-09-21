@@ -2556,7 +2556,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-21', items: [
-      'Plan My Day. Everything you have starred turns up on one page, and you put it in the order you mean to do it in - drag the grip on the right of a row to move it. Tick things off there and they are ticked off everywhere.',
+      'Plan My Day. Everything you have starred and not yet done turns up on one page, and you put it in the order you mean to do it in - drag the grip on the right of a row to move it. Tick something off and it leaves the plan, the same as crossing it out, and it is ticked off on the Tasks page too.',
       'The same plan has a second shape: Times. Every half hour from now until the end of the evening, and you drag a task onto the one you mean to do it in. Anything you have not placed waits underneath.',
       'On a phone, Plan takes the Calendar’s place in the bottom bar - the calendar is still there on a computer. + New Task works on the plan, and starts with Priority already ticked, so something you think of while planning goes straight onto the day.',
       'The garden on a phone is back to its old size - the tiles had grown big enough that you could only see a corner of the plot - and the buttons under it are proper buttons now, each its own colour, that press down when you touch them.',
@@ -3336,6 +3336,10 @@ const App = (function () {
   const PLAN_SLOT_MINUTES = 30;
   const PLAN_DAY_END = 22 * 60;          /* the last hour worth planning into */
   const PLAN_LAST_SLOT = 23 * 60 + 30;   /* ...unless it is already that late */
+  /* How long the dropped row is given to land before the page is redrawn.
+     Matches the transition on .plan-row; redraw sooner and the landing is
+     cut off halfway. */
+  const PLAN_SETTLE_MS = 190;
 
   function planState() {
     const p = Store.prefs();
@@ -3351,17 +3355,24 @@ const App = (function () {
     return plan;
   }
 
-  /* What is on the plan: everything starred and not archived, including what
-     has already been ticked off - seeing the morning crossed out is most of
-     the point of writing the list down. Anything starred since the plan was
+  /* What is left on the plan: starred, not archived, not done. A plan is what
+     you have still got to do - ticking something off takes it off the list,
+     the same as crossing it out on paper. Anything starred since the plan was
      last touched goes on the end rather than jumping the queue. */
   function planTasks() {
     const plan = planState();
     const rank = new Map(plan.order.map((id, i) => [id, i]));
     const last = rank.size + 1;
     return tickets()
-      .filter(t => t.priority && !t.archived)
+      .filter(t => t.priority && !t.archived && !t.completedAt)
       .sort((a, b) => (rank.has(a.id) ? rank.get(a.id) : last) - (rank.has(b.id) ? rank.get(b.id) : last));
+  }
+
+  /* Crossed off today. Not on the list any more, but the plan still counts
+     them - "4 done, 2 to go" is the whole reason to look at it twice. */
+  function planDoneToday() {
+    const today = Util.todayStr();
+    return tickets().filter(t => t.priority && !t.archived && t.completedAt === today);
   }
 
   function planMinutesNow() {
@@ -3406,12 +3417,11 @@ const App = (function () {
     const el = document.getElementById('plan-sub');
     if (!el) return;
     const today = Util.formatDate(Util.todayStr());
-    if (!list.length) { el.textContent = today; return; }
-    const done = list.filter(t => t.completedAt).length;
-    const left = list.length - done;
-    el.textContent = today + ' · ' + (left
-      ? done + ' of ' + list.length + ' done, ' + left + ' to go'
-      : 'all ' + list.length + ' done — that is the day');
+    const done = planDoneToday().length;
+    if (!list.length && !done) { el.textContent = today; return; }
+    el.textContent = today + ' · ' + (list.length
+      ? (done ? done + ' done, ' + list.length + ' to go' : list.length + ' to do')
+      : 'all ' + done + ' done — that is the day');
   }
 
   /* One row, the same in both shapes: tick it off, read it, open it, or pick
@@ -3419,16 +3429,15 @@ const App = (function () {
      row menu, an HTML5 drag handle and up to four tags, none of which belong
      on a list whose whole job is to be glanceable. */
   function planRowHtml(t, inSlot) {
-    const done = !!t.completedAt;
     const at = planState().times[t.id];
     const chip = (!inSlot && typeof at === 'number')
       ? `<span class="plan-when">${planTimeLabel(at)}</span>` : '';
-    const overdue = t.dueDate && !done && t.dueDate < Util.todayStr();
+    const overdue = t.dueDate && t.dueDate < Util.todayStr();
     const due = overdue ? '<span class="tag overdue">overdue</span>'
       : (t.dueDate === Util.todayStr() ? '<span class="tag">due today</span>' : '');
     return `
-      <li class="plan-row${done ? ' done' : ''}" data-id="${t.id}">
-        <input type="checkbox" ${done ? 'checked' : ''} onchange="App.toggleTask('${t.id}', this)"
+      <li class="plan-row" data-id="${t.id}">
+        <input type="checkbox" onchange="App.toggleTask('${t.id}', this)"
                aria-label="Tick off ${Util.escapeHtml(t.title)}">
         <div class="plan-row-body" onclick="App.showTaskDetail('${t.id}')">
           <span class="plan-row-title">${Util.escapeHtml(t.title)}</span>
@@ -3481,15 +3490,27 @@ const App = (function () {
     return `<ul class="plan-slots">${slotsHtml}</ul>${tray}`;
   }
 
+  /* The bottom bar's icon is a calendar with one day in it, and the day is
+     today. Written in here rather than in the markup so a page left open
+     overnight is not still advertising yesterday. */
+  function renderPlanIcon() {
+    const day = document.getElementById('bnav-plan-day');
+    if (day) day.textContent = new Date().getDate();
+  }
+
   function renderPlan() {
+    renderPlanIcon();
     const host = document.getElementById('plan-body');
     if (!host) return;
     renderPlanModeToggle();
     const list = planTasks();
     renderPlanSub(list);
     if (!list.length) {
-      host.innerHTML = '<p class="empty-note">Nothing is starred for today. Star a task on the Tasks page '
-        + '— or add one here with Priority ticked — and it turns up on the plan.</p>';
+      const done = planDoneToday().length;
+      host.innerHTML = done
+        ? '<p class="empty-note plan-cleared">✓ Everything you planned for today is done.</p>'
+        : '<p class="empty-note">Nothing is starred for today. Star a task on the Tasks page '
+          + '— or add one here with Priority ticked — and it turns up on the plan.</p>';
       return;
     }
     host.innerHTML = planState().mode === 'times' ? planTimesHtml(list) : planOrderHtml(list);
@@ -3503,6 +3524,13 @@ const App = (function () {
      this is pointer events, which cover a mouse and a finger with the same
      code, at the cost of moving the row into place by hand.
 
+     Three things make it feel like moving a card rather than operating a list:
+     the row stays glued to the finger instead of snapping to wherever the list
+     has put it; the rows it displaces slide out of the way rather than jumping
+     (FLIP - measure, mutate, invert, release); and all of it happens once per
+     animation frame however fast the finger moves, because hit-testing and
+     measuring on every pointermove is exactly what makes a drag feel gritty.
+
      Only the grip takes the pointer, and only the grip sets touch-action:
      none, so a finger anywhere else on the row still scrolls the page. */
   let planDrag = null;
@@ -3512,7 +3540,15 @@ const App = (function () {
     const li = e.target.closest('.plan-row');
     if (!li) return;
     e.preventDefault();
-    planDrag = { li: li };
+    planDrag = {
+      li: li,
+      /* Where down the row it was picked up, so it hangs off the finger at
+         the point it was grabbed rather than jumping its middle there. */
+      grabOffset: e.clientY - li.getBoundingClientRect().top,
+      x: e.clientX,
+      y: e.clientY,
+      frame: 0
+    };
     li.classList.add('dragging');
     try { e.target.setPointerCapture(e.pointerId); } catch (err) { /* older Safari */ }
     window.addEventListener('pointermove', planPointerMove);
@@ -3523,27 +3559,41 @@ const App = (function () {
   function planPointerMove(e) {
     if (!planDrag) return;
     e.preventDefault();
+    planDrag.x = e.clientX;
+    planDrag.y = e.clientY;
+    if (!planDrag.frame) planDrag.frame = requestAnimationFrame(planDragFrame);
+  }
+
+  function planDragFrame() {
+    if (!planDrag) return;
+    planDrag.frame = 0;
     const li = planDrag.li;
 
     /* Nothing scrolls while a finger is held down on the grip, so a slot below
        the fold would be out of reach. Moving towards the edge walks the page.
-       ponytail: a fixed step per move event, which is enough on a phone - make
-       it proportional to the overshoot if it ever feels slow on a desk mouse. */
+       ponytail: a fixed step per frame, which is enough on a phone - make it
+       proportional to the overshoot if it ever feels slow on a desk mouse. */
     const edge = 90;
-    if (e.clientY < edge) window.scrollBy(0, -14);
-    else if (e.clientY > window.innerHeight - edge) window.scrollBy(0, 14);
+    if (planDrag.y < edge) window.scrollBy(0, -14);
+    else if (planDrag.y > window.innerHeight - edge) window.scrollBy(0, 14);
 
-    /* The row under the finger, with the dragged row itself taken out of the
+    /* What is under the finger, with the dragged row itself taken out of the
        running so it cannot be dropped onto where it already is. */
     li.style.pointerEvents = 'none';
-    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const under = document.elementFromPoint(planDrag.x, planDrag.y);
     li.style.pointerEvents = '';
-    if (!under) return;
 
+    if (under) planFlip(() => planPlaceUnder(under));
+    planFollowPointer();
+  }
+
+  /* Where the row belongs now, given what the finger is over. */
+  function planPlaceUnder(under) {
+    const li = planDrag.li;
     const overRow = under.closest('.plan-row');
     if (overRow && overRow !== li) {
       const box = overRow.getBoundingClientRect();
-      const after = e.clientY > box.top + box.height / 2;
+      const after = planDrag.y > box.top + box.height / 2;
       overRow.parentElement.insertBefore(li, after ? overRow.nextSibling : overRow);
       return;
     }
@@ -3554,14 +3604,58 @@ const App = (function () {
     if (drop && drop !== li.parentElement) drop.appendChild(li);
   }
 
+  /* Measure, mutate, invert, release. Every row that the change moved is put
+     straight back where it looked a moment ago and then let go, so it travels
+     to its new place instead of appearing there.
+
+     The "before" reading is taken with any transform still on - a row caught
+     mid-slide is measured where it currently looks, so an interrupted move
+     carries on from there rather than starting over. */
+  function planFlip(mutate) {
+    const rows = [...document.querySelectorAll('#plan-body .plan-row')];
+    const before = new Map(rows.map(r => [r, r.getBoundingClientRect().top]));
+    mutate();
+    rows.forEach(r => {
+      if (r === planDrag.li) return;
+      const dy = before.get(r) - r.getBoundingClientRect().top;
+      if (!dy) return;
+      r.style.transition = 'none';
+      r.style.transform = 'translateY(' + dy + 'px)';
+      /* One frame to take the jump, the next to let it play out - a single one
+         gets batched into the same style pass and nothing animates at all. */
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        r.style.transition = '';
+        r.style.transform = '';
+      }));
+    });
+  }
+
+  /* The row sits wherever the list has put it and is then pushed back under
+     the finger, so the two never drift apart however far the list has moved
+     underneath. Cleared before measuring, or the offset compounds. */
+  function planFollowPointer() {
+    const li = planDrag.li;
+    li.style.transform = '';
+    const top = li.getBoundingClientRect().top;
+    const dy = Math.round(planDrag.y - planDrag.grabOffset - top);
+    li.style.transform = 'translateY(' + dy + 'px) scale(1.02)';
+  }
+
   function planPointerUp() {
     if (!planDrag) return;
-    planDrag.li.classList.remove('dragging');
+    const li = planDrag.li;
+    if (planDrag.frame) cancelAnimationFrame(planDrag.frame);
     planDrag = null;
     window.removeEventListener('pointermove', planPointerMove);
     window.removeEventListener('pointerup', planPointerUp);
     window.removeEventListener('pointercancel', planPointerUp);
-    commitPlan();
+
+    /* Letting go of the class puts the transition back, and letting go of the
+       transform in the same breath is what turns the snap into a landing. The
+       page is redrawn once it has landed, by which time the two look alike. */
+    li.classList.remove('dragging');
+    li.style.transform = '';
+    setTimeout(commitPlan, PLAN_SETTLE_MS);
   }
 
   /* Where everything ended up, read back off the page rather than tracked

@@ -3004,6 +3004,10 @@ body.gated { overflow: hidden; }
   border-radius: var(--radius);
   background: var(--panel);
   margin-bottom: 8px;
+  /* Rows displaced by a drag are put back where they looked and then let go
+     (planFlip in app.js); this is the going. Transform only - nothing here
+     animates a layout property, so it is all on the compositor. */
+  transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.18s ease;
 }
 
 .plan-list.ordered > .plan-row::before {
@@ -3038,8 +3042,6 @@ body.gated { overflow: hidden; }
 
 .plan-row-title { font-size: 0.92rem; }
 
-.plan-row.done { opacity: 0.55; }
-.plan-row.done .plan-row-title { text-decoration: line-through; }
 
 /* What time it is down for, shown in the running order so the two shapes of
    the list never disagree about a task you have already placed. */
@@ -3084,11 +3086,24 @@ body.gated { overflow: hidden; }
 
 .plan-grip:active { cursor: grabbing; }
 
+/* Held. No transition, because it is following a finger and has to be exactly
+   where the finger is - the easing goes back on the moment it is let go, which
+   is what turns the snap home into a landing. */
 .plan-row.dragging {
+  transition: none;
+  position: relative;
+  z-index: 5;
   border-color: var(--accent);
-  box-shadow: 0 6px 18px rgba(31, 36, 48, 0.22);
-  opacity: 0.92;
+  box-shadow: 0 10px 24px rgba(31, 36, 48, 0.28);
+  will-change: transform;
+  cursor: grabbing;
 }
+
+/* The gap it came out of, so the list does not look like it has a hole in it
+   while the row is up in the air. */
+.plan-row.dragging + .plan-row { transition-delay: 0.02s; }
+
+.plan-cleared { color: var(--green); font-weight: 600; }
 
 /* --- the clock --- */
 
@@ -3122,7 +3137,12 @@ body.gated { overflow: hidden; }
   min-width: 0;
   min-height: 38px;
   padding: 4px 0;
+  border-radius: 8px;
+  transition: background 0.15s ease;
 }
+
+/* Whatever the finger is over, so it is clear where the row is about to go. */
+.plan-slot:hover .plan-slot-drop { background: var(--bg); }
 
 .plan-slot .plan-row { margin-bottom: 4px; }
 .plan-slot .plan-row:last-child { margin-bottom: 0; }
