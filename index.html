@@ -111,6 +111,7 @@
   <p class="subtitle" id="page-subtitle">Every task you finish earns a coin. Coins buy plants for the garden.</p>
   <nav class="tabs">
     <button id="tab-list" class="active" onclick="App.switchView('list')">Tasks</button>
+    <button id="tab-plan" onclick="App.switchView('plan')">Plan My Day</button>
     <button id="tab-calendar" onclick="App.switchView('calendar')">Calendar</button>
     <button id="tab-overview" onclick="App.switchView('overview')">Overview</button>
     <button id="tab-friends" onclick="App.switchView('friends')">Friends</button>
@@ -302,6 +303,23 @@
       <h2>Completed</h2>
       <ul class="task-list" id="completed-list"></ul>
     </section>
+  </div>
+
+  <!-- Plan My Day. Today's starred tasks, put in the order you mean to do
+       them - or dropped onto a time. It replaces the Calendar on a phone,
+       where "what am I doing next" is the question you actually open the app
+       with; on the web both are there. -->
+  <div id="view-plan" class="view">
+    <div class="panel plan-panel">
+      <div class="plan-head">
+        <div class="plan-head-text">
+          <h2 id="plan-title">Plan My Day</h2>
+          <p class="plan-sub" id="plan-sub"></p>
+        </div>
+        <div class="cal-view-toggle" id="plan-mode-toggle"></div>
+      </div>
+      <div id="plan-body"></div>
+    </div>
   </div>
 
   <div id="view-calendar" class="view">
@@ -524,12 +542,16 @@
     </svg>
     <span class="bnav-label">Tasks</span>
   </button>
-  <button type="button" class="bnav-btn" id="bnav-calendar" onclick="App.switchView('calendar')">
+  <!-- The Calendar's slot. A month grid on a phone is a thing to look at;
+       this is a thing to use, and it is what the app gets opened for. The
+       Calendar is still there on the web. -->
+  <button type="button" class="bnav-btn" id="bnav-plan" onclick="App.switchView('plan')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <rect x="3.2" y="5" width="17.6" height="16" rx="2.5"/><path d="M3.2 10h17.6"/>
-      <path d="M8 3v4"/><path d="M16 3v4"/>
+      <path d="M4 6.5 5.6 8 8.5 5"/><path d="M4 12.5 5.6 14 8.5 11"/>
+      <path d="M12 6.5h8"/><path d="M12 12.5h8"/>
+      <circle cx="7" cy="18.5" r="3.4"/><path d="M7 16.9v1.7l1.2.8"/>
     </svg>
-    <span class="bnav-label">Calendar</span>
+    <span class="bnav-label">Plan</span>
   </button>
   <button type="button" class="bnav-btn bnav-hero" id="bnav-garden" onclick="App.switchView('garden')">
     <span class="bnav-disc">

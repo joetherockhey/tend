@@ -375,6 +375,10 @@ const App = (function () {
       completedAt: null,
       subtasks: readSubtaskEditor('new-subtasks')
     });
+    /* New tasks go on the top of the ticket list, which on the plan would put
+       one you just thought of ahead of everything you had already decided to
+       do. Named on the end of the running order instead. */
+    if (priorityCheckbox.checked) { planState().order.push(newId); Store.savePrefs(); }
     setRepeat(newId, repeatSelect ? repeatSelect.value : '');
     /* A repeat dated ahead goes straight into the waiting list, which would
        otherwise look like the task never saved. */
@@ -478,6 +482,11 @@ const App = (function () {
 
   function openNewTaskModal() {
     renderSubtaskEditor('new-subtasks', []);
+    /* Everything on the plan is starred, so a task added while looking at it
+       is starred to start with - otherwise it is added on the page it belongs
+       on and does not appear there. */
+    const star = document.getElementById('new-task-priority');
+    if (star) star.checked = currentView === 'plan';
     openBackdrop('new-task-modal-backdrop');
     document.getElementById('new-task-input').focus();
   }
@@ -1644,6 +1653,8 @@ const App = (function () {
     /* The garden is only a section of its own in phone view, so leaving it
        has to put you somewhere that still exists. */
     if (was && !phoneView && currentView === 'garden') switchView('list');
+    /* ...and the other way: the calendar has no section in phone view. */
+    if (phoneView && currentView === 'calendar') switchView('plan');
 
     const label = document.getElementById('bnav-garden-label');
     if (label && hasGarden() && Garden.shortLabel) label.textContent = Garden.shortLabel();
@@ -1681,7 +1692,8 @@ const App = (function () {
     }
     const h = document.getElementById('page-title');
     if (!h) return;
-    if (view === 'calendar') h.textContent = 'Calendar';
+    if (view === 'plan') h.textContent = 'Plan My Day';
+    else if (view === 'calendar') h.textContent = 'Calendar';
     else if (view === 'overview') h.textContent = 'Overview';
     else if (view === 'friends') h.textContent = 'Friends';
     else if (view === 'garden') h.textContent = (hasGarden() && Garden.shortLabel) ? Garden.shortLabel() : 'Garden';
@@ -1696,9 +1708,14 @@ const App = (function () {
   function switchView(view) {
     /* The garden is only a section of its own in phone view. */
     if (view === 'garden' && !phoneView) view = 'list';
+    /* ...and the calendar is not a section on a phone at all: a month grid at
+       that size is something to look at rather than something to use, so the
+       slot in the bar goes to the plan. Anything that still asks for the
+       calendar - a link, a restored view - lands there instead. */
+    if (view === 'calendar' && phoneView) view = 'plan';
     currentView = view;
 
-    ['list', 'calendar', 'overview', 'friends'].forEach(v => {
+    ['list', 'plan', 'calendar', 'overview', 'friends'].forEach(v => {
       const el = document.getElementById('view-' + v);
       if (el) el.classList.toggle('active', view === v);
       const tab = document.getElementById('tab-' + v);
@@ -1716,7 +1733,7 @@ const App = (function () {
       layout.classList.toggle('no-sidebar', view !== 'list');
     }
 
-    [['bnav-list', 'list'], ['bnav-calendar', 'calendar'],
+    [['bnav-list', 'list'], ['bnav-plan', 'plan'],
      ['bnav-overview', 'overview'], ['bnav-friends', 'friends'],
      ['bnav-garden', 'garden']].forEach(([id, v]) => {
       const btn = document.getElementById(id);
@@ -1736,6 +1753,7 @@ const App = (function () {
        everything went into one. Now it has one. */
     if (view === 'list') packCategoryColumns();
 
+    if (view === 'plan') renderPlan();
     if (view === 'calendar') renderCalendar();
     if (view === 'overview') renderOverview();
     if (view === 'friends') { markFriendsBadgeSeen(); renderFriends(); }
@@ -2537,10 +2555,18 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-09-21', items: [
+      'Plan My Day. Everything you have starred turns up on one page, and you put it in the order you mean to do it in - drag the grip on the right of a row to move it. Tick things off there and they are ticked off everywhere.',
+      'The same plan has a second shape: Times. Every half hour from now until the end of the evening, and you drag a task onto the one you mean to do it in. Anything you have not placed waits underneath.',
+      'On a phone, Plan takes the Calendar’s place in the bottom bar - the calendar is still there on a computer. + New Task works on the plan, and starts with Priority already ticked, so something you think of while planning goes straight onto the day.',
+      'The garden on a phone is back to its old size - the tiles had grown big enough that you could only see a corner of the plot - and the buttons under it are proper buttons now, each its own colour, that press down when you touch them.',
+      'Shop and the ? moved to the top of the garden screen, away from the walking buttons, and the sign naming each season has gone: it sat over the part of the garden you were walking in.',
+      'Search moved up beside your name on every screen, instead of sitting in the row of tabs.',
+    ] },
     { date: '2026-09-19', items: [
       'Every section of the garden is now a season. The one you start in is Spring, the ground you buy next is Summer, then Autumn, then Winter, then Spring again - so working your way down the plot reads as a year going past.',
       'Each season brings its own light, its own colour in the grass and the stones, something falling through the air, and one thing standing in the corner: blossom, a parasol, a pumpkin, a snowman. In the reef they are Bloom, Warm Current, Storm and Ice.',
-      'Every section now has a sign saying which one you are in - "Autumn House", "Winter Orchard" - including the dim one behind the gate you have not opened yet.',
+      'Every section had a sign saying which one you are in - "Autumn House", "Winter Orchard". Taken out again on 21 Sep: it covered the corner of the garden you were standing in.',
       'Nothing in your garden moved. The greenhouse is still a greenhouse and the pond is still a pond; the season is laid over the top of them.',
     ] },
     { date: '2026-09-05', items: [
@@ -3295,6 +3321,268 @@ const App = (function () {
 
   /* ========================= boot ========================= */
 
+  /* ========================= Plan My Day =========================
+
+     Today's starred tasks, in the order you actually mean to do them. Two
+     shapes of one list: a running order, or the same tasks dropped onto times.
+
+     The arrangement lives in prefs under today's date and is thrown away the
+     moment the date changes. A plan is for a day - keeping yesterday's running
+     order would mean migrating it, and there is nothing in it worth migrating.
+     Prefs rather than fields on the task: a plan is about the day, not about
+     the task, and a repeat that spawns tomorrow's copy would otherwise carry
+     today's 9am along with it. */
+
+  const PLAN_SLOT_MINUTES = 30;
+  const PLAN_DAY_END = 22 * 60;          /* the last hour worth planning into */
+  const PLAN_LAST_SLOT = 23 * 60 + 30;   /* ...unless it is already that late */
+
+  function planState() {
+    const p = Store.prefs();
+    const today = Util.todayStr();
+    let plan = p.plan;
+    if (!plan || typeof plan !== 'object' || plan.date !== today) {
+      plan = { date: today, mode: 'order', order: [], times: {} };
+      p.plan = plan;
+    }
+    if (!Array.isArray(plan.order)) plan.order = [];
+    if (!plan.times || typeof plan.times !== 'object') plan.times = {};
+    if (plan.mode !== 'times') plan.mode = 'order';
+    return plan;
+  }
+
+  /* What is on the plan: everything starred and not archived, including what
+     has already been ticked off - seeing the morning crossed out is most of
+     the point of writing the list down. Anything starred since the plan was
+     last touched goes on the end rather than jumping the queue. */
+  function planTasks() {
+    const plan = planState();
+    const rank = new Map(plan.order.map((id, i) => [id, i]));
+    const last = rank.size + 1;
+    return tickets()
+      .filter(t => t.priority && !t.archived)
+      .sort((a, b) => (rank.has(a.id) ? rank.get(a.id) : last) - (rank.has(b.id) ? rank.get(b.id) : last));
+  }
+
+  function planMinutesNow() {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+
+  /* Every half hour from the one you are in now to the end of the evening.
+     There is no point offering 9am at four in the afternoon, and no point
+     offering nothing at all at half eleven at night - so however late it is
+     there are always a couple of hours of day left to drop things into. */
+  function planSlots() {
+    const start = Math.floor(planMinutesNow() / PLAN_SLOT_MINUTES) * PLAN_SLOT_MINUTES;
+    const end = Math.min(PLAN_LAST_SLOT, Math.max(PLAN_DAY_END, start + 120));
+    const out = [];
+    for (let m = start; m <= end; m += PLAN_SLOT_MINUTES) out.push(m);
+    return out;
+  }
+
+  function planTimeLabel(mins) {
+    const d = new Date();
+    d.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function setPlanMode(mode) {
+    planState().mode = mode === 'times' ? 'times' : 'order';
+    Store.savePrefs();
+    renderPlan();
+  }
+
+  function renderPlanModeToggle() {
+    const host = document.getElementById('plan-mode-toggle');
+    if (!host) return;
+    const mode = planState().mode;
+    host.innerHTML = [['order', 'Running order'], ['times', 'Times']].map(([key, label]) =>
+      `<button type="button" class="${mode === key ? 'on' : ''}" onclick="App.setPlanMode('${key}')">${label}</button>`
+    ).join('');
+  }
+
+  function renderPlanSub(list) {
+    const el = document.getElementById('plan-sub');
+    if (!el) return;
+    const today = Util.formatDate(Util.todayStr());
+    if (!list.length) { el.textContent = today; return; }
+    const done = list.filter(t => t.completedAt).length;
+    const left = list.length - done;
+    el.textContent = today + ' · ' + (left
+      ? done + ' of ' + list.length + ' done, ' + left + ' to go'
+      : 'all ' + list.length + ' done — that is the day');
+  }
+
+  /* One row, the same in both shapes: tick it off, read it, open it, or pick
+     it up by the grip. Deliberately not renderTaskItem - that row carries a
+     row menu, an HTML5 drag handle and up to four tags, none of which belong
+     on a list whose whole job is to be glanceable. */
+  function planRowHtml(t, inSlot) {
+    const done = !!t.completedAt;
+    const at = planState().times[t.id];
+    const chip = (!inSlot && typeof at === 'number')
+      ? `<span class="plan-when">${planTimeLabel(at)}</span>` : '';
+    const overdue = t.dueDate && !done && t.dueDate < Util.todayStr();
+    const due = overdue ? '<span class="tag overdue">overdue</span>'
+      : (t.dueDate === Util.todayStr() ? '<span class="tag">due today</span>' : '');
+    return `
+      <li class="plan-row${done ? ' done' : ''}" data-id="${t.id}">
+        <input type="checkbox" ${done ? 'checked' : ''} onchange="App.toggleTask('${t.id}', this)"
+               aria-label="Tick off ${Util.escapeHtml(t.title)}">
+        <div class="plan-row-body" onclick="App.showTaskDetail('${t.id}')">
+          <span class="plan-row-title">${Util.escapeHtml(t.title)}</span>
+          ${chip}${due}
+        </div>
+        <button type="button" class="plan-unstar" title="Take it off today's plan"
+                aria-label="Take off the plan" onclick="App.togglePriority('${t.id}')">&#9733;</button>
+        <button type="button" class="plan-grip" aria-label="Drag to reorder"
+                onpointerdown="App.planGripDown(event)">&#8942;&#8942;</button>
+      </li>`;
+  }
+
+  function planOrderHtml(list) {
+    return `<ul class="plan-list plan-drop ordered">${list.map(t => planRowHtml(t, false)).join('')}</ul>`;
+  }
+
+  function planTimesHtml(list) {
+    const plan = planState();
+    const slots = planSlots();
+    const first = slots[0], last = slots[slots.length - 1];
+    const nowMins = planMinutesNow();
+    const placed = new Map();
+    const unplaced = [];
+
+    list.forEach(t => {
+      const at = plan.times[t.id];
+      if (typeof at !== 'number') return void unplaced.push(t);
+      /* A time that has already gone past - or one left over from a slot that
+         no longer exists - is pinned to the first slot still ahead, so nothing
+         dropped onto the clock can quietly fall off the top of it. */
+      const m = Math.min(last, Math.max(first, Math.round(at / PLAN_SLOT_MINUTES) * PLAN_SLOT_MINUTES));
+      if (!placed.has(m)) placed.set(m, []);
+      placed.get(m).push(t);
+    });
+
+    const slotsHtml = slots.map(m => {
+      const current = m <= nowMins && nowMins < m + PLAN_SLOT_MINUTES;
+      const rows = (placed.get(m) || []).map(t => planRowHtml(t, true)).join('');
+      return `<li class="plan-slot${current ? ' now' : ''}" data-slot="${m}">
+          <span class="plan-slot-time">${planTimeLabel(m)}</span>
+          <ul class="plan-drop plan-slot-drop">${rows}</ul>
+        </li>`;
+    }).join('');
+
+    const tray = `<div class="plan-tray">
+        <h3>${unplaced.length ? 'Not on the clock yet' : 'Everything has a time'}</h3>
+        <ul class="plan-drop plan-tray-drop">${unplaced.map(t => planRowHtml(t, true)).join('')}</ul>
+      </div>`;
+
+    return `<ul class="plan-slots">${slotsHtml}</ul>${tray}`;
+  }
+
+  function renderPlan() {
+    const host = document.getElementById('plan-body');
+    if (!host) return;
+    renderPlanModeToggle();
+    const list = planTasks();
+    renderPlanSub(list);
+    if (!list.length) {
+      host.innerHTML = '<p class="empty-note">Nothing is starred for today. Star a task on the Tasks page '
+        + '— or add one here with Priority ticked — and it turns up on the plan.</p>';
+      return;
+    }
+    host.innerHTML = planState().mode === 'times' ? planTimesHtml(list) : planOrderHtml(list);
+  }
+
+  /* ---------------------------------------------------------------
+     Dragging.
+
+     The task list's own reordering is HTML5 drag-and-drop, which a phone does
+     not fire at all - and the phone is where this page is meant to be used. So
+     this is pointer events, which cover a mouse and a finger with the same
+     code, at the cost of moving the row into place by hand.
+
+     Only the grip takes the pointer, and only the grip sets touch-action:
+     none, so a finger anywhere else on the row still scrolls the page. */
+  let planDrag = null;
+
+  function planGripDown(e) {
+    if (e.button != null && e.button > 0) return;
+    const li = e.target.closest('.plan-row');
+    if (!li) return;
+    e.preventDefault();
+    planDrag = { li: li };
+    li.classList.add('dragging');
+    try { e.target.setPointerCapture(e.pointerId); } catch (err) { /* older Safari */ }
+    window.addEventListener('pointermove', planPointerMove);
+    window.addEventListener('pointerup', planPointerUp);
+    window.addEventListener('pointercancel', planPointerUp);
+  }
+
+  function planPointerMove(e) {
+    if (!planDrag) return;
+    e.preventDefault();
+    const li = planDrag.li;
+
+    /* Nothing scrolls while a finger is held down on the grip, so a slot below
+       the fold would be out of reach. Moving towards the edge walks the page.
+       ponytail: a fixed step per move event, which is enough on a phone - make
+       it proportional to the overshoot if it ever feels slow on a desk mouse. */
+    const edge = 90;
+    if (e.clientY < edge) window.scrollBy(0, -14);
+    else if (e.clientY > window.innerHeight - edge) window.scrollBy(0, 14);
+
+    /* The row under the finger, with the dragged row itself taken out of the
+       running so it cannot be dropped onto where it already is. */
+    li.style.pointerEvents = 'none';
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    li.style.pointerEvents = '';
+    if (!under) return;
+
+    const overRow = under.closest('.plan-row');
+    if (overRow && overRow !== li) {
+      const box = overRow.getBoundingClientRect();
+      const after = e.clientY > box.top + box.height / 2;
+      overRow.parentElement.insertBefore(li, after ? overRow.nextSibling : overRow);
+      return;
+    }
+    /* The whole of a half hour is its drop target, not just the strip the
+       tasks sit in - an empty slot is a very thin thing to aim at otherwise. */
+    const host = under.closest('.plan-slot, .plan-tray');
+    const drop = host ? host.querySelector('.plan-drop') : under.closest('.plan-drop');
+    if (drop && drop !== li.parentElement) drop.appendChild(li);
+  }
+
+  function planPointerUp() {
+    if (!planDrag) return;
+    planDrag.li.classList.remove('dragging');
+    planDrag = null;
+    window.removeEventListener('pointermove', planPointerMove);
+    window.removeEventListener('pointerup', planPointerUp);
+    window.removeEventListener('pointercancel', planPointerUp);
+    commitPlan();
+  }
+
+  /* Where everything ended up, read back off the page rather than tracked
+     while the finger moves - the DOM is already keeping that score. */
+  function commitPlan() {
+    const plan = planState();
+    const rows = [...document.querySelectorAll('#plan-body .plan-row')];
+    if (!rows.length) return;
+    plan.order = rows.map(li => li.dataset.id);
+    if (plan.mode === 'times') {
+      const times = {};
+      rows.forEach(li => {
+        const slot = li.closest('.plan-slot');
+        if (slot) times[li.dataset.id] = Number(slot.dataset.slot);
+      });
+      plan.times = times;
+    }
+    Store.savePrefs();
+    renderPlan();
+  }
+
   function renderAll() {
     renderUndoButton();
     renderDueToday();
@@ -3302,6 +3590,7 @@ const App = (function () {
     populateCategorySelects();
     renderList();
     initDragAndDrop();
+    renderPlan();
     renderCalendar();
     renderStats();
     renderByCategory();
@@ -3645,6 +3934,7 @@ const App = (function () {
     toggleSubtask, toggleSubtaskList, editorAdd, editorRemove, editorRename, editorToggle,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
+    setPlanMode, planGripDown,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
     clearSearch, toggleSearch, setTheme, setDark, setHaptics, hapticsOn, testHaptics, isAppMode, setViewMode, setCategoryScope,
     setListGrouping, undoLast, pickCategoryColor,

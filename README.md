@@ -181,6 +181,7 @@ supabase/delete-account.sql  lets an account delete itself, cascades and all
 supabase/realtime.sql   optional: instant sync between devices
 supabase/daily-digest.sql   optional daily reminder email, all in SQL
 test/mock-supabase.js   a fake backend, for exercising cloud mode locally
+test/*.test.js          node checks for the parts that are arithmetic
 privacy.html            the privacy policy, served beside the app
 build.py                inlines everything into standalone/tend.html
 standalone/tend.html    the whole app as one file
@@ -290,13 +291,60 @@ index, and neither changes. A season contributes four things and no rules at all
 - a **prop** standing in the bottom-left corner: a snowman, a pumpkin, a parasol.
   It is scenery, never a decoration, so you walk straight through it and it can
   never end up on top of a bed or in the way of a plant;
-- a **wash**, the things **drifting** through it and the **sign** naming the
-  section, all in `css/styles.css` off a `season-<id>` class on the band. The
-  drifting stops under `prefers-reduced-motion`; the colour and the sign stay.
+- a **wash** and the things **drifting** through it, both in `css/styles.css`
+  off a `season-<id>` class on the band. The drifting stops under
+  `prefers-reduced-motion`; the colour and the prop stay. There is no sign
+  naming the section: it was tried, and a caption in the top-left corner of
+  every band sits over the part of the garden you are walking in.
 
 The reef runs the same four in the same order under its own names - Bloom, Warm
 Current, Storm, Ice - because `OCEAN_SEASONS` spreads over `SEASONS` and changes
 only what it is called and what it looks like.
+
+### Plan My Day
+
+The task list is everything you have to do. **Plan My Day** is the much shorter
+question of what you are doing today, and it holds exactly one thing: the tasks
+you have starred. Star something on the Tasks page and it appears; unstar it -
+the star on its row, or the one on the plan - and it goes.
+
+It has two shapes of the same list, chosen with the toggle in its corner:
+
+- **Running order** - the tasks numbered 1, 2, 3, in the order you mean to work
+  through them. The numbers come from a CSS counter, not from the render, so
+  they renumber themselves as a row is dragged past them.
+- **Times** - every half hour from the one you are in now to 10pm, and you drop
+  a task onto the one you mean to do it in. Whatever you have not placed waits
+  in a tray underneath. However late it is there are always two hours of slots,
+  and never one past 11:30pm.
+
+Dragging is by the grip on the right of a row, and it is **pointer events**
+rather than HTML5 drag-and-drop - which a phone does not fire at all, and the
+phone is where this page is meant to be used. Only the grip sets
+`touch-action: none`, so a finger anywhere else on a row still scrolls.
+
+Ticking a task off here is the same tick as on the Tasks page: the same coin,
+the same confetti, the same repeat handed on to tomorrow. **+ New Task** works
+from the plan and opens with *Priority* already ticked, so something you think
+of while planning lands on the day it was thought of.
+
+The arrangement lives in `prefs.plan`, under the date it was made:
+
+```js
+plan: { date: '2026-09-21', mode: 'order', order: [ids], times: { id: minutes } }
+```
+
+It syncs with everything else in prefs, and it is thrown away the moment the
+date changes - a plan is for a day, and there is nothing in yesterday's running
+order worth migrating. It is kept there rather than on the tasks themselves
+because a plan is a fact about the day, not about the task: a repeat spawning
+tomorrow's copy would otherwise carry today's 9am along with it.
+
+**On a phone, Plan takes the Calendar's place** in the bottom bar. A month grid
+at that size is something to look at rather than something to use, and this is
+what the app gets opened for. The calendar is untouched on a computer, where it
+is one more tab along; anything that still asks for `switchView('calendar')` in
+phone view lands on the plan instead.
 
 ### Installing it as a phone app
 
