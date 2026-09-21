@@ -2614,7 +2614,10 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-09-21', items: [
-      'Plan My Day. Everything you have starred and not yet done turns up on one page, and you put it in the order you mean to do it in - drag the grip on the right of a row to move it. Tick something off and it leaves the plan, the same as crossing it out, and it is ticked off on the Tasks page too.',
+      'Every category wears a little emoji - Work has a briefcase, Health a flexed arm, Errands a trolley. You do not pick them: they are read off the name, so one you invent gets one too, and it is the same on every device.',
+      'On Plan My Day you can now pick a row up anywhere along it, not only by the dots on the right. On a computer just drag it; on a phone hold it for a moment first, so a swipe still scrolls the page.',
+      'Pressing the star on a plan row now takes it off the plan there and then. It stays on the Tasks page as an ordinary unstarred task.',
+      'Plan My Day. Everything you have starred and not yet done turns up on one page, and you put it in the order you mean to do it in - drag a row to move it. Tick something off and it leaves the plan, the same as crossing it out, and it is ticked off on the Tasks page too.',
       'The same plan has a second shape: Times. Every half hour from now until the end of the evening, and you drag a task onto the one you mean to do it in. Anything you have not placed waits underneath.',
       'On a phone, Plan takes the Calendar’s place in the bottom bar - the calendar is still there on a computer. + New Task works on the plan, and starts with Priority already ticked, so something you think of while planning goes straight onto the day.',
       'The garden on a phone is back to its old size - the tiles had grown big enough that you could only see a corner of the plot - and the buttons under it are proper buttons now, each its own colour, that press down when you touch them.',
@@ -3494,7 +3497,7 @@ const App = (function () {
     const due = overdue ? '<span class="tag overdue">overdue</span>'
       : (t.dueDate === Util.todayStr() ? '<span class="tag">due today</span>' : '');
     return `
-      <li class="plan-row" data-id="${t.id}">
+      <li class="plan-row" data-id="${t.id}" onpointerdown="App.planRowDown(event)">
         <input type="checkbox" onchange="App.toggleTask('${t.id}', this)"
                aria-label="Tick off ${Util.escapeHtml(t.title)}">
         <div class="plan-row-body" onclick="App.showTaskDetail('${t.id}')">
@@ -3503,8 +3506,7 @@ const App = (function () {
         </div>
         <button type="button" class="plan-unstar" title="Take it off today's plan"
                 aria-label="Take off the plan" onclick="App.togglePriority('${t.id}')">&#9733;</button>
-        <button type="button" class="plan-grip" aria-label="Drag to reorder"
-                onpointerdown="App.planGripDown(event)">&#8942;&#8942;</button>
+        <button type="button" class="plan-grip" aria-label="Drag to reorder">&#8942;&#8942;</button>
       </li>`;
   }
 
@@ -3589,36 +3591,89 @@ const App = (function () {
      animation frame however fast the finger moves, because hit-testing and
      measuring on every pointermove is exactly what makes a drag feel gritty.
 
-     Only the grip takes the pointer, and only the grip sets touch-action:
-     none, so a finger anywhere else on the row still scrolls the page. */
+     Anywhere on a row picks it up, not only the grip. What "picks it up" means
+     has to differ by pointer, because on a phone the same downward swipe is
+     both "drag this row" and "scroll the page", and at the moment the finger
+     lands there is nothing to tell them apart:
+
+       - the grip, either way, starts the drag at once - that is what a grip is
+         for, and it is the one thing on the row that sets touch-action: none;
+       - a mouse anywhere on the row starts once it has moved a few pixels, so
+         a click still opens the task rather than nudging it;
+       - a finger anywhere else has to hold still for a moment. Moving inside
+         that moment is a scroll and the row is let go of.
+
+     The hold is also what makes the drag possible at all. touch-action cannot
+     be changed once a gesture is under way, so a row cannot ask for the
+     gesture after the fact - but a finger that has not moved has not started
+     the page scrolling either, which leaves the first touchmove cancelable.
+     Cancelling it, and every one after it, is what keeps the page still. */
+  const PLAN_HOLD_MS = 280;
+  const PLAN_SLOP_PX = 8;
+
   let planDrag = null;
 
-  function planGripDown(e) {
+  function planRowDown(e) {
     if (e.button != null && e.button > 0) return;
     const li = e.target.closest('.plan-row');
-    if (!li) return;
-    e.preventDefault();
+    /* The checkbox and the star are for pressing, not for dragging by. */
+    if (!li || e.target.closest('input, .plan-unstar')) return;
+    const fromGrip = !!e.target.closest('.plan-grip');
     planDrag = {
       li: li,
-      /* Where down the row it was picked up, so it hangs off the finger at
-         the point it was grabbed rather than jumping its middle there. */
-      grabOffset: e.clientY - li.getBoundingClientRect().top,
+      /* Down but not yet carrying anything: still deciding between a drag, a
+         tap and a scroll. */
+      live: false,
+      startX: e.clientX,
+      startY: e.clientY,
       x: e.clientX,
       y: e.clientY,
-      frame: 0
+      grabOffset: 0,
+      frame: 0,
+      hold: 0,
+      waitsForHold: e.pointerType === 'touch' && !fromGrip,
+      pointerId: e.pointerId,
+      target: e.target
     };
-    li.classList.add('dragging');
-    try { e.target.setPointerCapture(e.pointerId); } catch (err) { /* older Safari */ }
     window.addEventListener('pointermove', planPointerMove);
     window.addEventListener('pointerup', planPointerUp);
     window.addEventListener('pointercancel', planPointerUp);
+    if (fromGrip) { e.preventDefault(); planBeginDrag(); }
+    else if (planDrag.waitsForHold) planDrag.hold = setTimeout(planBeginDrag, PLAN_HOLD_MS);
+  }
+
+  function planBeginDrag() {
+    if (!planDrag || planDrag.live) return;
+    planDrag.live = true;
+    clearTimeout(planDrag.hold);
+    /* Where down the row it was picked up, so it hangs off the finger at the
+       point it was grabbed rather than jumping its middle there. Read now
+       rather than on the way down: after a hold, or a few pixels of mouse, the
+       pointer is no longer quite where it landed. */
+    planDrag.grabOffset = planDrag.y - planDrag.li.getBoundingClientRect().top;
+    planDrag.li.classList.add('dragging');
+    window.addEventListener('touchmove', planBlockScroll, { passive: false });
+    try { planDrag.target.setPointerCapture(planDrag.pointerId); } catch (err) { /* older Safari */ }
+    planFollowPointer();
+  }
+
+  function planBlockScroll(e) {
+    if (planDrag && planDrag.live) e.preventDefault();
   }
 
   function planPointerMove(e) {
     if (!planDrag) return;
-    e.preventDefault();
     planDrag.x = e.clientX;
     planDrag.y = e.clientY;
+    if (!planDrag.live) {
+      const far = Math.abs(e.clientX - planDrag.startX) > PLAN_SLOP_PX
+        || Math.abs(e.clientY - planDrag.startY) > PLAN_SLOP_PX;
+      if (!far) return;
+      /* A finger that moves before the hold is up was on its way somewhere. */
+      if (planDrag.waitsForHold) { planPointerUp(); return; }
+      planBeginDrag();
+    }
+    e.preventDefault();
     if (!planDrag.frame) planDrag.frame = requestAnimationFrame(planDragFrame);
   }
 
@@ -3702,11 +3757,25 @@ const App = (function () {
   function planPointerUp() {
     if (!planDrag) return;
     const li = planDrag.li;
+    const carried = planDrag.live;
+    clearTimeout(planDrag.hold);
     if (planDrag.frame) cancelAnimationFrame(planDrag.frame);
     planDrag = null;
     window.removeEventListener('pointermove', planPointerMove);
     window.removeEventListener('pointerup', planPointerUp);
     window.removeEventListener('pointercancel', planPointerUp);
+    window.removeEventListener('touchmove', planBlockScroll);
+
+    /* Never picked up: a tap, which the row's own click handler is about to
+       turn into the task detail, or a finger that was only scrolling past. */
+    if (!carried) return;
+
+    /* A drag ends in a click on whatever is under the pointer, and on this row
+       that would be the body - which opens the task you have just put down.
+       Eaten once, and taken off again immediately: the click is dispatched
+       before a timeout of zero ever runs. */
+    window.addEventListener('click', planEatClick, true);
+    setTimeout(() => window.removeEventListener('click', planEatClick, true), 0);
 
     /* Letting go of the class puts the transition back, and letting go of the
        transform in the same breath is what turns the snap into a landing. The
@@ -3714,6 +3783,11 @@ const App = (function () {
     li.classList.remove('dragging');
     li.style.transform = '';
     setTimeout(commitPlan, PLAN_SETTLE_MS);
+  }
+
+  function planEatClick(e) {
+    e.stopPropagation();
+    e.preventDefault();
   }
 
   /* Where everything ended up, read back off the page rather than tracked
@@ -4086,7 +4160,7 @@ const App = (function () {
     toggleSubtask, toggleSubtaskList, editorAdd, editorRemove, editorRename, editorToggle,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,
-    setPlanMode, planGripDown,
+    setPlanMode, planRowDown,
     openInstall, copyInstallLink, runInstallPrompt, openUpdates, checkForUpdate,
     clearSearch, toggleSearch, setTheme, setDark, setHaptics, hapticsOn, testHaptics, isAppMode, setViewMode, setCategoryScope,
     setListGrouping, undoLast, pickCategoryColor,

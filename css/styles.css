@@ -3003,6 +3003,12 @@ body.gated { overflow: hidden; }
   border-radius: var(--radius);
   background: var(--panel);
   margin-bottom: 8px;
+  /* The whole row is the handle now. No touch-action here, though - a finger
+     has to be able to scroll the page off a row, and the drag takes the
+     gesture by cancelling it instead (planBeginDrag in app.js). */
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
   /* Rows displaced by a drag are put back where they looked and then let go
      (planFlip in app.js); this is the going. Transform only - nothing here
      animates a layout property, so it is all on the compositor. */
@@ -3067,9 +3073,10 @@ body.gated { overflow: hidden; }
 
 .plan-unstar:hover { color: var(--danger); }
 
-/* The only thing that takes the pointer. touch-action: none is what stops the
-   browser claiming the gesture as a scroll the moment the finger moves - and
-   why it is on the grip alone, so the rest of the row still scrolls. */
+/* The row is draggable all over, but the grip is the one part of it that says
+   so and the one part that picks up straight away under a finger. touch-action:
+   none is what buys it that: the browser never claims the gesture as a scroll.
+   It stays on the grip alone, so a finger anywhere else can still scroll. */
 .plan-grip {
   flex: none;
   border: none;
