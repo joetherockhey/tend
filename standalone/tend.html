@@ -2997,6 +2997,11 @@ body.gated { overflow: hidden; }
 
 .plan-head .cal-view-toggle { margin-left: auto; flex: none; }
 
+/* The same hint as the ones under a heading elsewhere, but this one sits under
+   the whole head block - title, date and the mode toggle beside them - so it
+   does not want the pull-up the others use to close a gap under an h2. */
+.plan-hint { margin: 10px 0 12px; }
+
 .plan-list, .plan-slots, .plan-drop {
   list-style: none;
   margin: 0;
@@ -5374,6 +5379,7 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
         </div>
         <div class="cal-view-toggle" id="plan-mode-toggle"></div>
       </div>
+      <p class="category-hint plan-hint">Every task you star turns up here. Drag the rows into the order you mean to do them in today — on a phone, hold one for a moment first.</p>
       <div id="plan-body"></div>
     </div>
   </div>
