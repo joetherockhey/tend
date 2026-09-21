@@ -13452,13 +13452,19 @@ const App = (function () {
     showToast(coins + (hint ? ' \u2014 ' + hint : ''));
   }
 
+  /* The star is the only thing that puts a task on today's plan, so taking it
+     off has to redraw the plan as well as the task list - unstarring from the
+     plan itself was leaving the row sitting there until you switched pages.
+     Nothing else changes: it keeps its place in the plan's running order in
+     case it is starred again today, and on the Tasks page it simply drops
+     from Priority back into Active. */
   function togglePriority(id) {
     const t = tickets().find(x => x.id === id);
     if (!t) return;
     snapshot((t.priority ? 'unstarring "' : 'starring "') + t.title + '"');
     t.priority = !t.priority;
     Store.saveTickets();
-    renderList();
+    renderAll();
   }
 
   function toggleArchive(id) {

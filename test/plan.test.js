@@ -99,6 +99,30 @@ assert.deepStrictEqual(api.planTasks().map(t => t.id), ['y'],
 assert.deepStrictEqual(api.planDoneToday().map(t => t.id), ['x'],
   'and is counted as done today - but one finished last week is not');
 
+/* --- taking something off the plan --- */
+
+/* Unstarring on the plan used to leave the row sitting there: togglePriority
+   redrew the task list and nothing else, so a plan you were looking at kept
+   showing a task that was no longer on it until you switched pages. Clearing
+   the star is only half the job - the plan has to be redrawn too. */
+const PLAN_TASKS = [
+  { id: 'a', title: 'A', priority: true },
+  { id: 'b', title: 'B', priority: true }
+];
+const drew = [];
+const togglePriority = new Function('tickets', 'snapshot', 'Store', 'renderAll',
+  grab('togglePriority') + '\nreturn togglePriority;'
+)(() => PLAN_TASKS, () => {}, { saveTickets: () => {} }, () => drew.push('all'));
+
+togglePriority('a');
+assert.strictEqual(PLAN_TASKS[0].priority, false, 'unstarring clears the star');
+assert.ok(drew.includes('all'), 'and redraws the plan, not only the task list');
+
+api = build(9 * 60, { plan: { date: '2026-09-21', order: ['a', 'b'], times: {} } }, PLAN_TASKS);
+assert.deepStrictEqual(api.planTasks().map(t => t.id), ['b'], 'so it is off the plan');
+assert.ok(!PLAN_TASKS[0].archived && !PLAN_TASKS[0].completedAt,
+  'but still an ordinary task - not archived, not ticked off');
+
 /* --- the half hours on offer --- */
 
 const slotsAt = mins => build(mins, { plan: { date: '2026-09-21', order: [], times: {} } }, []).planSlots();
