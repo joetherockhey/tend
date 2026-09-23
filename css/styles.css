@@ -2124,6 +2124,18 @@ li.task.dragging {
   margin-top: 4px;
 }
 
+/* A long task form scrolls, so the Add / Save row pins to the bottom of the
+   sheet instead of hiding below the fold. bottom: -20px eats the modal's
+   padding so fields don't peek out beneath it. */
+.modal-form .modal-actions {
+  position: sticky;
+  bottom: -20px;
+  margin: 4px -20px -20px;
+  padding: 10px 20px 20px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+
 .modal-actions button {
   padding: 8px 16px;
   border-radius: 8px;
