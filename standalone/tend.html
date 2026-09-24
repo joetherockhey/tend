@@ -5060,6 +5060,9 @@ html[data-mode="phone"] .garden-ctl-btn:disabled {
   overflow: visible;
 }
 
+/* The gardener is a sprite nested inside the picture; keep it at its own size. */
+.tend-loading svg svg { width: 19px; height: 20px; overflow: visible; }
+
 .tend-loading-word {
   margin: 0;
   font-size: 0.82rem;
@@ -5078,7 +5081,7 @@ html[data-mode="phone"] .garden-ctl-btn:disabled {
 @keyframes tend-s2 { 0%, 37.9% { opacity: 0; } 38%, 57.9% { opacity: 1; } 58%, 100% { opacity: 0; } }
 @keyframes tend-s3 { 0%, 57.9% { opacity: 0; } 58%, 100% { opacity: 1; } }
 
-/* The spout end is the pivot, so tipping it pours rather than swinging it. */
+/* Held in the gardener's hand and tipped at the spout end, so it pours rather than swings. */
 .tend-can {
   transform-box: fill-box;
   transform-origin: 90% 80%;
@@ -5086,12 +5089,9 @@ html[data-mode="phone"] .garden-ctl-btn:disabled {
 }
 
 @keyframes tend-can {
-  0%   { transform: translate(-16px, -6px) rotate(0deg); }
-  20%  { transform: translate(0, 0) rotate(0deg); }
-  30%  { transform: translate(0, 0) rotate(-26deg); }
-  74%  { transform: translate(0, 0) rotate(-26deg); }
-  86%  { transform: translate(0, 0) rotate(0deg); }
-  100% { transform: translate(-16px, -6px) rotate(0deg); }
+  0%, 20% { transform: rotate(0deg); }
+  30%, 74% { transform: rotate(26deg); }
+  86%, 100% { transform: rotate(0deg); }
 }
 
 /* The drops fall on their own short cycle; this only decides when there is
@@ -5116,7 +5116,7 @@ html[data-mode="phone"] .garden-ctl-btn:disabled {
   0%   { opacity: 0; transform: translate(0, 0); }
   15%  { opacity: 1; }
   80%  { opacity: 1; }
-  100% { opacity: 0; transform: translate(4px, 13px); }
+  100% { opacity: 0; transform: translate(2px, 7px); }
 }
 
 /* Asked for stillness, it is a picture of a grown plant and nothing moves. */
@@ -5124,7 +5124,6 @@ html[data-mode="phone"] .garden-ctl-btn:disabled {
   .tend-can, .tend-drops, .tend-drop, .tend-stage { animation: none; }
   .tend-s1, .tend-s2, .tend-drops { opacity: 0; }
   .tend-s3 { opacity: 1; }
-  .tend-can { transform: translate(-16px, -6px); }
 }
 
 /* Coins on a friend's row, beside how much they have grown. */
@@ -5148,6 +5147,244 @@ html[data-mode="phone"] .garden-ctl-btn:disabled {
    desktop pane's height and scrolling have no business there. */
 html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
 
+/* ===================== more garden on the Garden screen =====================
+
+   The garden screen spent more than half its height on things that were not
+   the garden: the page title and a fun fact, a three-line status, the Holding
+   chip on a line of its own and a row of tall buttons under it. The title
+   and fact go (the bottom bar already says Garden), the status keeps to two
+   lines, and the chip and the three buttons share one short row. */
+html.garden-full #page-title,
+html.garden-full #page-subtitle { display: none; }
+
+html.garden-full .garden-gardener-row .garden-status {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.72rem;
+}
+
+html.garden-full .garden-controls {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* What is in your hands: a small tile at the start of the row, the thing
+   itself with its name under it. */
+html.garden-full .garden-holding {
+  flex: 0 0 64px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  padding: 3px 4px;
+  min-width: 0;
+  border-radius: 12px;
+}
+html.garden-full .garden-holding-label { display: none; }
+html.garden-full .garden-holding-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.6rem;
+}
+html.garden-full .garden-holding-art svg { max-height: 26px; width: auto; }
+
+html.garden-full .garden-ctl-btns { gap: 6px; }
+html.garden-full .garden-controls .garden-ctl-btn {
+  min-height: 44px;
+  padding: 6px 2px;
+  font-size: 1.1rem;
+  gap: 2px;
+  flex-direction: column;
+}
+html.garden-full .garden-controls .garden-ctl-btn span { font-size: 0.62rem; }
+
+/* The look strips down the sides of the plot are drag areas, not the page. */
+html.garden-full .garden-plot-wrap { touch-action: none; }
+
+/* ===================== the shop, on a phone =====================
+
+   On a computer the shop is two columns of small rows, which suits a panel
+   beside the garden. In a phone sheet the same rows read like a web form.
+   There it gets a tab per kind of thing and a grid of big tiles, each with
+   its price on a button you can hit with a thumb. */
+.shop-tabs { display: none; }
+.shop-column .shop-sec:first-child .shop-section-title:first-child { margin-top: 0; }
+
+html[data-mode="phone"] .shop-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+html[data-mode="phone"] .shop-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 2px 7px;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--bg);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+html[data-mode="phone"] .shop-tab span { font-size: 1.35rem; line-height: 1.1; }
+html[data-mode="phone"] .shop-tab.on {
+  color: var(--text);
+  background: var(--panel);
+  border-color: #e0ab24;
+  box-shadow: 0 3px 0 #a8770c;
+}
+html[data-mode="phone"] .shop-tab:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+html[data-mode="phone"] .shop-columns { display: block; }
+html[data-mode="phone"] .shop-sec:not(.on) { display: none; }
+/* The tab already names the section; Food keeps its heading inside Pets. */
+html[data-mode="phone"] .shop-sec > .shop-section-title:first-child { display: none; }
+html[data-mode="phone"] .shop-subtitle { font-size: 0.72rem; margin: 16px 0 8px; }
+html[data-mode="phone"] .shop-info { font-size: 0.8rem; margin-bottom: 8px; }
+
+html[data-mode="phone"] .shop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+html[data-mode="phone"] .shop-tile {
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 12px 8px 8px;
+  border-radius: 14px;
+  border-width: 2px;
+  background: var(--panel);
+  text-align: center;
+  min-height: 132px;
+}
+html[data-mode="phone"] .shop-tile-icon { font-size: 2rem; }
+html[data-mode="phone"] .shop-tile-icon svg { width: 40px; height: 40px; }
+html[data-mode="phone"] .shop-tile-label { font-size: 0.8rem; font-weight: 600; flex: 1; display: flex; align-items: center; }
+/* The price is the button. */
+html[data-mode="phone"] .shop-tile-action {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 38px;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  color: #fff;
+  background: linear-gradient(180deg, #f0c649, #e0ab24 62%);
+  box-shadow: 0 3px 0 #a8770c;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+html[data-mode="phone"] .shop-tile:active:not(:disabled) .shop-tile-action { transform: translateY(2px); box-shadow: 0 1px 0 #a8770c; }
+html[data-mode="phone"] .shop-tile.equipped .shop-tile-action { background: var(--green); box-shadow: none; color: #fff; }
+html[data-mode="phone"] .shop-tile.owned .shop-tile-action { background: var(--bg); color: var(--text); box-shadow: inset 0 0 0 2px var(--border); text-shadow: none; }
+html[data-mode="phone"] .shop-tile.sell .shop-tile-action { background: var(--green); box-shadow: 0 3px 0 #1d7a4e; }
+html[data-mode="phone"] .shop-tile:disabled .shop-tile-action { background: var(--border); color: var(--muted); box-shadow: none; text-shadow: none; }
+html[data-mode="phone"] .shop-coins { font-size: 1.1rem; font-weight: 700; }
+
+/* The gardener on the Overview, reading the numbers out. */
+.overview-guide { display: flex; align-items: flex-end; gap: 12px; margin: 0 0 16px; }
+.overview-guide .gn-sprite { flex: none; width: 48px; display: flex; justify-content: center; }
+.overview-guide .gn-sprite svg { display: block; image-rendering: pixelated; transform: scale(1.5); transform-origin: bottom center; }
+.overview-bubble {
+  position: relative;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.overview-bubble::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  bottom: 10px;
+  border: 6px solid transparent;
+  border-left: 0;
+  border-right-color: var(--accent-soft);
+}
+
+/* Only the Tasks page and Plan My Day offer + New Task. */
+html[data-view]:not([data-view="list"]):not([data-view="plan"]) .new-task-btn-row { display: none; }
+
+/* The garden fills a tablet's width on the Garden screen: the phone column
+   cap left a 560px strip in the middle of an iPad. */
+html.garden-full .app-layout.view-garden > .garden-col { max-width: none; }
+
+/* The help gardener: sprite in the corner, a thought bubble with a question
+   mark over their head. The whole thing is the button. */
+.panel-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.panel-head-row h2 { margin-bottom: 0; }
+.help-gardener-slot { flex: none; margin-left: auto; }
+.help-gardener {
+  position: relative;
+  display: block;
+  width: 46px;
+  height: 58px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.help-gardener:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.help-gardener .hg-sprite { position: absolute; left: 8px; bottom: 0; }
+.help-gardener .hg-sprite svg { display: block; image-rendering: pixelated; }
+.help-gardener .hg-thought {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 0.8rem;
+  line-height: 18px;
+  text-align: center;
+  animation: hg-bob 2.4s ease-in-out infinite;
+}
+.help-gardener .hg-thought::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  bottom: -5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 2px solid var(--accent);
+}
+.help-gardener:active .hg-thought { background: var(--accent-soft); }
+@keyframes hg-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .help-gardener .hg-thought { animation: none; } }
+
+.explain { display: flex; gap: 14px; align-items: flex-start; }
+.explain .gn-sprite { flex: none; padding-top: 4px; }
+.explain .gn-sprite svg { display: block; image-rendering: pixelated; }
+.explain p { margin: 0 0 10px; line-height: 1.5; }
+/* On a phone the plan's toggle takes a line of its own; the gardener stays
+   up beside the title. */
+html[data-mode="phone"] .plan-head .plan-head-text { order: 1; flex: 1; min-width: 0; }
+html[data-mode="phone"] .plan-head .help-gardener-slot { order: 2; }
+html[data-mode="phone"] .plan-head .cal-view-toggle { order: 3; }
+
 </style>
 </head>
 <body class="gated">
@@ -5169,6 +5406,7 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
       <div class="tend-loading" id="tend-loading">
         <svg viewBox="0 0 64 44" shape-rendering="crispEdges" role="img" aria-label="Loading Tend">
           <!-- soil -->
+          <rect x="0" y="37" width="18" height="2" fill="#4fa754"/>
           <rect x="16" y="38" width="32" height="2" fill="#6b4423"/>
           <rect x="18" y="36" width="28" height="2" fill="#8a5a2e"/>
 
@@ -5183,31 +5421,31 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
             <rect x="33" y="25" width="4" height="2" fill="#4fa754"/>
             <rect x="30" y="23" width="4" height="3" fill="#6bc06e"/>
           </g>
-          <g class="tend-stage tend-s3">
-            <rect x="31" y="20" width="2" height="16" fill="#6b4423"/>
-            <rect x="25" y="26" width="6" height="2" fill="#4fa754"/>
-            <rect x="33" y="22" width="6" height="2" fill="#4fa754"/>
-            <rect x="26" y="15" width="12" height="6" fill="#4fa754"/>
-            <rect x="28" y="12" width="8" height="4" fill="#6bc06e"/>
-          </g>
+          <!-- the full-grown flower: one of the fifty garden plants, picked
+               afresh on every load by boot.js -->
+          <g class="tend-stage tend-s3"><g id="tend-loading-flower" transform="translate(25,22)"></g></g>
 
-          <!-- the can, tipping in from the left -->
-          <g class="tend-can">
-            <rect x="6" y="14" width="12" height="10" fill="#b9bec6"/>
-            <rect x="6" y="14" width="12" height="2" fill="#cfd4da"/>
-            <rect x="15" y="22" width="3" height="2" fill="#a4aab3"/>
-            <rect x="18" y="16" width="6" height="2" fill="#a4aab3"/>
-            <rect x="23" y="18" width="3" height="2" fill="#a4aab3"/>
-            <rect x="4" y="16" width="2" height="6" fill="#a4aab3"/>
-            <rect x="9" y="11" width="6" height="3" fill="#a4aab3"/>
-            <rect x="10" y="12" width="4" height="1" fill="#b9bec6"/>
+          <!-- the gardener, filled in by boot.js (as whoever last signed in
+               here), with the can in their hand -->
+          <g id="tend-loading-gardener" transform="translate(0,17)"></g>
+          <g transform="translate(14,19) scale(0.5)">
+            <g class="tend-can">
+              <rect x="6" y="14" width="12" height="10" fill="#b9bec6"/>
+              <rect x="6" y="14" width="12" height="2" fill="#cfd4da"/>
+              <rect x="15" y="22" width="3" height="2" fill="#a4aab3"/>
+              <rect x="18" y="16" width="6" height="2" fill="#a4aab3"/>
+              <rect x="23" y="18" width="3" height="2" fill="#a4aab3"/>
+              <rect x="4" y="16" width="2" height="6" fill="#a4aab3"/>
+              <rect x="9" y="11" width="6" height="3" fill="#a4aab3"/>
+              <rect x="10" y="12" width="4" height="1" fill="#b9bec6"/>
+            </g>
           </g>
 
           <!-- and what comes out of it -->
           <g class="tend-drops">
-            <rect class="tend-drop" x="26" y="22" width="2" height="3" fill="#7fc4e8"/>
-            <rect class="tend-drop" x="29" y="22" width="2" height="3" fill="#9ed6f0"/>
-            <rect class="tend-drop" x="32" y="22" width="2" height="3" fill="#7fc4e8"/>
+            <rect class="tend-drop" x="27" y="28" width="1" height="2" fill="#7fc4e8"/>
+            <rect class="tend-drop" x="29" y="28" width="1" height="2" fill="#9ed6f0"/>
+            <rect class="tend-drop" x="31" y="28" width="1" height="2" fill="#7fc4e8"/>
           </g>
         </svg>
         <p class="tend-loading-word">Growing your garden&hellip;</p>
@@ -5354,20 +5592,37 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
   <div class="panel" id="shop-panel">
     <h2 id="shop-panel-title">Shop</h2>
     <div class="shop-coins" id="shop-coins-row"><span id="shop-coins-icon"></span> <span id="shop-coins-amt">0</span></div>
+    <!-- Phone only: one tab per kind of thing, so the shop is a few big
+         buttons at a time rather than a page of small print. On a computer
+         the tabs are hidden and every section shows in the two columns. -->
+    <div class="shop-tabs" role="tablist" aria-label="Shop sections">
+      <button type="button" role="tab" class="shop-tab on" data-shop-tab="plants" aria-selected="true"><span aria-hidden="true">&#x1F331;</span>Plants</button>
+      <button type="button" role="tab" class="shop-tab" data-shop-tab="tools" aria-selected="false"><span aria-hidden="true">&#x1FA93;</span>Tools</button>
+      <button type="button" role="tab" class="shop-tab" data-shop-tab="outfits" aria-selected="false"><span aria-hidden="true">&#x1F452;</span>Outfits</button>
+      <button type="button" role="tab" class="shop-tab" data-shop-tab="pets" aria-selected="false"><span aria-hidden="true">&#x1F43E;</span>Pets</button>
+    </div>
     <div class="shop-columns">
       <div class="shop-column">
-        <div class="shop-section-title">Plants</div>
-        <div id="shop-plants"></div>
-        <div class="shop-section-title">Pets</div>
-        <div id="shop-pets"></div>
-        <div class="shop-section-title">Food</div>
-        <div id="shop-treats"></div>
+        <section class="shop-sec on" data-shop-sec="plants">
+          <div class="shop-section-title">Plants</div>
+          <div id="shop-plants"></div>
+        </section>
+        <section class="shop-sec" data-shop-sec="pets">
+          <div class="shop-section-title">Pets</div>
+          <div id="shop-pets"></div>
+          <div class="shop-section-title shop-subtitle">Food</div>
+          <div id="shop-treats"></div>
+        </section>
       </div>
       <div class="shop-column">
-        <div class="shop-section-title">Items</div>
-        <div id="shop-items"></div>
-        <div class="shop-section-title">Outfits</div>
-        <div id="shop-outfits"></div>
+        <section class="shop-sec" data-shop-sec="tools">
+          <div class="shop-section-title">Items</div>
+          <div id="shop-items"></div>
+        </section>
+        <section class="shop-sec" data-shop-sec="outfits">
+          <div class="shop-section-title">Outfits</div>
+          <div id="shop-outfits"></div>
+        </section>
       </div>
     </div>
   </div>
@@ -5450,8 +5705,8 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
           <p class="plan-sub" id="plan-sub"></p>
         </div>
         <div class="cal-view-toggle" id="plan-mode-toggle"></div>
+        <span class="help-gardener-slot" data-help="plan"></span>
       </div>
-      <p class="category-hint plan-hint">Every task you star turns up here. Drag the rows into the order you mean to do them in today — on a phone, hold one for a moment first.</p>
       <div id="plan-body"></div>
     </div>
   </div>
@@ -5487,7 +5742,7 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
 
   <div id="view-overview" class="view">
     <div class="panel overview-panel">
-      <h2>Overview</h2>
+      <div class="panel-head-row"><h2>Overview</h2><span class="help-gardener-slot" data-help="overview"></span></div>
       <div id="stats-chart"></div>
     </div>
 
@@ -10541,6 +10796,11 @@ const Garden = (function () {
        was tried and the tiles came out too big to read as a garden, so a
        narrow screen scrolls the camera over tiles of their own size instead. */
     plotScale = (avail > 0 && avail < natural) ? Math.max(0.35, avail / natural) : 1;
+    /* ...except on a tablet in phone view, where a phone-sized plot sat in the
+       middle of a lot of empty screen. There it grows to the width it has.
+       ponytail: 600px is the phone/tablet line; tune it if a big phone in
+       landscape starts looking oversized. */
+    if (cameraMode() && avail >= TABLET_MIN_WIDTH && avail > natural) plotScale = Math.min(3, avail / natural);
 
     /* A transform paints at a different size but still occupies its natural
        width in the layout, so the flexbox would centre the wrong box: too far
@@ -10601,6 +10861,9 @@ const Garden = (function () {
      as the gardener walking. Kept as a knob because how much warning feels
      right is taste, not arithmetic. */
   const CAMERA_EDGE_ROWS = 0;
+
+  /* Wide enough to be a tablet: the plot grows to fill it (see fitPlot). */
+  const TABLET_MIN_WIDTH = 600;
 
   /* The clamp on its own, so it can be checked without a browser:
      test/camera.test.js. Given where the window is now, says where it should
@@ -10664,7 +10927,7 @@ const Garden = (function () {
     return { row, col };
   }
 
-  function handleGardenTouchStart(event) {
+  function handleGardenTouchStart(event, outside) {
     stopWalking();
     const t = event.changedTouches && event.changedTouches[0];
     if (!t) return;
@@ -10674,8 +10937,60 @@ const Garden = (function () {
       firstAxis: null,
       /* A drag that begins on the gardener is a "walk over there" - the most
          natural way to move a character with a finger. */
-      onHero: !!cell && cell.row === heroPos.row && cell.col === heroPos.col
+      onHero: !!cell && cell.row === heroPos.row && cell.col === heroPos.col,
+      /* A finger that lands on the very edge of a phone screen can drag the
+         view up and down instead, to look at the next section without walking
+         there. A tap there is still a tap - it only becomes a look once it
+         moves up or down. */
+      edge: cameraMode() && (outside || t.clientX < LOOK_EDGE_PX || t.clientX > window.innerWidth - LOOK_EDGE_PX),
+      outside: !!outside,
+      look: false,
+      pan: plotPan
     };
+  }
+
+  /* How wide the look strip down each side of a phone screen is. */
+  const LOOK_EDGE_PX = 32;
+
+  /* The strips either side of the plot, where it does not reach the screen's
+     edges. The plot's own inline handlers never see a touch there, so the wrap
+     passes those on, marked as off the plot. Bound once. */
+  /* The shop's tabs (phone view only - CSS hides them on a computer). The
+     tiles are redrawn on every purchase, but the sections they sit in are
+     not, so the chosen tab survives a purchase. Bound once. */
+  let shopTabsBound = false;
+  function bindShopTabs() {
+    if (shopTabsBound) return;
+    shopTabsBound = true;
+    document.querySelectorAll('[data-shop-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.shopTab;
+        document.querySelectorAll('[data-shop-tab]').forEach(b => {
+          const on = b === btn;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        document.querySelectorAll('[data-shop-sec]').forEach(sec => sec.classList.toggle('on', sec.dataset.shopSec === tab));
+      });
+    });
+  }
+
+  let sideLookBound = false;
+  function bindSideLook() {
+    const wrap = document.querySelector('.garden-plot-wrap');
+    if (sideLookBound || !wrap) return;
+    sideLookBound = true;
+    const off = e => !e.target.closest('#garden-plot');
+    wrap.addEventListener('touchstart', e => { if (off(e)) handleGardenTouchStart(e, true); }, { passive: true });
+    wrap.addEventListener('touchmove', e => { if (off(e)) handleGardenTouchMove(e); }, { passive: false });
+    wrap.addEventListener('touchend', e => { if (off(e)) handleGardenTouchEnd(e); }, { passive: false });
+  }
+
+  function lookBy(start, dy) {
+    const v = plotViewport();
+    if (!v) return;
+    plotPan = Math.max(0, Math.min(v.maxPan, start.pan - dy));
+    applyPlotTransform();
   }
 
   /* The way the line was drawn decides which leg is walked first. The first
@@ -10688,13 +11003,27 @@ const Garden = (function () {
      up on its own - it moves only at the edges, which is what made the free
      look unnecessary. */
   function handleGardenTouchMove(event) {
-    if (!touchStart || touchStart.firstAxis) return;
+    if (!touchStart) return;
     const t = event.changedTouches && event.changedTouches[0];
     if (!t) return;
     const dx = t.clientX - touchStart.x;
     const dy = t.clientY - touchStart.y;
+    if (touchStart.look) {
+      event.preventDefault();
+      lookBy(touchStart, dy);
+      return;
+    }
+    if (touchStart.firstAxis) return;
     if (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP) {
       touchStart.firstAxis = Math.abs(dy) >= Math.abs(dx) ? 'row' : 'col';
+      if (touchStart.edge && touchStart.firstAxis === 'row') {
+        /* Follow the finger exactly: the slide that smooths a walk would make
+           a drag lag behind it. */
+        touchStart.look = true;
+        document.getElementById('garden-plot').style.transition = 'none';
+        event.preventDefault();
+        lookBy(touchStart, dy);
+      }
     }
   }
 
@@ -10705,6 +11034,16 @@ const Garden = (function () {
     const dy = t.clientY - touchStart.y;
     const start = touchStart;
     touchStart = null;
+
+    /* A look leaves the view where it was let go. The next step the gardener
+       takes brings them back into it. */
+    if (start.look) {
+      event.preventDefault();
+      document.getElementById('garden-plot').style.transition = '';
+      return;
+    }
+    /* Off the plot, only a look does anything. */
+    if (start.outside) return;
 
     const moved = Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP;
 
@@ -12713,6 +13052,8 @@ const Garden = (function () {
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.';
     render();
+    bindSideLook();
+    bindShopTabs();
     applyGardenVisibility();
     startPetTicker();
     startAmbient();
@@ -12900,6 +13241,50 @@ const App = (function () {
     if (!hasGarden() || !Garden.heroSVG) return `<${t} class="empty-note">${text}</${t}>`;
     return `<${t} class="empty-note gardener-note"><span class="gn-sprite" aria-hidden="true">${Garden.heroSVG('down')}</span>`
       + `<span class="gn-say">${text}</span></${t}>`;
+  }
+
+  /* The gardener in the corner of Plan My Day and the Overview, with a
+     question mark over their head. The page used to carry its explanation
+     as a paragraph above everything; now it is one tap away. */
+  function renderHelpGardeners() {
+    document.querySelectorAll('.help-gardener-slot').forEach(slot => {
+      if (!hasGarden() || !Garden.heroSVG) { slot.innerHTML = ''; return; }
+      slot.innerHTML = `<button type="button" class="help-gardener" onclick="App.explain('${slot.dataset.help}')"
+          aria-label="What is this page for?" title="What is this page for?">
+          <span class="hg-thought" aria-hidden="true">?</span>
+          <span class="hg-sprite" aria-hidden="true">${Garden.heroSVG('down')}</span>
+        </button>`;
+    });
+  }
+
+  function explain(topic) {
+    const place = Store.prefs().world === 'ocean' ? 'reef' : 'garden';
+    let title, paras;
+    if (topic === 'plan') {
+      title = 'Plan My Day';
+      paras = [
+        'Every task you star turns up here, so this is the list of what you mean to get done today.',
+        'Drag the rows into the order you mean to do them in. On a phone, hold a row for a moment first, so an ordinary swipe still scrolls.',
+        'Times puts the day on the clock: drag a task onto the half hour you mean to do it. Anything you have not placed waits underneath.',
+        'Tick something off and it leaves the plan, and it is ticked off on the Tasks page too.'
+      ];
+    } else {
+      const list = tickets();
+      const done = list.filter(t => !!t.completedAt).length;
+      title = 'Overview';
+      paras = [
+        done ? "You've finished " + done + (done === 1 ? ' task' : ' tasks') + ' so far, and every one of them went into the ' + place + '.'
+             : "Nothing finished yet. Tick a task off and I'll start on the " + place + '.',
+        'The top card counts your open tasks, split into priority, active and archived, and how many you have finished altogether.',
+        'Categories are the labels your tasks use. Add one, drag the handle to change the order, or remove one. Each colour is also the colour of its pots in the ' + place + '.',
+        'Tasks by category shows every task grouped under its label.'
+      ];
+    }
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = '<div class="explain">'
+      + (hasGarden() && Garden.heroSVG ? '<span class="gn-sprite" aria-hidden="true">' + Garden.heroSVG('down') + '</span>' : '')
+      + '<div>' + paras.map(p => '<p>' + Util.escapeHtml(p) + '</p>').join('') + '</div></div>';
+    openBackdrop('modal-backdrop');
   }
 
   function nothingActiveNote() {
@@ -14459,6 +14844,7 @@ const App = (function () {
   }
 
   function renderStats() {
+    renderHelpGardeners();
     const list = tickets();
     const priorityCount = list.filter(t => !t.completedAt && !t.archived && t.priority).length;
     const activeCount = list.filter(t => !t.completedAt && !t.archived && !t.priority).length;
@@ -14523,6 +14909,12 @@ const App = (function () {
     const pref = viewModePref();
     if (pref === 'phone') return true;
     if (pref === 'desktop') return false;
+    /* A tablet is a big phone, not a small computer: it is held and touched,
+       with no mouse to hover or keys to walk with. An iPad is wider than the
+       phone cut-off, so on width alone it got the computer layout with phone
+       bits mixed in. A screen whose main pointer is a finger gets phone view
+       at any size. */
+    if (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches) return true;
     return window.innerWidth <= PHONE_MAX_WIDTH;
   }
 
@@ -14638,6 +15030,8 @@ const App = (function () {
          behind it, so the plot can pan to follow the gardener instead of the
          page having to be dragged to find them. See .garden-full. */
       document.documentElement.classList.toggle('garden-full', phoneView && view === 'garden');
+      /* New Task belongs where tasks are: the Tasks page and Plan My Day. */
+      document.documentElement.dataset.view = view;
       /* The sidebar belongs to the task list; the other sections take the width. */
       layout.classList.toggle('no-sidebar', view !== 'list');
     }
@@ -16416,6 +16810,7 @@ const App = (function () {
 
   function renderPlan() {
     renderPlanIcon();
+    renderHelpGardeners();
     const host = document.getElementById('plan-body');
     if (!host) return;
     renderPlanModeToggle();
@@ -17028,7 +17423,7 @@ const App = (function () {
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
     saveDisplayName, exportBackup, forcePull, eraseEverything, deleteAccount,
     setDigest, setDigestHour,
-    signOut, switchProfile
+    signOut, switchProfile, explain
   };
 })();
 
@@ -17745,6 +18140,24 @@ const Auth = (function () {
   }
 
   document.title = NAME;
+
+  /* The loading picture: the gardener waters a seedling and it comes up as
+     one of the fifty garden flowers, a different one each time the app opens.
+     The sprite's own little can is taken out, since they are holding the big
+     one. Always the garden farmer, whatever world was last here - watering
+     a seedling is a garden thing. */
+  (function () {
+    const flower = document.getElementById('tend-loading-flower');
+    const man = document.getElementById('tend-loading-gardener');
+    if (!flower || !man) return;
+    const plants = Worlds.get('garden').plants;
+    flower.innerHTML = plants[Math.floor(Math.random() * plants.length)].plant;
+    let hero = Worlds.DEFAULT_HERO;
+    try { hero = (JSON.parse(localStorage.getItem('tend:gate-look')) || {}).hero || hero; } catch (e) { /* private mode */ }
+    man.innerHTML = Worlds.heroSVG('garden', hero, 'down')
+      .replace(/<rect[^>]*#8a8f98[^>]*\/>/g, '')
+      .replace(/width="\d+" height="\d+"/, 'width="19" height="20"');
+  })();
 
   const authBrand = document.getElementById('auth-brand');
   authBrand.innerHTML = markHTML() + '<span class="auth-brand-name">' + Util.escapeHtml(NAME) + '</span>';

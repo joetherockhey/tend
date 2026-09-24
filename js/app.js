@@ -68,6 +68,50 @@ const App = (function () {
       + `<span class="gn-say">${text}</span></${t}>`;
   }
 
+  /* The gardener in the corner of Plan My Day and the Overview, with a
+     question mark over their head. The page used to carry its explanation
+     as a paragraph above everything; now it is one tap away. */
+  function renderHelpGardeners() {
+    document.querySelectorAll('.help-gardener-slot').forEach(slot => {
+      if (!hasGarden() || !Garden.heroSVG) { slot.innerHTML = ''; return; }
+      slot.innerHTML = `<button type="button" class="help-gardener" onclick="App.explain('${slot.dataset.help}')"
+          aria-label="What is this page for?" title="What is this page for?">
+          <span class="hg-thought" aria-hidden="true">?</span>
+          <span class="hg-sprite" aria-hidden="true">${Garden.heroSVG('down')}</span>
+        </button>`;
+    });
+  }
+
+  function explain(topic) {
+    const place = Store.prefs().world === 'ocean' ? 'reef' : 'garden';
+    let title, paras;
+    if (topic === 'plan') {
+      title = 'Plan My Day';
+      paras = [
+        'Every task you star turns up here, so this is the list of what you mean to get done today.',
+        'Drag the rows into the order you mean to do them in. On a phone, hold a row for a moment first, so an ordinary swipe still scrolls.',
+        'Times puts the day on the clock: drag a task onto the half hour you mean to do it. Anything you have not placed waits underneath.',
+        'Tick something off and it leaves the plan, and it is ticked off on the Tasks page too.'
+      ];
+    } else {
+      const list = tickets();
+      const done = list.filter(t => !!t.completedAt).length;
+      title = 'Overview';
+      paras = [
+        done ? "You've finished " + done + (done === 1 ? ' task' : ' tasks') + ' so far, and every one of them went into the ' + place + '.'
+             : "Nothing finished yet. Tick a task off and I'll start on the " + place + '.',
+        'The top card counts your open tasks, split into priority, active and archived, and how many you have finished altogether.',
+        'Categories are the labels your tasks use. Add one, drag the handle to change the order, or remove one. Each colour is also the colour of its pots in the ' + place + '.',
+        'Tasks by category shows every task grouped under its label.'
+      ];
+    }
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = '<div class="explain">'
+      + (hasGarden() && Garden.heroSVG ? '<span class="gn-sprite" aria-hidden="true">' + Garden.heroSVG('down') + '</span>' : '')
+      + '<div>' + paras.map(p => '<p>' + Util.escapeHtml(p) + '</p>').join('') + '</div></div>';
+    openBackdrop('modal-backdrop');
+  }
+
   function nothingActiveNote() {
     return gardenerNote(Store.prefs().world === 'ocean'
       ? "Nothing to do yet. Add a task and I'll get the reef ready."
@@ -1625,6 +1669,7 @@ const App = (function () {
   }
 
   function renderStats() {
+    renderHelpGardeners();
     const list = tickets();
     const priorityCount = list.filter(t => !t.completedAt && !t.archived && t.priority).length;
     const activeCount = list.filter(t => !t.completedAt && !t.archived && !t.priority).length;
@@ -1689,6 +1734,12 @@ const App = (function () {
     const pref = viewModePref();
     if (pref === 'phone') return true;
     if (pref === 'desktop') return false;
+    /* A tablet is a big phone, not a small computer: it is held and touched,
+       with no mouse to hover or keys to walk with. An iPad is wider than the
+       phone cut-off, so on width alone it got the computer layout with phone
+       bits mixed in. A screen whose main pointer is a finger gets phone view
+       at any size. */
+    if (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches) return true;
     return window.innerWidth <= PHONE_MAX_WIDTH;
   }
 
@@ -1804,6 +1855,8 @@ const App = (function () {
          behind it, so the plot can pan to follow the gardener instead of the
          page having to be dragged to find them. See .garden-full. */
       document.documentElement.classList.toggle('garden-full', phoneView && view === 'garden');
+      /* New Task belongs where tasks are: the Tasks page and Plan My Day. */
+      document.documentElement.dataset.view = view;
       /* The sidebar belongs to the task list; the other sections take the width. */
       layout.classList.toggle('no-sidebar', view !== 'list');
     }
@@ -3582,6 +3635,7 @@ const App = (function () {
 
   function renderPlan() {
     renderPlanIcon();
+    renderHelpGardeners();
     const host = document.getElementById('plan-body');
     if (!host) return;
     renderPlanModeToggle();
@@ -4194,6 +4248,6 @@ const App = (function () {
     toggleAccountMenu, openSettings, closeSettings, closeSettingsOnBackdrop, setWorld,
     saveDisplayName, exportBackup, forcePull, eraseEverything, deleteAccount,
     setDigest, setDigestHour,
-    signOut, switchProfile
+    signOut, switchProfile, explain
   };
 })();

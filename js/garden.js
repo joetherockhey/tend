@@ -1623,6 +1623,11 @@ const Garden = (function () {
        was tried and the tiles came out too big to read as a garden, so a
        narrow screen scrolls the camera over tiles of their own size instead. */
     plotScale = (avail > 0 && avail < natural) ? Math.max(0.35, avail / natural) : 1;
+    /* ...except on a tablet in phone view, where a phone-sized plot sat in the
+       middle of a lot of empty screen. There it grows to the width it has.
+       ponytail: 600px is the phone/tablet line; tune it if a big phone in
+       landscape starts looking oversized. */
+    if (cameraMode() && avail >= TABLET_MIN_WIDTH && avail > natural) plotScale = Math.min(3, avail / natural);
 
     /* A transform paints at a different size but still occupies its natural
        width in the layout, so the flexbox would centre the wrong box: too far
@@ -1683,6 +1688,9 @@ const Garden = (function () {
      as the gardener walking. Kept as a knob because how much warning feels
      right is taste, not arithmetic. */
   const CAMERA_EDGE_ROWS = 0;
+
+  /* Wide enough to be a tablet: the plot grows to fill it (see fitPlot). */
+  const TABLET_MIN_WIDTH = 600;
 
   /* The clamp on its own, so it can be checked without a browser:
      test/camera.test.js. Given where the window is now, says where it should
@@ -1746,7 +1754,7 @@ const Garden = (function () {
     return { row, col };
   }
 
-  function handleGardenTouchStart(event) {
+  function handleGardenTouchStart(event, outside) {
     stopWalking();
     const t = event.changedTouches && event.changedTouches[0];
     if (!t) return;
@@ -1756,8 +1764,60 @@ const Garden = (function () {
       firstAxis: null,
       /* A drag that begins on the gardener is a "walk over there" - the most
          natural way to move a character with a finger. */
-      onHero: !!cell && cell.row === heroPos.row && cell.col === heroPos.col
+      onHero: !!cell && cell.row === heroPos.row && cell.col === heroPos.col,
+      /* A finger that lands on the very edge of a phone screen can drag the
+         view up and down instead, to look at the next section without walking
+         there. A tap there is still a tap - it only becomes a look once it
+         moves up or down. */
+      edge: cameraMode() && (outside || t.clientX < LOOK_EDGE_PX || t.clientX > window.innerWidth - LOOK_EDGE_PX),
+      outside: !!outside,
+      look: false,
+      pan: plotPan
     };
+  }
+
+  /* How wide the look strip down each side of a phone screen is. */
+  const LOOK_EDGE_PX = 32;
+
+  /* The strips either side of the plot, where it does not reach the screen's
+     edges. The plot's own inline handlers never see a touch there, so the wrap
+     passes those on, marked as off the plot. Bound once. */
+  /* The shop's tabs (phone view only - CSS hides them on a computer). The
+     tiles are redrawn on every purchase, but the sections they sit in are
+     not, so the chosen tab survives a purchase. Bound once. */
+  let shopTabsBound = false;
+  function bindShopTabs() {
+    if (shopTabsBound) return;
+    shopTabsBound = true;
+    document.querySelectorAll('[data-shop-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.shopTab;
+        document.querySelectorAll('[data-shop-tab]').forEach(b => {
+          const on = b === btn;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        document.querySelectorAll('[data-shop-sec]').forEach(sec => sec.classList.toggle('on', sec.dataset.shopSec === tab));
+      });
+    });
+  }
+
+  let sideLookBound = false;
+  function bindSideLook() {
+    const wrap = document.querySelector('.garden-plot-wrap');
+    if (sideLookBound || !wrap) return;
+    sideLookBound = true;
+    const off = e => !e.target.closest('#garden-plot');
+    wrap.addEventListener('touchstart', e => { if (off(e)) handleGardenTouchStart(e, true); }, { passive: true });
+    wrap.addEventListener('touchmove', e => { if (off(e)) handleGardenTouchMove(e); }, { passive: false });
+    wrap.addEventListener('touchend', e => { if (off(e)) handleGardenTouchEnd(e); }, { passive: false });
+  }
+
+  function lookBy(start, dy) {
+    const v = plotViewport();
+    if (!v) return;
+    plotPan = Math.max(0, Math.min(v.maxPan, start.pan - dy));
+    applyPlotTransform();
   }
 
   /* The way the line was drawn decides which leg is walked first. The first
@@ -1770,13 +1830,27 @@ const Garden = (function () {
      up on its own - it moves only at the edges, which is what made the free
      look unnecessary. */
   function handleGardenTouchMove(event) {
-    if (!touchStart || touchStart.firstAxis) return;
+    if (!touchStart) return;
     const t = event.changedTouches && event.changedTouches[0];
     if (!t) return;
     const dx = t.clientX - touchStart.x;
     const dy = t.clientY - touchStart.y;
+    if (touchStart.look) {
+      event.preventDefault();
+      lookBy(touchStart, dy);
+      return;
+    }
+    if (touchStart.firstAxis) return;
     if (Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP) {
       touchStart.firstAxis = Math.abs(dy) >= Math.abs(dx) ? 'row' : 'col';
+      if (touchStart.edge && touchStart.firstAxis === 'row') {
+        /* Follow the finger exactly: the slide that smooths a walk would make
+           a drag lag behind it. */
+        touchStart.look = true;
+        document.getElementById('garden-plot').style.transition = 'none';
+        event.preventDefault();
+        lookBy(touchStart, dy);
+      }
     }
   }
 
@@ -1787,6 +1861,16 @@ const Garden = (function () {
     const dy = t.clientY - touchStart.y;
     const start = touchStart;
     touchStart = null;
+
+    /* A look leaves the view where it was let go. The next step the gardener
+       takes brings them back into it. */
+    if (start.look) {
+      event.preventDefault();
+      document.getElementById('garden-plot').style.transition = '';
+      return;
+    }
+    /* Off the plot, only a look does anything. */
+    if (start.outside) return;
 
     const moved = Math.abs(dx) > TAP_SLOP || Math.abs(dy) > TAP_SLOP;
 
@@ -3798,6 +3882,8 @@ const Garden = (function () {
     const buyHint = document.getElementById('garden-buy-hint');
     if (buyHint) buyHint.textContent = 'Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.';
     render();
+    bindSideLook();
+    bindShopTabs();
     applyGardenVisibility();
     startPetTicker();
     startAmbient();

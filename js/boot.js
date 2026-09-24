@@ -17,6 +17,24 @@
 
   document.title = NAME;
 
+  /* The loading picture: the gardener waters a seedling and it comes up as
+     one of the fifty garden flowers, a different one each time the app opens.
+     The sprite's own little can is taken out, since they are holding the big
+     one. Always the garden farmer, whatever world was last here - watering
+     a seedling is a garden thing. */
+  (function () {
+    const flower = document.getElementById('tend-loading-flower');
+    const man = document.getElementById('tend-loading-gardener');
+    if (!flower || !man) return;
+    const plants = Worlds.get('garden').plants;
+    flower.innerHTML = plants[Math.floor(Math.random() * plants.length)].plant;
+    let hero = Worlds.DEFAULT_HERO;
+    try { hero = (JSON.parse(localStorage.getItem('tend:gate-look')) || {}).hero || hero; } catch (e) { /* private mode */ }
+    man.innerHTML = Worlds.heroSVG('garden', hero, 'down')
+      .replace(/<rect[^>]*#8a8f98[^>]*\/>/g, '')
+      .replace(/width="\d+" height="\d+"/, 'width="19" height="20"');
+  })();
+
   const authBrand = document.getElementById('auth-brand');
   authBrand.innerHTML = markHTML() + '<span class="auth-brand-name">' + Util.escapeHtml(NAME) + '</span>';
   document.getElementById('auth-tagline').textContent = TAGLINE;

@@ -36,6 +36,7 @@
       <div class="tend-loading" id="tend-loading">
         <svg viewBox="0 0 64 44" shape-rendering="crispEdges" role="img" aria-label="Loading Tend">
           <!-- soil -->
+          <rect x="0" y="37" width="18" height="2" fill="#4fa754"/>
           <rect x="16" y="38" width="32" height="2" fill="#6b4423"/>
           <rect x="18" y="36" width="28" height="2" fill="#8a5a2e"/>
 
@@ -50,31 +51,31 @@
             <rect x="33" y="25" width="4" height="2" fill="#4fa754"/>
             <rect x="30" y="23" width="4" height="3" fill="#6bc06e"/>
           </g>
-          <g class="tend-stage tend-s3">
-            <rect x="31" y="20" width="2" height="16" fill="#6b4423"/>
-            <rect x="25" y="26" width="6" height="2" fill="#4fa754"/>
-            <rect x="33" y="22" width="6" height="2" fill="#4fa754"/>
-            <rect x="26" y="15" width="12" height="6" fill="#4fa754"/>
-            <rect x="28" y="12" width="8" height="4" fill="#6bc06e"/>
-          </g>
+          <!-- the full-grown flower: one of the fifty garden plants, picked
+               afresh on every load by boot.js -->
+          <g class="tend-stage tend-s3"><g id="tend-loading-flower" transform="translate(25,22)"></g></g>
 
-          <!-- the can, tipping in from the left -->
-          <g class="tend-can">
-            <rect x="6" y="14" width="12" height="10" fill="#b9bec6"/>
-            <rect x="6" y="14" width="12" height="2" fill="#cfd4da"/>
-            <rect x="15" y="22" width="3" height="2" fill="#a4aab3"/>
-            <rect x="18" y="16" width="6" height="2" fill="#a4aab3"/>
-            <rect x="23" y="18" width="3" height="2" fill="#a4aab3"/>
-            <rect x="4" y="16" width="2" height="6" fill="#a4aab3"/>
-            <rect x="9" y="11" width="6" height="3" fill="#a4aab3"/>
-            <rect x="10" y="12" width="4" height="1" fill="#b9bec6"/>
+          <!-- the gardener, filled in by boot.js (as whoever last signed in
+               here), with the can in their hand -->
+          <g id="tend-loading-gardener" transform="translate(0,17)"></g>
+          <g transform="translate(14,19) scale(0.5)">
+            <g class="tend-can">
+              <rect x="6" y="14" width="12" height="10" fill="#b9bec6"/>
+              <rect x="6" y="14" width="12" height="2" fill="#cfd4da"/>
+              <rect x="15" y="22" width="3" height="2" fill="#a4aab3"/>
+              <rect x="18" y="16" width="6" height="2" fill="#a4aab3"/>
+              <rect x="23" y="18" width="3" height="2" fill="#a4aab3"/>
+              <rect x="4" y="16" width="2" height="6" fill="#a4aab3"/>
+              <rect x="9" y="11" width="6" height="3" fill="#a4aab3"/>
+              <rect x="10" y="12" width="4" height="1" fill="#b9bec6"/>
+            </g>
           </g>
 
           <!-- and what comes out of it -->
           <g class="tend-drops">
-            <rect class="tend-drop" x="26" y="22" width="2" height="3" fill="#7fc4e8"/>
-            <rect class="tend-drop" x="29" y="22" width="2" height="3" fill="#9ed6f0"/>
-            <rect class="tend-drop" x="32" y="22" width="2" height="3" fill="#7fc4e8"/>
+            <rect class="tend-drop" x="27" y="28" width="1" height="2" fill="#7fc4e8"/>
+            <rect class="tend-drop" x="29" y="28" width="1" height="2" fill="#9ed6f0"/>
+            <rect class="tend-drop" x="31" y="28" width="1" height="2" fill="#7fc4e8"/>
           </g>
         </svg>
         <p class="tend-loading-word">Growing your garden&hellip;</p>
@@ -221,20 +222,37 @@
   <div class="panel" id="shop-panel">
     <h2 id="shop-panel-title">Shop</h2>
     <div class="shop-coins" id="shop-coins-row"><span id="shop-coins-icon"></span> <span id="shop-coins-amt">0</span></div>
+    <!-- Phone only: one tab per kind of thing, so the shop is a few big
+         buttons at a time rather than a page of small print. On a computer
+         the tabs are hidden and every section shows in the two columns. -->
+    <div class="shop-tabs" role="tablist" aria-label="Shop sections">
+      <button type="button" role="tab" class="shop-tab on" data-shop-tab="plants" aria-selected="true"><span aria-hidden="true">&#x1F331;</span>Plants</button>
+      <button type="button" role="tab" class="shop-tab" data-shop-tab="tools" aria-selected="false"><span aria-hidden="true">&#x1FA93;</span>Tools</button>
+      <button type="button" role="tab" class="shop-tab" data-shop-tab="outfits" aria-selected="false"><span aria-hidden="true">&#x1F452;</span>Outfits</button>
+      <button type="button" role="tab" class="shop-tab" data-shop-tab="pets" aria-selected="false"><span aria-hidden="true">&#x1F43E;</span>Pets</button>
+    </div>
     <div class="shop-columns">
       <div class="shop-column">
-        <div class="shop-section-title">Plants</div>
-        <div id="shop-plants"></div>
-        <div class="shop-section-title">Pets</div>
-        <div id="shop-pets"></div>
-        <div class="shop-section-title">Food</div>
-        <div id="shop-treats"></div>
+        <section class="shop-sec on" data-shop-sec="plants">
+          <div class="shop-section-title">Plants</div>
+          <div id="shop-plants"></div>
+        </section>
+        <section class="shop-sec" data-shop-sec="pets">
+          <div class="shop-section-title">Pets</div>
+          <div id="shop-pets"></div>
+          <div class="shop-section-title shop-subtitle">Food</div>
+          <div id="shop-treats"></div>
+        </section>
       </div>
       <div class="shop-column">
-        <div class="shop-section-title">Items</div>
-        <div id="shop-items"></div>
-        <div class="shop-section-title">Outfits</div>
-        <div id="shop-outfits"></div>
+        <section class="shop-sec" data-shop-sec="tools">
+          <div class="shop-section-title">Items</div>
+          <div id="shop-items"></div>
+        </section>
+        <section class="shop-sec" data-shop-sec="outfits">
+          <div class="shop-section-title">Outfits</div>
+          <div id="shop-outfits"></div>
+        </section>
       </div>
     </div>
   </div>
@@ -317,8 +335,8 @@
           <p class="plan-sub" id="plan-sub"></p>
         </div>
         <div class="cal-view-toggle" id="plan-mode-toggle"></div>
+        <span class="help-gardener-slot" data-help="plan"></span>
       </div>
-      <p class="category-hint plan-hint">Every task you star turns up here. Drag the rows into the order you mean to do them in today — on a phone, hold one for a moment first.</p>
       <div id="plan-body"></div>
     </div>
   </div>
@@ -354,7 +372,7 @@
 
   <div id="view-overview" class="view">
     <div class="panel overview-panel">
-      <h2>Overview</h2>
+      <div class="panel-head-row"><h2>Overview</h2><span class="help-gardener-slot" data-help="overview"></span></div>
       <div id="stats-chart"></div>
     </div>
 
