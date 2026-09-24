@@ -4855,7 +4855,7 @@ html.garden-full main {
   /* No side padding: the garden goes edge to edge. The lines of text above
      and the buttons below put their own back, so only the plot is full
      width. */
-  padding: 4px 0 calc(68px + env(safe-area-inset-bottom, 0px));
+  padding: 4px 0 var(--bnav-h, calc(68px + env(safe-area-inset-bottom, 0px)));
 }
 
 html.garden-full .app-layout,
@@ -5167,6 +5167,7 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
    lines, and the chip and the three buttons share one short row. */
 html.garden-full #page-title,
 html.garden-full #page-subtitle { display: none; }
+#page-subtitle.off-tasks { display: none; }   /* the fun fact is the Tasks page's alone */
 
 html.garden-full .garden-gardener-row .garden-status {
   display: -webkit-box;
@@ -5462,7 +5463,7 @@ html[data-mode="phone"] .plan-head .cal-view-toggle { order: 3; }
 /* The thumb row sits on the bottom bar, whatever height the garden is. With
    only a section or two open the plot is shorter than the screen, and the
    buttons used to follow it up into the middle. */
-html.garden-full .garden-controls { margin-top: auto; padding-top: 6px; padding-bottom: 4px; }
+html.garden-full .garden-controls { margin-top: auto; padding-top: 6px; padding-bottom: 0; }
 html.garden-full .garden-plot { will-change: transform; }
 
 /* ===================== shop sheet, second pass =====================

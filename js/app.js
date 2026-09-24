@@ -93,6 +93,12 @@ const App = (function () {
         'Times puts the day on the clock: drag a task onto the half hour you mean to do it. Anything you have not placed waits underneath.',
         'Tick something off and it leaves the plan, and it is ticked off on the Tasks page too.'
       ];
+    } else if (topic === 'friends') {
+      title = 'Friends';
+      paras = [
+        'Everybody growing a ' + place + ' on Tend is here. Tap a name to look around theirs.',
+        'Your tasks stay private - only the ' + place + ' is shared.'
+      ];
     } else {
       const list = tickets();
       const done = list.filter(t => !!t.completedAt).length;
@@ -1792,13 +1798,24 @@ const App = (function () {
        now, because the window can be dragged across the threshold at any
        moment and the pinned setting can be changed at any moment too. */
     if (hasGarden() && Garden.refreshControls) Garden.refreshControls();
+    measureBottomNav();
     /* The garden column's width just changed, so the plot is re-fitted to it. */
     if (hasGarden() && Garden.refit) Garden.refit();
+  }
+
+  /* The Garden screen ends exactly where the bottom bar starts, so its thumb
+     row sits right on the bar. The bar's height depends on the phone (the
+     home-indicator inset, the text size), so it is measured, not guessed. */
+  function measureBottomNav() {
+    const nav = document.getElementById('bottom-nav');
+    const h = nav && nav.offsetHeight;
+    if (h) document.documentElement.style.setProperty('--bnav-h', h + 'px');
   }
 
   /* The window can be resized across the threshold at any moment. */
   const onResize = Util.debounce(function () {
     if (viewModePref() === 'auto') applyLayoutMode();
+    measureBottomNav();
     /* A new width can mean a different number of columns, and even at the same
        number the blocks are a different height once titles rewrap. */
     packCategoryColumns();
@@ -1844,6 +1861,10 @@ const App = (function () {
        calendar - a link, a restored view - lands there instead. */
     if (view === 'calendar' && phoneView) view = 'plan';
     currentView = view;
+    /* The fun fact belongs to the Tasks page. Elsewhere it sat between the
+       section heading and the section, saying nothing about either. */
+    const sub = document.getElementById('page-subtitle');
+    if (sub) sub.classList.toggle('off-tasks', view !== 'list');
 
     ['list', 'plan', 'calendar', 'overview', 'friends'].forEach(v => {
       const el = document.getElementById('view-' + v);
