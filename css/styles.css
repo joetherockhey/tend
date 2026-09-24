@@ -5395,3 +5395,66 @@ html.garden-full .app-layout.view-garden > .garden-col { max-width: none; }
 html[data-mode="phone"] .plan-head .plan-head-text { order: 1; flex: 1; min-width: 0; }
 html[data-mode="phone"] .plan-head .help-gardener-slot { order: 2; }
 html[data-mode="phone"] .plan-head .cal-view-toggle { order: 3; }
+
+/* ===================== the loading scene =====================
+
+   Plays once, in this order, then only the dance repeats:
+     0.0-1.2s  walks in from the left, side-on, bobbing
+     1.2-1.8s  stands and looks at the seedling
+     1.8-3.3s  tips the can (it pivots at their hand, so it never leaves it)
+     2.7 / 3.2 the seedling grows, then comes up as the flower
+     3.5-4.9s  hearts float up
+     4.4s on   turns to face you and dances until the app has loaded
+   Everything but the dance holds its last frame (forwards), so nothing
+   restarts. The loading screen is replaced the moment sign-in renders. */
+.lg-stage, .lg-drops, .lg-heart, .lg-front { opacity: 0; }
+.lg-s1 { opacity: 1; animation: lg-hide 0.01s 2.7s forwards; }
+.lg-s2 { animation: lg-show 0.01s 2.7s forwards, lg-hide 0.01s 3.2s forwards; }
+.lg-s3 { animation: lg-show 0.01s 3.2s forwards; }
+.lg-pop { transform-box: fill-box; transform-origin: 50% 100%; animation: lg-pop 0.35s 3.2s ease-out backwards; }
+
+.lg-walker { animation: lg-walk 1.2s steps(12) backwards; }
+.lg-bob { animation: lg-bob 0.3s steps(2) 4; }
+.lg-side { animation: lg-hide 0.01s 4.4s forwards; }
+.lg-front {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lg-show 0.01s 4.4s forwards, lg-dance 0.7s 4.4s ease-in-out infinite alternate;
+}
+
+.lg-can {
+  transform-box: fill-box;
+  transform-origin: 5% 50%;
+  animation: lg-tip 1.5s 1.8s ease-in-out;
+}
+.lg-drops { animation: lg-show 0.01s 2.1s forwards, lg-hide 0.01s 3s forwards; }
+.lg-drop { animation: lg-fall 0.5s linear infinite; }
+.lg-drop:nth-child(2) { animation-delay: 0.17s; }
+.lg-drop:nth-child(3) { animation-delay: 0.34s; }
+
+.lg-heart { animation: lg-heart 1s ease-out forwards; }
+.lg-h1 { animation-delay: 3.5s; }
+.lg-h2 { animation-delay: 3.7s; }
+.lg-h3 { animation-delay: 3.9s; }
+
+@keyframes lg-show { to { opacity: 1; } }
+@keyframes lg-hide { to { opacity: 0; } }
+@keyframes lg-walk { from { transform: translateX(-22px); } to { transform: translateX(0); } }
+@keyframes lg-bob { 50% { transform: translateY(-1px); } }
+@keyframes lg-tip { 0% { transform: rotate(0deg); } 20%, 80% { transform: rotate(32deg); } 100% { transform: rotate(0deg); } }
+@keyframes lg-fall { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(2px, 8px); } }
+@keyframes lg-pop { from { transform: scale(0.6); } to { transform: scale(1); } }
+@keyframes lg-heart { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-9px); } }
+@keyframes lg-dance {
+  0%   { transform: translateY(0) rotate(-8deg); }
+  50%  { transform: translateY(-2px) rotate(0deg); }
+  100% { transform: translateY(0) rotate(8deg); }
+}
+
+/* Asked for stillness: the ending, held - the flower grown and the
+   gardener facing you. */
+@media (prefers-reduced-motion: reduce) {
+  .lg-stage, .lg-walker, .lg-bob, .lg-side, .lg-front, .lg-can, .lg-drops, .lg-drop, .lg-heart, .lg-pop { animation: none; }
+  .lg-s1, .lg-s2, .lg-side, .lg-drops, .lg-heart { opacity: 0; }
+  .lg-s3, .lg-front { opacity: 1; }
+}

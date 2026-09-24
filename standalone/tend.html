@@ -5385,6 +5385,69 @@ html[data-mode="phone"] .plan-head .plan-head-text { order: 1; flex: 1; min-widt
 html[data-mode="phone"] .plan-head .help-gardener-slot { order: 2; }
 html[data-mode="phone"] .plan-head .cal-view-toggle { order: 3; }
 
+/* ===================== the loading scene =====================
+
+   Plays once, in this order, then only the dance repeats:
+     0.0-1.2s  walks in from the left, side-on, bobbing
+     1.2-1.8s  stands and looks at the seedling
+     1.8-3.3s  tips the can (it pivots at their hand, so it never leaves it)
+     2.7 / 3.2 the seedling grows, then comes up as the flower
+     3.5-4.9s  hearts float up
+     4.4s on   turns to face you and dances until the app has loaded
+   Everything but the dance holds its last frame (forwards), so nothing
+   restarts. The loading screen is replaced the moment sign-in renders. */
+.lg-stage, .lg-drops, .lg-heart, .lg-front { opacity: 0; }
+.lg-s1 { opacity: 1; animation: lg-hide 0.01s 2.7s forwards; }
+.lg-s2 { animation: lg-show 0.01s 2.7s forwards, lg-hide 0.01s 3.2s forwards; }
+.lg-s3 { animation: lg-show 0.01s 3.2s forwards; }
+.lg-pop { transform-box: fill-box; transform-origin: 50% 100%; animation: lg-pop 0.35s 3.2s ease-out backwards; }
+
+.lg-walker { animation: lg-walk 1.2s steps(12) backwards; }
+.lg-bob { animation: lg-bob 0.3s steps(2) 4; }
+.lg-side { animation: lg-hide 0.01s 4.4s forwards; }
+.lg-front {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lg-show 0.01s 4.4s forwards, lg-dance 0.7s 4.4s ease-in-out infinite alternate;
+}
+
+.lg-can {
+  transform-box: fill-box;
+  transform-origin: 5% 50%;
+  animation: lg-tip 1.5s 1.8s ease-in-out;
+}
+.lg-drops { animation: lg-show 0.01s 2.1s forwards, lg-hide 0.01s 3s forwards; }
+.lg-drop { animation: lg-fall 0.5s linear infinite; }
+.lg-drop:nth-child(2) { animation-delay: 0.17s; }
+.lg-drop:nth-child(3) { animation-delay: 0.34s; }
+
+.lg-heart { animation: lg-heart 1s ease-out forwards; }
+.lg-h1 { animation-delay: 3.5s; }
+.lg-h2 { animation-delay: 3.7s; }
+.lg-h3 { animation-delay: 3.9s; }
+
+@keyframes lg-show { to { opacity: 1; } }
+@keyframes lg-hide { to { opacity: 0; } }
+@keyframes lg-walk { from { transform: translateX(-22px); } to { transform: translateX(0); } }
+@keyframes lg-bob { 50% { transform: translateY(-1px); } }
+@keyframes lg-tip { 0% { transform: rotate(0deg); } 20%, 80% { transform: rotate(32deg); } 100% { transform: rotate(0deg); } }
+@keyframes lg-fall { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(2px, 8px); } }
+@keyframes lg-pop { from { transform: scale(0.6); } to { transform: scale(1); } }
+@keyframes lg-heart { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-9px); } }
+@keyframes lg-dance {
+  0%   { transform: translateY(0) rotate(-8deg); }
+  50%  { transform: translateY(-2px) rotate(0deg); }
+  100% { transform: translateY(0) rotate(8deg); }
+}
+
+/* Asked for stillness: the ending, held - the flower grown and the
+   gardener facing you. */
+@media (prefers-reduced-motion: reduce) {
+  .lg-stage, .lg-walker, .lg-bob, .lg-side, .lg-front, .lg-can, .lg-drops, .lg-drop, .lg-heart, .lg-pop { animation: none; }
+  .lg-s1, .lg-s2, .lg-side, .lg-drops, .lg-heart { opacity: 0; }
+  .lg-s3, .lg-front { opacity: 1; }
+}
+
 </style>
 </head>
 <body class="gated">
@@ -5410,43 +5473,61 @@ html[data-mode="phone"] .plan-head .cal-view-toggle { order: 3; }
           <rect x="16" y="38" width="32" height="2" fill="#6b4423"/>
           <rect x="18" y="36" width="28" height="2" fill="#8a5a2e"/>
 
-          <!-- the plant, three stages, swapped as the water lands -->
-          <g class="tend-stage tend-s1">
+          <!-- The whole thing plays once, in order: the gardener walks in from
+               the left, stops to look at the seedling, waters it (the can
+               stays in their hand - it is drawn inside their group), it grows
+               into one of the fifty flowers, hearts come up, and then they
+               turn to face you and dance until the app has loaded. Only the
+               dance loops. Timings are in the lg-* rules in styles.css. -->
+
+          <!-- the plant: seedling, halfway, and the flower boot.js picks -->
+          <g class="lg-stage lg-s1">
             <rect x="31" y="33" width="2" height="3" fill="#6b4423"/>
             <rect x="30" y="31" width="4" height="2" fill="#6bc06e"/>
           </g>
-          <g class="tend-stage tend-s2">
+          <g class="lg-stage lg-s2">
             <rect x="31" y="27" width="2" height="9" fill="#6b4423"/>
             <rect x="27" y="28" width="4" height="2" fill="#4fa754"/>
             <rect x="33" y="25" width="4" height="2" fill="#4fa754"/>
             <rect x="30" y="23" width="4" height="3" fill="#6bc06e"/>
           </g>
-          <!-- the full-grown flower: one of the fifty garden plants, picked
-               afresh on every load by boot.js -->
-          <g class="tend-stage tend-s3"><g id="tend-loading-flower" transform="translate(25,22)"></g></g>
+          <g class="lg-stage lg-s3"><g class="lg-pop"><g id="tend-loading-flower" transform="translate(25,22)"></g></g></g>
 
-          <!-- the gardener, filled in by boot.js (as whoever last signed in
-               here), with the can in their hand -->
-          <g id="tend-loading-gardener" transform="translate(0,17)"></g>
-          <g transform="translate(14,19) scale(0.5)">
-            <g class="tend-can">
-              <rect x="6" y="14" width="12" height="10" fill="#b9bec6"/>
-              <rect x="6" y="14" width="12" height="2" fill="#cfd4da"/>
-              <rect x="15" y="22" width="3" height="2" fill="#a4aab3"/>
-              <rect x="18" y="16" width="6" height="2" fill="#a4aab3"/>
-              <rect x="23" y="18" width="3" height="2" fill="#a4aab3"/>
-              <rect x="4" y="16" width="2" height="6" fill="#a4aab3"/>
-              <rect x="9" y="11" width="6" height="3" fill="#a4aab3"/>
-              <rect x="10" y="12" width="4" height="1" fill="#b9bec6"/>
+          <!-- water, only while the can is tipped -->
+          <g class="lg-drops">
+            <rect class="lg-drop" x="28" y="26" width="1" height="2" fill="#7fc4e8"/>
+            <rect class="lg-drop" x="29" y="27" width="1" height="2" fill="#9ed6f0"/>
+            <rect class="lg-drop" x="30" y="26" width="1" height="2" fill="#7fc4e8"/>
+          </g>
+
+          <!-- the gardener -->
+          <g transform="translate(3,17)">
+            <g class="lg-walker">
+              <g class="lg-bob">
+                <g class="lg-side">
+                  <g id="tend-loading-side"></g>
+                  <g transform="translate(11,5) scale(0.5)">
+                    <g class="lg-can">
+                      <rect x="6" y="14" width="12" height="10" fill="#b9bec6"/>
+                      <rect x="6" y="14" width="12" height="2" fill="#cfd4da"/>
+                      <rect x="15" y="22" width="3" height="2" fill="#a4aab3"/>
+                      <rect x="18" y="16" width="6" height="2" fill="#a4aab3"/>
+                      <rect x="23" y="18" width="3" height="2" fill="#a4aab3"/>
+                      <rect x="4" y="16" width="2" height="6" fill="#a4aab3"/>
+                      <rect x="9" y="11" width="6" height="3" fill="#a4aab3"/>
+                      <rect x="10" y="12" width="4" height="1" fill="#b9bec6"/>
+                    </g>
+                  </g>
+                </g>
+                <g class="lg-front" id="tend-loading-front"></g>
+              </g>
             </g>
           </g>
 
-          <!-- and what comes out of it -->
-          <g class="tend-drops">
-            <rect class="tend-drop" x="27" y="28" width="1" height="2" fill="#7fc4e8"/>
-            <rect class="tend-drop" x="29" y="28" width="1" height="2" fill="#9ed6f0"/>
-            <rect class="tend-drop" x="31" y="28" width="1" height="2" fill="#7fc4e8"/>
-          </g>
+          <!-- and how they feel about it -->
+          <text class="lg-heart lg-h1" x="6" y="16" font-size="5">&#x2764;&#xFE0F;</text>
+          <text class="lg-heart lg-h2" x="12" y="13" font-size="4">&#x1F496;</text>
+          <text class="lg-heart lg-h3" x="17" y="16" font-size="5">&#x2764;&#xFE0F;</text>
         </svg>
         <p class="tend-loading-word">Growing your garden&hellip;</p>
       </div>
@@ -18141,22 +18222,24 @@ const Auth = (function () {
 
   document.title = NAME;
 
-  /* The loading picture: the gardener waters a seedling and it comes up as
-     one of the fifty garden flowers, a different one each time the app opens.
-     The sprite's own little can is taken out, since they are holding the big
-     one. Always the garden farmer, whatever world was last here - watering
-     a seedling is a garden thing. */
+  /* The loading picture (see index.html): the gardener, seen side-on while
+     they walk and water and face-on for the dance, and the flower the
+     seedling becomes - one of the fifty, a different one on each load.
+     Always the garden farmer, whatever world was last here, since watering a
+     seedling is a garden thing. The side sprite's own little can comes out,
+     because they carry the big one; the front one keeps its can for the dance. */
   (function () {
     const flower = document.getElementById('tend-loading-flower');
-    const man = document.getElementById('tend-loading-gardener');
-    if (!flower || !man) return;
+    const side = document.getElementById('tend-loading-side');
+    const front = document.getElementById('tend-loading-front');
+    if (!flower || !side || !front) return;
     const plants = Worlds.get('garden').plants;
     flower.innerHTML = plants[Math.floor(Math.random() * plants.length)].plant;
     let hero = Worlds.DEFAULT_HERO;
     try { hero = (JSON.parse(localStorage.getItem('tend:gate-look')) || {}).hero || hero; } catch (e) { /* private mode */ }
-    man.innerHTML = Worlds.heroSVG('garden', hero, 'down')
-      .replace(/<rect[^>]*#8a8f98[^>]*\/>/g, '')
-      .replace(/width="\d+" height="\d+"/, 'width="19" height="20"');
+    const fit = svg => svg.replace(/width="\d+" height="\d+"/, 'width="19" height="20"');
+    side.innerHTML = fit(Worlds.heroSVG('garden', hero, 'right')).replace(/<rect[^>]*#8a8f98[^>]*\/>/g, '');
+    front.innerHTML = fit(Worlds.heroSVG('garden', hero, 'down'));
   })();
 
   const authBrand = document.getElementById('auth-brand');

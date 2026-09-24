@@ -40,43 +40,61 @@
           <rect x="16" y="38" width="32" height="2" fill="#6b4423"/>
           <rect x="18" y="36" width="28" height="2" fill="#8a5a2e"/>
 
-          <!-- the plant, three stages, swapped as the water lands -->
-          <g class="tend-stage tend-s1">
+          <!-- The whole thing plays once, in order: the gardener walks in from
+               the left, stops to look at the seedling, waters it (the can
+               stays in their hand - it is drawn inside their group), it grows
+               into one of the fifty flowers, hearts come up, and then they
+               turn to face you and dance until the app has loaded. Only the
+               dance loops. Timings are in the lg-* rules in styles.css. -->
+
+          <!-- the plant: seedling, halfway, and the flower boot.js picks -->
+          <g class="lg-stage lg-s1">
             <rect x="31" y="33" width="2" height="3" fill="#6b4423"/>
             <rect x="30" y="31" width="4" height="2" fill="#6bc06e"/>
           </g>
-          <g class="tend-stage tend-s2">
+          <g class="lg-stage lg-s2">
             <rect x="31" y="27" width="2" height="9" fill="#6b4423"/>
             <rect x="27" y="28" width="4" height="2" fill="#4fa754"/>
             <rect x="33" y="25" width="4" height="2" fill="#4fa754"/>
             <rect x="30" y="23" width="4" height="3" fill="#6bc06e"/>
           </g>
-          <!-- the full-grown flower: one of the fifty garden plants, picked
-               afresh on every load by boot.js -->
-          <g class="tend-stage tend-s3"><g id="tend-loading-flower" transform="translate(25,22)"></g></g>
+          <g class="lg-stage lg-s3"><g class="lg-pop"><g id="tend-loading-flower" transform="translate(25,22)"></g></g></g>
 
-          <!-- the gardener, filled in by boot.js (as whoever last signed in
-               here), with the can in their hand -->
-          <g id="tend-loading-gardener" transform="translate(0,17)"></g>
-          <g transform="translate(14,19) scale(0.5)">
-            <g class="tend-can">
-              <rect x="6" y="14" width="12" height="10" fill="#b9bec6"/>
-              <rect x="6" y="14" width="12" height="2" fill="#cfd4da"/>
-              <rect x="15" y="22" width="3" height="2" fill="#a4aab3"/>
-              <rect x="18" y="16" width="6" height="2" fill="#a4aab3"/>
-              <rect x="23" y="18" width="3" height="2" fill="#a4aab3"/>
-              <rect x="4" y="16" width="2" height="6" fill="#a4aab3"/>
-              <rect x="9" y="11" width="6" height="3" fill="#a4aab3"/>
-              <rect x="10" y="12" width="4" height="1" fill="#b9bec6"/>
+          <!-- water, only while the can is tipped -->
+          <g class="lg-drops">
+            <rect class="lg-drop" x="28" y="26" width="1" height="2" fill="#7fc4e8"/>
+            <rect class="lg-drop" x="29" y="27" width="1" height="2" fill="#9ed6f0"/>
+            <rect class="lg-drop" x="30" y="26" width="1" height="2" fill="#7fc4e8"/>
+          </g>
+
+          <!-- the gardener -->
+          <g transform="translate(3,17)">
+            <g class="lg-walker">
+              <g class="lg-bob">
+                <g class="lg-side">
+                  <g id="tend-loading-side"></g>
+                  <g transform="translate(11,5) scale(0.5)">
+                    <g class="lg-can">
+                      <rect x="6" y="14" width="12" height="10" fill="#b9bec6"/>
+                      <rect x="6" y="14" width="12" height="2" fill="#cfd4da"/>
+                      <rect x="15" y="22" width="3" height="2" fill="#a4aab3"/>
+                      <rect x="18" y="16" width="6" height="2" fill="#a4aab3"/>
+                      <rect x="23" y="18" width="3" height="2" fill="#a4aab3"/>
+                      <rect x="4" y="16" width="2" height="6" fill="#a4aab3"/>
+                      <rect x="9" y="11" width="6" height="3" fill="#a4aab3"/>
+                      <rect x="10" y="12" width="4" height="1" fill="#b9bec6"/>
+                    </g>
+                  </g>
+                </g>
+                <g class="lg-front" id="tend-loading-front"></g>
+              </g>
             </g>
           </g>
 
-          <!-- and what comes out of it -->
-          <g class="tend-drops">
-            <rect class="tend-drop" x="27" y="28" width="1" height="2" fill="#7fc4e8"/>
-            <rect class="tend-drop" x="29" y="28" width="1" height="2" fill="#9ed6f0"/>
-            <rect class="tend-drop" x="31" y="28" width="1" height="2" fill="#7fc4e8"/>
-          </g>
+          <!-- and how they feel about it -->
+          <text class="lg-heart lg-h1" x="6" y="16" font-size="5">&#x2764;&#xFE0F;</text>
+          <text class="lg-heart lg-h2" x="12" y="13" font-size="4">&#x1F496;</text>
+          <text class="lg-heart lg-h3" x="17" y="16" font-size="5">&#x2764;&#xFE0F;</text>
         </svg>
         <p class="tend-loading-word">Growing your garden&hellip;</p>
       </div>
