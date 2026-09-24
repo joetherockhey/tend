@@ -5464,3 +5464,46 @@ html[data-mode="phone"] .plan-head .cal-view-toggle { order: 3; }
    buttons used to follow it up into the middle. */
 html.garden-full .garden-controls { margin-top: auto; padding-top: 6px; padding-bottom: 4px; }
 html.garden-full .garden-plot { will-change: transform; }
+
+/* ===================== shop sheet, second pass =====================
+
+   One fixed size whichever tab is open, so the sheet does not jump when you
+   switch; the tabs along the bottom under the thumb, like the app's own bar;
+   and smaller tiles, three across, so a whole section mostly fits without
+   scrolling. Only the tiles scroll, inside the sheet. */
+html[data-mode="phone"] .garden-sheet:has(#shop-panel) { overflow: hidden; display: flex; flex-direction: column; }
+html[data-mode="phone"] .garden-sheet #shop-modal-slot { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+html[data-mode="phone"] .garden-sheet #shop-panel {
+  display: flex;
+  flex-direction: column;
+  height: min(64vh, 540px);
+  min-height: 0;
+}
+html[data-mode="phone"] .garden-sheet #shop-panel .shop-columns {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+html[data-mode="phone"] .garden-sheet #shop-panel .shop-tabs {
+  order: 3;
+  flex: none;
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+html[data-mode="phone"] .shop-tab.on { box-shadow: 0 -3px 0 #a8770c inset; }
+
+html[data-mode="phone"] .shop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+html[data-mode="phone"] .shop-tile { min-height: 0; padding: 8px 5px 6px; gap: 4px; border-radius: 12px; }
+html[data-mode="phone"] .shop-tile-icon { font-size: 1.4rem; }
+html[data-mode="phone"] .shop-tile-icon svg { width: 28px; height: 28px; }
+html[data-mode="phone"] .shop-tile-label { font-size: 0.68rem; line-height: 1.2; }
+html[data-mode="phone"] .shop-tile-action { min-height: 30px; font-size: 0.8rem; border-radius: 8px; }
+html[data-mode="phone"] .shop-tab { padding: 6px 2px 5px; }
+html[data-mode="phone"] .shop-tab span { font-size: 1.15rem; }
+/* The sheet is a flex column now; the close button keeps to its corner. */
+html[data-mode="phone"] .garden-sheet:has(#shop-panel) > .modal-close { align-self: flex-end; }
+/* "seedling 1, grown 2" is a note, not a price: let it wrap in the button. */
+html[data-mode="phone"] .shop-tile-action { white-space: normal; text-align: center; line-height: 1.1; padding: 2px 4px; font-size: 0.78rem; }
