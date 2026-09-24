@@ -1,5 +1,5 @@
-/* Node check for the season axis: the sections you open run Spring, Summer,
-   Autumn, Winter and round again, a section keeps its place and gains a
+/* Node check for the season axis: you start in Summer and the sections you open
+   run Autumn, Winter, Spring and round again, a section keeps its place and gains a
    season, and the mix that tints a band lands where it should at both ends.
    Run: node test/seasons.test.js */
 const assert = require('assert');
@@ -25,10 +25,9 @@ const world = {
     { name: 'Hedge Maze', theme: 'maze' }, { name: 'Pond', theme: 'water' },
     { name: 'Vegetable Patch', theme: 'soil' }, { name: 'Orchard', theme: 'orchard' }
   ],
-  seasons: ['spring', 'summer', 'autumn', 'winter'].map(id => ({
+  seasons: ['summer', 'autumn', 'winter', 'spring'].map(id => ({
     id: id, label: id[0].toUpperCase() + id.slice(1), icon: 'x',
-    tint: [0, 0, 0], tintStrength: 0, detail: {},
-    prop: '<svg></svg>', propName: 'Prop'
+    tint: [0, 0, 0], tintStrength: 0, detail: {}
   }))
 };
 
@@ -39,19 +38,19 @@ const g = new Function('NO_SEASON', 'W', [
 
 /* --- the calendar --- */
 const run = [0, 1, 2, 3, 4, 5].map(i => g.seasonInfo(i, world).id);
-assert.deepStrictEqual(run, ['spring', 'summer', 'autumn', 'winter', 'spring', 'summer'],
-  'sections run in calendar order and start over');
+assert.deepStrictEqual(run, ['summer', 'autumn', 'winter', 'spring', 'summer', 'autumn'],
+  'you start in summer, and the ground you buy runs on through the calendar');
 
 /* --- a section is a place AND a season --- */
 const third = g.sectionInfo(2, world);
 assert.strictEqual(third.theme, 'wood', 'the place is untouched by the season');
-assert.strictEqual(third.name, 'Autumn House', 'the sign reads season then place');
-assert.strictEqual(third.season.id, 'autumn');
+assert.strictEqual(third.name, 'Winter House', 'the sign reads season then place');
+assert.strictEqual(third.season.id, 'winter');
 
 /* Past the eight named sections the themes repeat, and so do the seasons. */
 const ninth = g.sectionInfo(8, world);
 assert.strictEqual(ninth.theme, 'grass', 'a ninth section is back to the first theme');
-assert.strictEqual(ninth.name, 'Spring Plot 9', 'and back to the first season');
+assert.strictEqual(ninth.name, 'Summer Plot 9', 'and back to the first season');
 
 /* A world that declares no seasons renders exactly as it did before. */
 const plain = g.sectionInfo(2, { themeOrder: world.themeOrder, sections: world.sections });
@@ -77,9 +76,9 @@ const layer = new Function('tileHash', 'Util', [
 
 const html = layer(2, g.sectionInfo(2, world));
 assert.ok(html.includes('season-wash'), 'the band gets its light');
-assert.ok(!html.includes('Autumn House'), 'no name plate pinned over the garden');
+assert.ok(!html.includes('Winter House'), 'no name plate pinned over the garden');
 assert.strictEqual((html.match(/<i /g) || []).length, 7, 'seven things drifting through it');
-assert.ok(html.includes('title="Prop"'), 'the prop stands in the corner, named');
+assert.ok(!html.includes('season-prop'), 'no prop standing in the corner');
 assert.ok(!/NaN|undefined/.test(html), 'and no holes in the generated style');
 assert.strictEqual(layer(0, plain), '', 'a world with no seasons paints no season layer');
 

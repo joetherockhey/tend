@@ -1124,8 +1124,8 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
 }
 
 /* ---------------------------------------------------------------------------
-   Seasons. Every section you open is the next season along, so the plot runs
-   Spring, Summer, Autumn, Winter and round again as you buy your way down it.
+   Seasons. Every section you open is the next season along: you start in
+   Summer, then buy your way down through Autumn, Winter, Spring and round again.
    The ground colour itself is mixed in JS - the season is a tint over whatever
    the theme already paints, so a greenhouse stays a greenhouse. What is in
    here is the light sitting over that ground, the things falling through it,
@@ -1143,10 +1143,10 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
   background: linear-gradient(180deg, rgba(186, 240, 168, 0.30), rgba(255, 255, 255, 0));
 }
 .season-summer .season-wash {
-  background: linear-gradient(180deg, rgba(255, 222, 122, 0.34), rgba(255, 240, 180, 0.05));
+  background: linear-gradient(180deg, rgba(255, 250, 220, 0.14), rgba(255, 255, 255, 0));
 }
 .season-autumn .season-wash {
-  background: linear-gradient(180deg, rgba(226, 140, 50, 0.26), rgba(150, 90, 34, 0.08));
+  background: linear-gradient(180deg, rgba(236, 130, 30, 0.22), rgba(160, 40, 30, 0.12));
 }
 .season-winter .season-wash {
   background: linear-gradient(180deg, rgba(228, 244, 255, 0.46), rgba(196, 222, 244, 0.16));
@@ -1183,27 +1183,18 @@ html[data-mode="phone"] .garden-holding-name { font-size: 0.72rem; white-space: 
 }
 
 .season-spring .season-drift i { background: #f7bcd6; border-radius: 60% 40% 60% 40%; }
-.season-summer .season-drift i { background: #f8e394; border-radius: 50%; width: 3px; height: 3px; }
-.season-autumn .season-drift i { background: #c8772c; border-radius: 40% 60% 40% 60%; width: 7px; height: 5px; }
+/* Summer has nothing falling: small pale dots over the first ground read as snow. */
+.season-summer .season-drift { display: none; }
+.season-autumn .season-drift i { background: #e0722c; border-radius: 40% 60% 40% 60%; width: 7px; height: 5px; }
+.season-autumn .season-drift i:nth-child(3n) { background: #b3202f; }
+.season-autumn .season-drift i:nth-child(3n+1) { background: #f09a3a; }
 .season-winter .season-drift i {
   background: #ffffff;
   border-radius: 50%;
   box-shadow: 0 0 3px rgba(255, 255, 255, 0.9);
 }
 
-/* One thing standing in the bottom-left corner of every band - a snowman, a
-   pumpkin, a parasol. Scenery only: it is not a decoration, so you walk
-   through it and it can never be in the way of a bed or a plant. */
-.season-prop {
-  position: absolute;
-  left: 3px;
-  bottom: 8px;
-  pointer-events: none;
-  z-index: 2;
-  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.22));
-}
-
-/* Asked for stillness, a season keeps its colour and its prop, and nothing
+/* Asked for stillness, a season keeps its colour, and nothing
    falls through it. */
 @media (prefers-reduced-motion: reduce) {
   .season-drift { display: none; }

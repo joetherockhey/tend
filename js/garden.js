@@ -69,9 +69,8 @@ const Garden = (function () {
 
 
 
-  /* Which season a band is in. They run in calendar order and repeat, so the
-     ground you buy goes Spring, Summer, Autumn, Winter, Spring again - the
-     fourth section you open is the one where it snows. The fallback is a
+  /* Which season a band is in. They repeat in calendar order from Summer, so
+     the ground you buy goes Autumn, Winter, Spring, then Summer again. The fallback is a
      season with no opinion at all, so a world that has not declared any still
      renders rather than throwing on `.id`. */
   const NO_SEASON = { id: '', label: '', icon: '', tint: [0, 0, 0], tintStrength: 0, detail: {} };
@@ -131,11 +130,9 @@ const Garden = (function () {
     return `background-image: linear-gradient(45deg, ${c1} 25%, transparent 25%, transparent 75%, ${c1} 75%, ${c1}), linear-gradient(45deg, ${c1} 25%, ${c2} 25%, ${c2} 75%, ${c1} 75%, ${c1}); background-size: ${size}px ${size}px; background-position: 0 0, ${CELL_SIZE}px ${CELL_SIZE}px;`;
   }
 
-  /* The seasonal layer over a band: the light of that season, a few things
-     drifting through it, one prop standing in the corner, and a sign naming
-     the section. None of it goes into placedDecorations, so none of it can
-     block a step, sit on a bed or push a plant around - it is scenery you
-     walk straight through. */
+  /* The seasonal layer over a band: the light of that season and a few things
+     drifting through it. None of it goes into placedDecorations, so none of
+     it can block a step, sit on a bed or push a plant around. */
   function seasonLayerHtml(bandIndex, info) {
     const s = info.season;
     if (!s || !s.id) return '';
@@ -147,14 +144,10 @@ const Garden = (function () {
         + `animation-delay:-${((h >> 7) % 110) / 10}s;`
         + `animation-duration:${9 + ((h >> 11) % 9)}s;"></i>`;
     }
-    const prop = s.prop
-      ? `<div class="season-prop" title="${Util.escapeHtml(s.propName || s.label)}">${s.prop}</div>`
-      : '';
-    /* No name plate. It sat in the top-left corner of every section, which on
-       a phone is a caption pinned over the bit of garden you are walking in.
-       The wash, the prop and the drift say which season it is without taking
-       a square to do it. */
-    return `<div class="season-wash"></div>${prop}`
+    /* No name plate and no corner prop. The plate sat over the bit of garden
+       you walk in; the prop (a snowman, a pumpkin) looked like something to
+       walk up to and did nothing when you did. */
+    return `<div class="season-wash"></div>`
       + `<div class="season-drift">${drift}</div>`;
   }
 

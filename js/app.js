@@ -2630,6 +2630,11 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-09-24', items: [
+      'The seasons have a new order. Your first ground is Summer, now a softer green instead of yellow. The first piece you open up is Autumn, all orange and crimson with leaves coming down. Winter is third and Spring fourth.',
+      'The snowman, pumpkin and other little things in the corner of each section are gone. They looked like something you could walk up to, and they did nothing.',
+      'Your gardener now meets you on the sign-in screen. They explain each step, help when a password or email goes wrong, and wait on a proper page when you open the confirmation email.'
+    ] },
     { date: '2026-09-21', items: [
       'Every category wears a little emoji - Work has a briefcase, Health a flexed arm, Errands a trolley. You do not pick them: they are read off the name, so one you invent gets one too, and it is the same on every device.',
       'On Plan My Day you can now pick a row up anywhere along it, not only by the dots on the right. On a computer just drag it; on a phone hold it for a moment first, so a swipe still scrolls the page.',
