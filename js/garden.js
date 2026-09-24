@@ -1756,6 +1756,8 @@ const Garden = (function () {
 
   function handleGardenTouchStart(event, outside) {
     stopWalking();
+    /* A finger down catches a glide where it is. */
+    if (lookGlide) { stopGlide(); const pl = document.getElementById('garden-plot'); if (pl) pl.style.transition = ''; }
     const t = event.changedTouches && event.changedTouches[0];
     if (!t) return;
     const cell = cellFromPoint(t.clientX, t.clientY);
@@ -1813,11 +1815,54 @@ const Garden = (function () {
     wrap.addEventListener('touchend', e => { if (off(e)) handleGardenTouchEnd(e); }, { passive: false });
   }
 
+  /* A look moves the ground a little further than the finger, so one swipe
+     crosses a section, and it keeps gliding after the finger lifts, slowing
+     to a stop. ponytail: both are feel, not maths - LOOK_GAIN is how far per
+     finger pixel, LOOK_FRICTION how quickly the glide dies. */
+  const LOOK_GAIN = 1.6;
+  const LOOK_FRICTION = 0.994;   /* per millisecond */
+  let lookGlide = 0;
+
   function lookBy(start, dy) {
-    const v = plotViewport();
+    if (!start.view) start.view = plotViewport();   /* measured once per drag, not per move */
+    const v = start.view;
     if (!v) return;
-    plotPan = Math.max(0, Math.min(v.maxPan, start.pan - dy));
-    applyPlotTransform();
+    const now = performance.now();
+    if (start.lastT) {
+      const dt = now - start.lastT;
+      if (dt > 0) start.vel = -(dy - start.lastDy) * LOOK_GAIN / dt;
+    }
+    start.lastDy = dy;
+    start.lastT = now;
+    plotPan = Math.max(0, Math.min(v.maxPan, start.pan - dy * LOOK_GAIN));
+    /* At most one paint per frame, however fast the touch events come. */
+    if (!start.frame) start.frame = requestAnimationFrame(() => { start.frame = 0; applyPlotTransform(); });
+  }
+
+  function stopGlide() {
+    if (lookGlide) cancelAnimationFrame(lookGlide);
+    lookGlide = 0;
+  }
+
+  function glide(start) {
+    stopGlide();
+    const plot = document.getElementById('garden-plot');
+    const v = start.view;
+    /* A finger that stopped before it lifted means stop here. */
+    let vel = (start.lastT && performance.now() - start.lastT < 80) ? (start.vel || 0) : 0;
+    const done = () => { lookGlide = 0; applyPlotTransform(); if (plot) plot.style.transition = ''; };
+    if (!v || Math.abs(vel) < 0.05) { done(); return; }
+    let last = performance.now();
+    const step = now => {
+      const dt = Math.min(40, now - last);
+      last = now;
+      plotPan = Math.max(0, Math.min(v.maxPan, plotPan + vel * dt));
+      vel *= Math.pow(LOOK_FRICTION, dt);
+      applyPlotTransform();
+      if (Math.abs(vel) > 0.02 && plotPan > 0 && plotPan < v.maxPan) lookGlide = requestAnimationFrame(step);
+      else done();
+    };
+    lookGlide = requestAnimationFrame(step);
   }
 
   /* The way the line was drawn decides which leg is walked first. The first
@@ -1866,7 +1911,8 @@ const Garden = (function () {
        takes brings them back into it. */
     if (start.look) {
       event.preventDefault();
-      document.getElementById('garden-plot').style.transition = '';
+      if (start.frame) { cancelAnimationFrame(start.frame); start.frame = 0; }
+      glide(start);
       return;
     }
     /* Off the plot, only a look does anything. */

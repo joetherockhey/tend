@@ -4855,7 +4855,7 @@ html.garden-full main {
   /* No side padding: the garden goes edge to edge. The lines of text above
      and the buttons below put their own back, so only the plot is full
      width. */
-  padding: 8px 0 calc(84px + env(safe-area-inset-bottom, 0px));
+  padding: 4px 0 calc(68px + env(safe-area-inset-bottom, 0px));
 }
 
 html.garden-full .app-layout,
@@ -5458,3 +5458,9 @@ html[data-mode="phone"] .plan-head .cal-view-toggle { order: 3; }
   .lg-s1, .lg-s2, .lg-side, .lg-drops, .lg-heart { opacity: 0; }
   .lg-s3, .lg-front { opacity: 1; }
 }
+
+/* The thumb row sits on the bottom bar, whatever height the garden is. With
+   only a section or two open the plot is shorter than the screen, and the
+   buttons used to follow it up into the middle. */
+html.garden-full .garden-controls { margin-top: auto; padding-top: 6px; padding-bottom: 4px; }
+html.garden-full .garden-plot { will-change: transform; }
