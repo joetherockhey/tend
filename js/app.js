@@ -58,6 +58,22 @@ const App = (function () {
      the garden's side. */
   function hasGarden() { return typeof Garden !== 'undefined'; }
 
+  /* An empty list with nobody in it said "Nothing active." Now the account's
+     own gardener stands there and says what to do about it. A search that
+     matches nothing keeps the plain line - that is not a moment for chat. */
+  function gardenerNote(text, tag) {
+    const t = tag || 'li';
+    if (!hasGarden() || !Garden.heroSVG) return `<${t} class="empty-note">${text}</${t}>`;
+    return `<${t} class="empty-note gardener-note"><span class="gn-sprite" aria-hidden="true">${Garden.heroSVG('down')}</span>`
+      + `<span class="gn-say">${text}</span></${t}>`;
+  }
+
+  function nothingActiveNote() {
+    return gardenerNote(Store.prefs().world === 'ocean'
+      ? "Nothing to do yet. Add a task and I'll get the reef ready."
+      : "Nothing to do yet. Add a task and I'll fetch the watering can.");
+  }
+
   function addCategory(name, color) {
     name = (name || '').trim();
     if (!name) return false;
@@ -1228,7 +1244,8 @@ const App = (function () {
       else renderListByCategory(activeAll, query);
     } else {
       if (catEl) catEl.innerHTML = '';
-      activeList.innerHTML = active.length ? active.map(renderTaskItem).join('') : `<li class="empty-note">${noActiveMsg}</li>`;
+      activeList.innerHTML = active.length ? active.map(renderTaskItem).join('')
+        : query ? `<li class="empty-note">${noActiveMsg}</li>` : nothingActiveNote();
       priorityList.innerHTML = priority.length ? priority.map(renderTaskItem).join('') : `<li class="empty-note">${noPriorityMsg}</li>`;
     }
 
@@ -1305,9 +1322,9 @@ const App = (function () {
     const groups = groupByCategory(open);
 
     if (!groups.length) {
-      host.innerHTML = `<div class="cat-wide"><section class="list-section"><ul class="task-list"><li class="empty-note">${
-        query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.'
-      }</li></ul></section></div>`;
+      host.innerHTML = `<div class="cat-wide"><section class="list-section"><ul class="task-list">${
+        query ? '<li class="empty-note">No active tasks match your search.</li>' : nothingActiveNote()
+      }</ul></section></div>`;
       return;
     }
 
@@ -1423,9 +1440,9 @@ const App = (function () {
     open.forEach(t => { (bins[dueBucket(t)] = bins[dueBucket(t)] || []).push(t); });
 
     if (!open.length) {
-      host.innerHTML = `<div class="cat-wide"><section class="list-section"><ul class="task-list"><li class="empty-note">${
-        query ? 'No active tasks match your search.' : 'Nothing active. Add a task to get started.'
-      }</li></ul></section></div>`;
+      host.innerHTML = `<div class="cat-wide"><section class="list-section"><ul class="task-list">${
+        query ? '<li class="empty-note">No active tasks match your search.</li>' : nothingActiveNote()
+      }</ul></section></div>`;
       return;
     }
 
@@ -3568,9 +3585,9 @@ const App = (function () {
     if (!list.length) {
       const done = planDoneToday().length;
       host.innerHTML = done
-        ? '<p class="empty-note plan-cleared">✓ Everything you planned for today is done.</p>'
-        : '<p class="empty-note">Nothing is starred for today. Star a task on the Tasks page '
-          + '— or add one here with Priority ticked — and it turns up on the plan.</p>';
+        ? gardenerNote('✓ Everything you planned for today is done. Nice work.', 'p').replace('empty-note', 'empty-note plan-cleared')
+        : gardenerNote('Nothing is starred for today. Star a task on the Tasks page '
+          + "— or add one here with Priority ticked — and I'll line it up here.", 'p');
       return;
     }
     host.innerHTML = planState().mode === 'times' ? planTimesHtml(list) : planOrderHtml(list);

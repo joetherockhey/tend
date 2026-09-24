@@ -2302,6 +2302,75 @@ body.gated { overflow: hidden; }
   color: var(--green);
 }
 
+.auth-secondary {
+  padding: 10px 16px;
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.auth-secondary:disabled { opacity: 0.55; cursor: default; }
+
+/* The gardener at the gate: their sprite, and a speech bubble that says what
+   this screen is for, coaches each field, and explains anything that goes
+   wrong. Real text, so a screen reader hears the same help. */
+.gate-guide {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+.gate-sprite { flex: none; width: 48px; display: flex; justify-content: center; }
+.gate-sprite svg {
+  display: block;
+  image-rendering: pixelated;
+  transform: scale(1.6);
+  transform-origin: bottom center;
+}
+.gate-say { flex: 1; min-width: 0; }
+.gate-bubble {
+  position: relative;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.gate-bubble::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  bottom: 10px;
+  border: 6px solid transparent;
+  border-left: 0;
+  border-right-color: var(--accent-soft);
+}
+.gate-bubble.error { background: var(--danger-soft); color: var(--danger-ink); }
+.gate-bubble.error::before { border-right-color: var(--danger-soft); }
+.gate-bubble.success { background: var(--green-soft); }
+.gate-bubble.success::before { border-right-color: var(--green-soft); }
+.gate-fix:not(:empty) { margin-top: 6px; font-size: 0.85rem; }
+
+/* The same gardener, standing in an empty list. */
+.gardener-note { display: flex; align-items: flex-end; gap: 10px; }
+.gardener-note .gn-sprite { flex: none; }
+.gardener-note .gn-sprite svg { display: block; image-rendering: pixelated; }
+
+/* confirmed.html: where the email link lands. */
+.confirm-card { text-align: center; }
+.confirm-card .auth-brand { justify-content: center; }
+.confirm-card .gate-guide { text-align: left; }
+.confirm-card .auth-submit { display: block; text-decoration: none; }
+.confirm-scene { display: flex; justify-content: center; margin: 4px 0; }
+.confirm-scene svg { width: 168px; height: 116px; image-rendering: pixelated; }
+.confirm-note { font-size: 0.78rem; color: var(--muted); margin: 12px 0 0; overflow-wrap: anywhere; }
+
 .auth-mode-note {
   margin-top: 16px;
   font-size: 0.75rem;

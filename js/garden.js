@@ -3907,6 +3907,7 @@ const Garden = (function () {
     reskin: reskin,
     loadAll: loadAll,
     heroName: heroName,
+    heroSVG: heroSVG,
     playCashSound: playCashSound,
     previewPlotHTML: previewPlotHTML,
     startPreviewLife: startPreviewLife,

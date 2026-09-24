@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#10281d">
+<meta name="robots" content="noindex">
+<title>Tend</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="gated">
+
+<!-- Where the link in the sign-up email lands (auth.js passes it to Supabase
+     as emailRedirectTo). By the time anyone sees this page Supabase has
+     already confirmed the address, so it signs nobody in: the email is often
+     opened on a different device, or in a browser that is not the installed
+     app. It says it worked and sends them back to Tend to sign in.
+
+     An old or already-used link arrives with error_code in the address
+     instead, and gets the wilted version. -->
+<div class="auth-screen">
+  <div class="auth-card confirm-card">
+    <div class="auth-brand"><span class="auth-brand-name">Tend</span></div>
+
+    <div class="confirm-scene tend-loading" id="scene-ok">
+      <svg viewBox="0 0 64 44" shape-rendering="crispEdges" aria-hidden="true">
+        <rect x="16" y="38" width="32" height="2" fill="#6b4423"/>
+        <rect x="18" y="36" width="28" height="2" fill="#8a5a2e"/>
+        <g class="tend-stage tend-s1"><rect x="31" y="33" width="2" height="3" fill="#6b4423"/><rect x="30" y="31" width="4" height="2" fill="#6bc06e"/></g>
+        <g class="tend-stage tend-s2"><rect x="31" y="27" width="2" height="9" fill="#6b4423"/><rect x="27" y="28" width="4" height="2" fill="#4fa754"/><rect x="33" y="25" width="4" height="2" fill="#4fa754"/><rect x="30" y="23" width="4" height="3" fill="#6bc06e"/></g>
+        <g class="tend-stage tend-s3"><rect x="31" y="20" width="2" height="16" fill="#6b4423"/><rect x="25" y="26" width="6" height="2" fill="#4fa754"/><rect x="33" y="22" width="6" height="2" fill="#4fa754"/><rect x="26" y="15" width="12" height="6" fill="#4fa754"/><rect x="28" y="12" width="8" height="4" fill="#6bc06e"/></g>
+        <g class="tend-can"><rect x="6" y="14" width="12" height="10" fill="#b9bec6"/><rect x="6" y="14" width="12" height="2" fill="#cfd4da"/><rect x="15" y="22" width="3" height="2" fill="#a4aab3"/><rect x="18" y="16" width="6" height="2" fill="#a4aab3"/><rect x="23" y="18" width="3" height="2" fill="#a4aab3"/><rect x="4" y="16" width="2" height="6" fill="#a4aab3"/><rect x="9" y="11" width="6" height="3" fill="#a4aab3"/><rect x="10" y="12" width="4" height="1" fill="#b9bec6"/></g>
+        <g class="tend-drops"><rect class="tend-drop" x="26" y="22" width="2" height="3" fill="#7fc4e8"/><rect class="tend-drop" x="29" y="22" width="2" height="3" fill="#9ed6f0"/><rect class="tend-drop" x="32" y="22" width="2" height="3" fill="#7fc4e8"/></g>
+      </svg>
+    </div>
+
+    <!-- The same pot, gone limp. -->
+    <div class="confirm-scene" id="scene-stale" hidden>
+      <svg viewBox="0 0 64 44" shape-rendering="crispEdges" aria-hidden="true">
+        <rect x="16" y="38" width="32" height="2" fill="#6b4423"/>
+        <rect x="18" y="36" width="28" height="2" fill="#8a5a2e"/>
+        <rect x="31" y="26" width="2" height="10" fill="#7a6a3a"/>
+        <rect x="33" y="24" width="4" height="2" fill="#9aa35a"/>
+        <rect x="37" y="26" width="2" height="4" fill="#9aa35a"/>
+        <rect x="27" y="28" width="4" height="2" fill="#a8a060"/>
+        <rect x="25" y="30" width="2" height="4" fill="#a8a060"/>
+      </svg>
+    </div>
+
+    <h2 id="c-title">You're confirmed</h2>
+    <div class="gate-guide">
+      <span class="gate-sprite" id="gate-sprite" aria-hidden="true"></span>
+      <div class="gate-say"><p class="gate-bubble success" id="gate-bubble" role="status"></p></div>
+    </div>
+    <a class="auth-submit" href="./">Open Tend</a>
+    <p class="confirm-note" id="c-note" hidden></p>
+  </div>
+</div>
+
+<script src="js/worlds.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* Supabase puts what happened in the fragment (implicit flow) or the query
+     (PKCE); read both. */
+  const params = new URLSearchParams(location.hash.slice(1));
+  new URLSearchParams(location.search).forEach(function (v, k) { if (!params.has(k)) params.set(k, v); });
+
+  /* The fragment can carry a session token for the new account. Nothing here
+     uses it beyond reading who the gardener is, so it comes out of the address
+     bar straight away rather than sitting in history. */
+  let meta = {};
+  const token = params.get('access_token');
+  if (token) {
+    try {
+      const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      meta = JSON.parse(decodeURIComponent(escape(atob(part)))).user_metadata || {};
+    } catch (e) { /* an unreadable token only costs the personal touch */ }
+  }
+  if (location.hash || location.search) history.replaceState(null, '', location.pathname);
+
+  const world = meta.world === 'ocean' ? 'ocean' : 'garden';
+  const place = world === 'ocean' ? 'reef' : 'garden';
+  document.getElementById('gate-sprite').innerHTML = Worlds.heroSVG(world, meta.hero === 'female' ? 'female' : 'male', 'down');
+
+  const bubble = document.getElementById('gate-bubble');
+  const name = meta.display_name ? ', ' + meta.display_name : '';
+
+  if (params.get('error') || params.get('error_code')) {
+    document.getElementById('scene-ok').hidden = true;
+    document.getElementById('scene-stale').hidden = false;
+    document.getElementById('c-title').textContent = 'That link has gone stale';
+    bubble.className = 'gate-bubble error';
+    bubble.textContent = 'That link was already used, or it has expired. Open Tend and sign in. '
+      + "If your email still needs confirming, I'll send you a fresh letter from there.";
+    const desc = params.get('error_description');
+    if (desc && params.get('error_code') !== 'otp_expired') {
+      const note = document.getElementById('c-note');
+      note.textContent = 'Supabase said: ' + desc;
+      note.hidden = false;
+    }
+  } else {
+    bubble.textContent = 'All done' + name + '! Your ' + place + ' is ready. '
+      + 'You can close this tab and go back to Tend to sign in.';
+  }
+})();
+</script>
+</body>
+</html>
