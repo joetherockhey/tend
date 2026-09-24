@@ -1832,6 +1832,10 @@ const App = (function () {
   let currentView = 'list';
 
   function switchView(view) {
+    /* The bottom bar sits above the sheets, so a tab can be pressed with the
+       shop still open. Going somewhere else closes the garden's sheets. */
+    closeShop();
+    closeGardenHelp();
     /* The garden is only a section of its own in phone view. */
     if (view === 'garden' && !phoneView) view = 'list';
     /* ...and the calendar is not a section on a phone at all: a month grid at

@@ -5497,6 +5497,29 @@ html[data-mode="phone"] .garden-sheet:has(#shop-panel) > .modal-close { align-se
 /* "seedling 1, grown 2" is a note, not a price: let it wrap in the button. */
 html[data-mode="phone"] .shop-tile-action { white-space: normal; text-align: center; line-height: 1.1; padding: 2px 4px; font-size: 0.78rem; }
 
+/* Help gardener, smaller, with a warm garden-gold thought bubble instead of
+   the app's purple. */
+.help-gardener { width: 36px; height: 44px; }
+.help-gardener .hg-sprite { left: 5px; }
+.help-gardener .hg-sprite svg { width: 21px; height: 22px; }
+.help-gardener .hg-thought,
+.help-gardener .hg-thought::after {
+  background: #fff8e6;
+  border-color: #d9a520;
+}
+.help-gardener .hg-thought {
+  width: 17px;
+  height: 17px;
+  font-size: 0.66rem;
+  line-height: 13px;
+  color: #8a5f00;
+}
+.help-gardener .hg-thought::after { width: 5px; height: 5px; left: -2px; bottom: -4px; }
+.help-gardener:active .hg-thought { background: #fdecb8; }
+:root[data-dark] .help-gardener .hg-thought,
+:root[data-dark] .help-gardener .hg-thought::after { background: #3a2f12; }
+:root[data-dark] .help-gardener .hg-thought { color: #f2cf7c; }
+
 </style>
 </head>
 <body class="gated">
@@ -15183,6 +15206,10 @@ const App = (function () {
   let currentView = 'list';
 
   function switchView(view) {
+    /* The bottom bar sits above the sheets, so a tab can be pressed with the
+       shop still open. Going somewhere else closes the garden's sheets. */
+    closeShop();
+    closeGardenHelp();
     /* The garden is only a section of its own in phone view. */
     if (view === 'garden' && !phoneView) view = 'list';
     /* ...and the calendar is not a section on a phone at all: a month grid at
