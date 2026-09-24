@@ -34,7 +34,13 @@ function table(name) {
     eq(col, val) { filters.push([col, val]); return api; },
     in(col, vals) { filters.push([col, vals, 'in']); return api; },
     maybeSingle() { api._single = true; return api.then ? api : api; },
-    async upsert(rows) {
+    /* Chainable like the real client: .upsert(rows).select(cols). */
+    upsert(rows) {
+      const done = api._upsert(rows);
+      done.select = () => done;
+      return done;
+    },
+    async _upsert(rows) {
       const db = loadDB();
       const list = Array.isArray(rows) ? rows : [rows];
       list.forEach(row => {

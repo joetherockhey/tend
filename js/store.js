@@ -59,7 +59,21 @@ const Store = (function () {
   let pollTimer = null;          // fallback poll while the tab is on screen
   let refreshing = false;
   let liveHooked = false;
-  const POLL_MS = 25000;
+  /* Data allowance. Every check used to download the whole account - every
+     task and the whole garden - every 25 seconds per open tab, and again on
+     every focus and every echo of our own saves. Now: live updates carry the
+     news, a check first asks for a tiny fingerprint and only downloads
+     everything when that has moved, and the backup poll is slow. */
+  const POLL_TICK_MS = 60 * 1000;
+  const POLL_LIVE_MS = 30 * 60 * 1000;   /* live updates connected: a rare safety net */
+  const POLL_DEAD_MS = 5 * 60 * 1000;    /* live updates down: the poll is the only news */
+  const WAKE_MIN_MS = 60 * 1000;         /* focus fires constantly on a desktop */
+  let liveOn = false;
+  let lastCheckAt = 0;
+  let lastFingerprint = null;   /* what the server looked like at our last full pull */
+  let serverStateAt = null;     /* app_state.updated_at as we last saw or wrote it */
+  let pendingEvents = [];
+  let pendingFull = false;
 
   /* Where the hero is standing belongs to the device you are standing on. If
      it synced, moving on the laptop would drag the phone's farmer around. */
@@ -332,14 +346,16 @@ const Store = (function () {
       const v = gardenBag[key];
       return v === undefined ? null : v;
     },
-    setItem: function (key, value) {
+    /* quiet: kept and saved, but not worth a sync of its own - a pet's
+       wander, say. It goes up with the next real change. */
+    setItem: function (key, value, quiet) {
       /* The garden re-saves its whole plot on every redraw. An unchanged value
          is not a change: syncing it anyway sent this device's copy up over a
          move just made on the other one. */
       if (gardenBag[key] === String(value)) return;
       gardenBag[key] = String(value);
       lsRawSet(kvKey(key), String(value));
-      if (!isDeviceLocal(key)) markDirty('state');
+      if (!isDeviceLocal(key) && !quiet) markDirty('state');
     },
     removeItem: function (key) {
       delete gardenBag[key];
@@ -471,6 +487,7 @@ const Store = (function () {
     }
 
     snapshot.tickets = nextSnap;
+    lastFingerprint = null;   /* the server just changed under it */
     if (gens.tickets === gen) dirty.tickets = false;
   }
 
@@ -501,6 +518,7 @@ const Store = (function () {
       if (error) throw error;
     }
     snapshot.categories = nextSnap;
+    lastFingerprint = null;
     if (gens.categories === gen) dirty.categories = false;
   }
 
@@ -510,7 +528,13 @@ const Store = (function () {
        otherwise push somebody's magnifying glass away. */
     let garden;
     try {
-      const { data } = await client.from('app_state').select('garden')
+      /* Only fetch the garden if somebody else wrote since we last saw it -
+         otherwise there is nothing to merge, and it was a full download on
+         every single save. */
+      const head = await client.from('app_state').select('updated_at')
+        .eq('user_id', account.id).maybeSingle();
+      const unchanged = serverStateAt && head.data && sameTime(head.data.updated_at, serverStateAt);
+      const { data } = unchanged ? { data: null } : await client.from('app_state').select('garden')
         .eq('user_id', account.id).maybeSingle();
       /* Taken now, not before the read: the merge below writes back into this
          device's bag, and a bag captured before the wait would carry a plant
@@ -547,8 +571,13 @@ const Store = (function () {
     };
     const json = JSON.stringify({ display_name: row.display_name, prefs: row.prefs, garden: row.garden });
     if (snapshot.state === json) { if (gens.state === gen) dirty.state = false; return; }
-    const { error } = await client.from('app_state').upsert(row);
+    const { data: saved, error } = await client.from('app_state').upsert(row).select('updated_at');
     if (error) throw error;
+    /* The database stamps its own time; remembering it lets the echo of this
+       save be recognised, and the next save skip re-reading the garden. */
+    const savedRow = Array.isArray(saved) ? saved[0] : saved;
+    serverStateAt = (savedRow && savedRow.updated_at) || null;
+    lastFingerprint = null;
     snapshot.state = json;
     if (gens.state === gen) dirty.state = false;
   }
@@ -652,7 +681,41 @@ const Store = (function () {
     mirrorGardenBag();
     writeCache();
     pulledOk = true;
+    serverStateAt = (st && st.updated_at) || null;
+    lastFingerprint = fingerprintOf(tRes.data, cRes.data, st);
+    lastCheckAt = Date.now();
     return true;
+  }
+
+  /* A few bytes that move whenever anything in the account does: each task's
+     id and last-changed time (so an edit or a delete shows), the categories
+     (small enough to take whole), and when the settings-and-garden row was
+     last written. */
+  function fingerprintOf(tRows, cRows, st) {
+    const t = (tRows || []).map(r => r.id + '@' + (r.updated_at || '')).sort().join(',');
+    const c = (cRows || []).map(r => [r.id, r.name, r.color, r.sort_index].join('~')).sort().join(',');
+    return t + '|' + c + '|' + ((st && st.updated_at) || '');
+  }
+
+  async function remoteFingerprint() {
+    const [t, c, st] = await Promise.all([
+      client.from('tickets').select('id, updated_at').eq('user_id', account.id),
+      client.from('categories').select('id, name, color, sort_index').eq('user_id', account.id),
+      client.from('app_state').select('updated_at').eq('user_id', account.id).maybeSingle()
+    ]);
+    if (t.error) throw t.error;
+    if (c.error) throw c.error;
+    if (st.error) throw st.error;
+    return fingerprintOf(t.data, c.data, st.data);
+  }
+
+  /* Timestamps come back from the REST API and from live updates in slightly
+     different spellings. */
+  function sameTime(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    const x = Date.parse(a), y = Date.parse(b);
+    return isFinite(x) && x === y;
   }
 
   function mirrorGardenBag() {
@@ -701,15 +764,21 @@ const Store = (function () {
 
   /* Send anything of ours that is waiting, take everything of theirs, then
      tell the app to redraw. Safe to call as often as you like. */
-  async function refresh() {
+  /* full: skip the fingerprint - a live update already said something moved. */
+  async function refresh(full) {
     if (!CLOUD || !client || !account || refreshing) return false;
     refreshing = true;
     try {
       if (anyDirty()) await flush();
+      if (!full && lastFingerprint && (await remoteFingerprint()) === lastFingerprint) {
+        lastCheckAt = Date.now();
+        setStatus('idle');
+        return false;
+      }
       const before = stableStringify({ t: tickets, c: categories, p: prefs, g: syncableBag() });
       if (!(await pull(true))) {
         /* Something changed here mid-pull: push it, then look again. */
-        scheduleRefresh();
+        scheduleRefresh(true);
         return false;
       }
       const after = stableStringify({ t: tickets, c: categories, p: prefs, g: syncableBag() });
@@ -725,10 +794,45 @@ const Store = (function () {
     }
   }
 
-  const scheduleRefresh = function () {
+  const scheduleRefresh = function (full) {
+    if (full) pendingFull = true;
     if (liveTimer) clearTimeout(liveTimer);
-    liveTimer = setTimeout(() => { liveTimer = null; refresh(); }, 400);
+    liveTimer = setTimeout(runScheduledRefresh, 1200);
   };
+
+  function runScheduledRefresh() {
+    liveTimer = null;
+    /* The echo of a save can arrive before the save's own reply does, so the
+       events are judged once our push has finished, not as they land. */
+    if (flushing) { liveTimer = setTimeout(runScheduledRefresh, 600); return; }
+    const events = pendingEvents;
+    pendingEvents = [];
+    const full = pendingFull;
+    pendingFull = false;
+    if (events.length && events.every(e => isOwnEcho(e.table, e.payload))) return;
+    refresh(full || events.length > 0);
+  }
+
+  /* Whether a live update is just our own save coming back. Anything we
+     cannot be sure about counts as news, which costs one download. */
+  function isOwnEcho(table, p) {
+    if (!p || !p.eventType) return false;
+    try {
+      if (table === 'app_state') return !!(p.new && sameTime(p.new.updated_at, serverStateAt));
+      if (table === 'tickets') {
+        if (p.eventType === 'DELETE') return !!(p.old && p.old.id && !snapshot.tickets[p.old.id]);
+        const r = p.new, mine = r && snapshot.tickets[r.id];
+        return !!mine && stableStringify(JSON.parse(mine)) === stableStringify(ticketRow(rowToTicket(r), r.sort_index));
+      }
+      if (table === 'categories') {
+        if (p.eventType === 'DELETE') return !!(p.old && p.old.id && !snapshot.categories[p.old.id]);
+        const r = p.new, mine = r && snapshot.categories[r.id];
+        return !!mine && stableStringify(JSON.parse(mine)) ===
+          stableStringify({ id: r.id, user_id: account.id, name: r.name, color: r.color, sort_index: r.sort_index });
+      }
+    } catch (e) { /* fall through */ }
+    return false;
+  }
 
   function startRealtime() {
     if (!CLOUD || !client || !account) return;
@@ -739,16 +843,17 @@ const Store = (function () {
       ['tickets', 'categories', 'app_state'].forEach(table => {
         channel.on('postgres_changes',
           { event: '*', schema: 'public', table: table, filter: filter },
-          function () {
-            /* Our own writes come straight back to us too. Rather than trying
-               to time that out - which goes wrong the moment two devices are
-               both busy - every event just triggers a refresh, and refresh only
-               tells the app about it when the data genuinely differs. */
+          function (payload) {
+            /* Our own writes come straight back to us too. Each one is held
+               until our push is done and then compared with what we sent; only
+               a real change from elsewhere downloads anything. */
+            pendingEvents.push({ table: table, payload: payload });
             scheduleRefresh();
           });
       });
       channel.subscribe(function (state) {
-        if (state === 'SUBSCRIBED') console.info('[Tend] live sync on');
+        liveOn = state === 'SUBSCRIBED';
+        if (liveOn) console.info('[Tend] live sync on');
       });
     } catch (err) {
       console.warn('[Tend] live sync unavailable, falling back to polling:', err && err.message);
@@ -761,6 +866,7 @@ const Store = (function () {
       try { client.removeChannel(channel); } catch (e) { /* ignore */ }
     }
     channel = null;
+    liveOn = false;
   }
 
   /* The belt and braces: check on waking, on coming back online, on returning
@@ -771,7 +877,7 @@ const Store = (function () {
     liveHooked = true;
 
     const wake = function () {
-      if (document.visibilityState === 'visible') refresh();
+      if (document.visibilityState === 'visible' && Date.now() - lastCheckAt > WAKE_MIN_MS) refresh();
     };
     document.addEventListener('visibilitychange', wake);
     window.addEventListener('focus', wake);
@@ -779,8 +885,9 @@ const Store = (function () {
     window.addEventListener('pageshow', wake);
 
     pollTimer = setInterval(function () {
-      if (document.visibilityState === 'visible') refresh();
-    }, POLL_MS);
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastCheckAt > (liveOn ? POLL_LIVE_MS : POLL_DEAD_MS)) refresh();
+    }, POLL_TICK_MS);
   }
 
   /* ========================= other people's gardens =========================

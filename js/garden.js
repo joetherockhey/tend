@@ -1076,8 +1076,12 @@ const Garden = (function () {
       ownedPets = [];
     }
   }
-  function savePets() {
-    Store.kv.setItem(PETS_KEY, JSON.stringify(ownedPets));
+  /* quiet: a pet wandering about is saved on this device but not synced on
+     its own - it stepped every five seconds, and each step sent the whole
+     garden up and back down on every open device. It goes up with the next
+     real change; buying, feeding and befriending still sync straight away. */
+  function savePets(quiet) {
+    Store.kv.setItem(PETS_KEY, JSON.stringify(ownedPets), quiet);
   }
 
   function num(v) {
@@ -3314,7 +3318,7 @@ const Garden = (function () {
     if (lookGlide || (touchStart && touchStart.look)) return;
     if (ownedPets.length) {
       ownedPets.forEach(stepPet);
-      savePets();
+      savePets(true);
       positionPets();
       checkTreatDelivery();
     }
@@ -3332,7 +3336,7 @@ const Garden = (function () {
       }
     });
     if (moved) {
-      savePets();
+      savePets(true);
       positionPets();
     }
   }
