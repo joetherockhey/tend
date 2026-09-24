@@ -4846,7 +4846,7 @@ html.garden-full main {
   /* No side padding: the garden goes edge to edge. The lines of text above
      and the buttons below put their own back, so only the plot is full
      width. */
-  padding: 4px 0 calc(68px + env(safe-area-inset-bottom, 0px));
+  padding: 4px 0 var(--bnav-h, calc(68px + env(safe-area-inset-bottom, 0px)));
 }
 
 html.garden-full .app-layout,
@@ -5156,6 +5156,7 @@ html[data-mode="phone"] .garden-col { max-height: none; overflow-y: visible; }
    lines, and the chip and the three buttons share one short row. */
 html.garden-full #page-title,
 html.garden-full #page-subtitle { display: none; }
+#page-subtitle.off-tasks { display: none; }   /* the fun fact is the Tasks page's alone */
 
 html.garden-full .garden-gardener-row .garden-status {
   display: -webkit-box;
@@ -5451,7 +5452,7 @@ html[data-mode="phone"] .plan-head .cal-view-toggle { order: 3; }
 /* The thumb row sits on the bottom bar, whatever height the garden is. With
    only a section or two open the plot is shorter than the screen, and the
    buttons used to follow it up into the middle. */
-html.garden-full .garden-controls { margin-top: auto; padding-top: 6px; padding-bottom: 4px; }
+html.garden-full .garden-controls { margin-top: auto; padding-top: 6px; padding-bottom: 0; }
 html.garden-full .garden-plot { will-change: transform; }
 
 /* ===================== shop sheet, second pass =====================
@@ -5887,8 +5888,7 @@ html[data-mode="phone"] .shop-tile-action { white-space: normal; text-align: cen
 
   <div id="view-friends" class="view">
     <div class="panel">
-      <h2>Friends</h2>
-      <p class="category-hint">Everybody growing a garden on Tend. Click a name to look around theirs - tasks stay private, only the garden is shared.</p>
+      <div class="panel-head-row"><h2>Friends</h2><span class="help-gardener-slot" data-help="friends"></span></div>
       <div id="friends-list"></div>
     </div>
   </div>
@@ -13467,6 +13467,12 @@ const App = (function () {
         'Times puts the day on the clock: drag a task onto the half hour you mean to do it. Anything you have not placed waits underneath.',
         'Tick something off and it leaves the plan, and it is ticked off on the Tasks page too.'
       ];
+    } else if (topic === 'friends') {
+      title = 'Friends';
+      paras = [
+        'Everybody growing a ' + place + ' on Tend is here. Tap a name to look around theirs.',
+        'Your tasks stay private - only the ' + place + ' is shared.'
+      ];
     } else {
       const list = tickets();
       const done = list.filter(t => !!t.completedAt).length;
@@ -15166,13 +15172,24 @@ const App = (function () {
        now, because the window can be dragged across the threshold at any
        moment and the pinned setting can be changed at any moment too. */
     if (hasGarden() && Garden.refreshControls) Garden.refreshControls();
+    measureBottomNav();
     /* The garden column's width just changed, so the plot is re-fitted to it. */
     if (hasGarden() && Garden.refit) Garden.refit();
+  }
+
+  /* The Garden screen ends exactly where the bottom bar starts, so its thumb
+     row sits right on the bar. The bar's height depends on the phone (the
+     home-indicator inset, the text size), so it is measured, not guessed. */
+  function measureBottomNav() {
+    const nav = document.getElementById('bottom-nav');
+    const h = nav && nav.offsetHeight;
+    if (h) document.documentElement.style.setProperty('--bnav-h', h + 'px');
   }
 
   /* The window can be resized across the threshold at any moment. */
   const onResize = Util.debounce(function () {
     if (viewModePref() === 'auto') applyLayoutMode();
+    measureBottomNav();
     /* A new width can mean a different number of columns, and even at the same
        number the blocks are a different height once titles rewrap. */
     packCategoryColumns();
@@ -15218,6 +15235,10 @@ const App = (function () {
        calendar - a link, a restored view - lands there instead. */
     if (view === 'calendar' && phoneView) view = 'plan';
     currentView = view;
+    /* The fun fact belongs to the Tasks page. Elsewhere it sat between the
+       section heading and the section, saying nothing about either. */
+    const sub = document.getElementById('page-subtitle');
+    if (sub) sub.classList.toggle('off-tasks', view !== 'list');
 
     ['list', 'plan', 'calendar', 'overview', 'friends'].forEach(v => {
       const el = document.getElementById('view-' + v);
