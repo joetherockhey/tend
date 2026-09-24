@@ -45,6 +45,12 @@ const Store = (function () {
   /* ---- dirty flags ---- */
   let dirty = { tickets: false, categories: false, state: false };
   let retryTimer = null;
+  /* Bumped on every local change. A push only clears its dirty flag if nothing
+     changed while it was on the wire, and a pull that was in flight while
+     something changed is thrown away rather than applied - either one used to
+     put a plant you had just moved back where it came from. */
+  let gens = { tickets: 0, categories: 0, state: 0 };
+  let flushing = false;
 
   /* ---- live sync ---- */
   let channel = null;            // supabase realtime subscription
@@ -208,6 +214,47 @@ const Store = (function () {
     return out;
   }
 
+  /* ===================== three-way garden merge =====================
+     Last-write-wins on the whole plot meant a device that merely redrew an
+     older copy could send it up over a plant you had just moved on the other
+     one. With the copy both devices last agreed on as the base, a key this
+     device did not touch since then takes the server's value, and the plot is
+     merged plant by plant - so a move on one device and a watering on the
+     other both survive. */
+
+  const LAYOUT_KEY = 'garden-layout-v5';
+
+  function lastSyncedGarden() {
+    if (!snapshot.state) return null;
+    try { return JSON.parse(snapshot.state).garden || {}; } catch (e) { return null; }
+  }
+
+  function mergeLayout3(mine, theirs, base) {
+    const m = parseJson(mine, {}) || {}, t = parseJson(theirs, {}) || {}, b = parseJson(base, {}) || {};
+    const out = Object.assign({}, t);
+    Object.keys(Object.assign({}, m, b)).forEach(id => {
+      if (stableStringify(m[id]) === stableStringify(b[id])) return;   /* not touched here */
+      if (m[id] === undefined) delete out[id];
+      else out[id] = m[id];
+    });
+    return JSON.stringify(out);
+  }
+
+  function mergeMine(mine, theirs, base) {
+    theirs = theirs || {};
+    if (!base) return mergeGardenBags(mine, theirs);   /* never synced: mine wins, as before */
+    const out = Object.assign({}, theirs);
+    Object.keys(Object.assign({}, mine, base)).forEach(k => {
+      if (stableStringify(mine[k]) === stableStringify(base[k])) return;
+      if (mine[k] === undefined) { delete out[k]; return; }
+      out[k] = (k === LAYOUT_KEY && theirs[k] !== undefined && base[k] !== undefined)
+        ? mergeLayout3(mine[k], theirs[k], base[k])
+        : mine[k];
+    });
+    /* Purchases and growth still merge on top, whichever side they came from. */
+    return mergeGardenBags(out, theirs);
+  }
+
   /* ========================= status plumbing ========================= */
 
   function setStatus(s) {
@@ -286,6 +333,10 @@ const Store = (function () {
       return v === undefined ? null : v;
     },
     setItem: function (key, value) {
+      /* The garden re-saves its whole plot on every redraw. An unchanged value
+         is not a change: syncing it anyway sent this device's copy up over a
+         move just made on the other one. */
+      if (gardenBag[key] === String(value)) return;
       gardenBag[key] = String(value);
       lsRawSet(kvKey(key), String(value));
       if (!isDeviceLocal(key)) markDirty('state');
@@ -305,6 +356,7 @@ const Store = (function () {
 
   function markDirty(part) {
     dirty[part] = true;
+    gens[part]++;
     writeCache();
     if (CLOUD && account) {
       setStatus('saving');
@@ -318,23 +370,37 @@ const Store = (function () {
     return dirty.tickets || dirty.categories || dirty.state;
   }
 
-  async function flush() {
-    if (!CLOUD || !client || !account || !anyDirty()) {
-      if (!anyDirty() && CLOUD) setStatus('idle');
-      return;
-    }
-    try {
-      if (dirty.tickets) await pushTickets();
-      if (dirty.categories) await pushCategories();
-      if (dirty.state) await pushState();
-      writeCache();
-      setStatus('idle');
-      if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-    } catch (err) {
-      console.warn('[Tend] sync failed, will retry:', err && err.message ? err.message : err);
-      setStatus('offline');
-      if (!retryTimer) {
-        retryTimer = setTimeout(() => { retryTimer = null; flush(); }, 15000);
+  /* One push at a time: two pushes of the garden racing each other could land
+     in either order, and the older one landing last undoes the newer. A call
+     made while one is running waits for it, and anything changed while it was
+     on the wire goes up straight after in the same run. */
+  let flushRun = null;
+  function flush() {
+    if (flushRun) return flushRun;
+    flushRun = runFlush().finally(() => { flushRun = null; flushing = false; });
+    return flushRun;
+  }
+
+  async function runFlush() {
+    while (true) {
+      if (!CLOUD || !client || !account || !anyDirty()) {
+        if (!anyDirty() && CLOUD) setStatus('idle');
+        return;
+      }
+      flushing = true;
+      try {
+        if (dirty.tickets) await pushTickets();
+        if (dirty.categories) await pushCategories();
+        if (dirty.state) await pushState();
+        writeCache();
+        if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+      } catch (err) {
+        console.warn('[Tend] sync failed, will retry:', err && err.message ? err.message : err);
+        setStatus('offline');
+        if (!retryTimer) {
+          retryTimer = setTimeout(() => { retryTimer = null; flush(); }, 15000);
+        }
+        return;
       }
     }
   }
@@ -379,6 +445,7 @@ const Store = (function () {
   }
 
   async function pushTickets() {
+    const gen = gens.tickets;
     const rows = tickets.map(ticketRow);
     const changed = [];
     const nextSnap = {};
@@ -404,10 +471,11 @@ const Store = (function () {
     }
 
     snapshot.tickets = nextSnap;
-    dirty.tickets = false;
+    if (gens.tickets === gen) dirty.tickets = false;
   }
 
   async function pushCategories() {
+    const gen = gens.categories;
     const rows = categories.map((c, i) => ({
       id: c.id,
       user_id: account.id,
@@ -433,20 +501,24 @@ const Store = (function () {
       if (error) throw error;
     }
     snapshot.categories = nextSnap;
-    dirty.categories = false;
+    if (gens.categories === gen) dirty.categories = false;
   }
 
   async function pushState() {
     /* Read what is up there and fold its purchases in before overwriting it.
        The blob is last-write-wins, so a device that has not pulled lately would
        otherwise push somebody's magnifying glass away. */
-    let garden = syncableBag();
+    let garden;
     try {
       const { data } = await client.from('app_state').select('garden')
         .eq('user_id', account.id).maybeSingle();
+      /* Taken now, not before the read: the merge below writes back into this
+         device's bag, and a bag captured before the wait would carry a plant
+         you put down in the meantime back to where you picked it up. */
+      garden = syncableBag();
       if (data && data.garden) {
-        const merged = mergeGardenBags(garden, data.garden);
-        if (JSON.stringify(merged) !== JSON.stringify(garden)) {
+        const merged = mergeMine(garden, data.garden, lastSyncedGarden());
+        if (stableStringify(merged) !== stableStringify(garden)) {
           garden = merged;
           /* Keep this device's own copy in step with what is being sent. */
           Object.keys(merged).forEach(k => { gardenBag[k] = merged[k]; });
@@ -463,6 +535,8 @@ const Store = (function () {
         }
       }
     } catch (e) { /* if we cannot read it, push what we have */ }
+    if (!garden) garden = syncableBag();
+    const gen = gens.state;
 
     const row = {
       user_id: account.id,
@@ -472,11 +546,11 @@ const Store = (function () {
       updated_at: new Date().toISOString()
     };
     const json = JSON.stringify({ display_name: row.display_name, prefs: row.prefs, garden: row.garden });
-    if (snapshot.state === json) { dirty.state = false; return; }
+    if (snapshot.state === json) { if (gens.state === gen) dirty.state = false; return; }
     const { error } = await client.from('app_state').upsert(row);
     if (error) throw error;
     snapshot.state = json;
-    dirty.state = false;
+    if (gens.state === gen) dirty.state = false;
   }
 
   /* What the server held at the last sync that actually landed. It is the only
@@ -501,7 +575,11 @@ const Store = (function () {
 
   /* ---- pull ---- */
 
-  async function pull() {
+  /* With onlyIfQuiet, returns false without touching anything if this device
+     changed something - or started pushing - while the answer was on its way.
+     That answer can predate our own push, and applying it would undo it. */
+  async function pull(onlyIfQuiet) {
+    const startGens = JSON.stringify(gens);
     const [tRes, cRes, sRes] = await Promise.all([
       client.from('tickets').select('*').eq('user_id', account.id),
       client.from('categories').select('*').eq('user_id', account.id),
@@ -510,6 +588,7 @@ const Store = (function () {
     if (tRes.error) throw tRes.error;
     if (cRes.error) throw cRes.error;
     if (sRes.error) throw sRes.error;
+    if (onlyIfQuiet && (flushing || anyDirty() || JSON.stringify(gens) !== startGens)) return false;
 
     tickets = (tRes.data || []).map(rowToTicket).sort((a, b) => a._sort - b._sort);
     tickets.forEach(t => { delete t._sort; });
@@ -536,7 +615,7 @@ const Store = (function () {
     const mergedPrefs = unsent ? mergePrefs(prefs, serverPrefs, lastSyncedPrefs()) : serverPrefs;
     /* Anything the merge kept from this device still has to go up, or the
        setting only ever applies on the machine it was changed on. */
-    const prefsOweAPush = JSON.stringify(mergedPrefs) !== JSON.stringify(serverPrefs);
+    const prefsOweAPush = stableStringify(mergedPrefs) !== stableStringify(serverPrefs);
     prefs = mergedPrefs;
 
     /* Keep this device's own keys - the server never had them. */
@@ -547,11 +626,11 @@ const Store = (function () {
     const mineGarden = syncableBag();
     /* Either way the purchases from both sides survive. */
     const mergedGarden = unsent
-      ? mergeGardenBags(mineGarden, serverGarden)
+      ? mergeMine(mineGarden, serverGarden, lastSyncedGarden())
       : mergeGardenBags(serverGarden, mineGarden);
     /* If merging brought anything back that the server does not hold, it has to
        go up again - otherwise the repair only ever lives on this device. */
-    const owesAPush = JSON.stringify(mergedGarden) !== JSON.stringify(serverGarden);
+    const owesAPush = stableStringify(mergedGarden) !== stableStringify(serverGarden);
 
     gardenBag = Object.assign({}, mergedGarden, keepLocal);
     if (st && st.display_name) account.name = st.display_name;
@@ -573,6 +652,7 @@ const Store = (function () {
     mirrorGardenBag();
     writeCache();
     pulledOk = true;
+    return true;
   }
 
   function mirrorGardenBag() {
@@ -595,6 +675,21 @@ const Store = (function () {
      sleeping phone) a quiet poll and a check on waking cover the same ground
      a little more slowly. */
 
+  /* JSON with object keys sorted, all the way down - including inside the
+     garden bag's values, which are JSON strings of their own. Postgres jsonb
+     does not keep key order, so this is the only fair way to ask "did the
+     data actually change". */
+  function stableStringify(v) {
+    if (typeof v === 'string' && (v[0] === '{' || v[0] === '[')) {
+      try { return 'J' + stableStringify(JSON.parse(v)); } catch (e) { /* plain string */ }
+    }
+    if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+    if (v && typeof v === 'object') {
+      return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + stableStringify(v[k])).join(',') + '}';
+    }
+    return JSON.stringify(v === undefined ? null : v);
+  }
+
   function onChange(fn) {
     changeListeners.push(fn);
     return function () { changeListeners = changeListeners.filter(f => f !== fn); };
@@ -611,9 +706,13 @@ const Store = (function () {
     refreshing = true;
     try {
       if (anyDirty()) await flush();
-      const before = JSON.stringify({ t: tickets, c: categories, p: prefs, g: syncableBag() });
-      await pull();
-      const after = JSON.stringify({ t: tickets, c: categories, p: prefs, g: syncableBag() });
+      const before = stableStringify({ t: tickets, c: categories, p: prefs, g: syncableBag() });
+      if (!(await pull(true))) {
+        /* Something changed here mid-pull: push it, then look again. */
+        scheduleRefresh();
+        return false;
+      }
+      const after = stableStringify({ t: tickets, c: categories, p: prefs, g: syncableBag() });
       setStatus('idle');
       if (before !== after) { announceChange(); return true; }
       return false;

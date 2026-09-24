@@ -156,9 +156,8 @@
       <div class="garden-coins" id="garden-coins">0</div>
       <!-- Shop and Help are things you go and open, not things you do to the
            square you are standing on - so they sit up here away from the thumb
-           row, where a walk cannot fat-finger them. Phone only: on a desktop
-           the shop is a panel of its own and the help is a strip under the
-           plot. -->
+           row, where a walk cannot fat-finger them. On a desktop only Shop
+           shows - the help there is a strip under the plot. -->
       <div class="garden-top-btns">
         <button type="button" class="garden-ctl-btn" id="garden-shop-btn"
                 onclick="App.openShop()">&#x1F6D2;<span>Shop</span></button>
@@ -240,6 +239,8 @@
   <div class="panel" id="shop-panel">
     <h2 id="shop-panel-title">Shop</h2>
     <div class="shop-coins" id="shop-coins-row"><span id="shop-coins-icon"></span> <span id="shop-coins-amt">0</span></div>
+    <div class="shop-sell" id="shop-sell" hidden></div>
+    <div class="shop-desc" id="shop-desc" aria-live="polite"></div>
     <!-- Phone only: one tab per kind of thing, so the shop is a few big
          buttons at a time rather than a page of small print. On a computer
          the tabs are hidden and every section shows in the two columns. -->

@@ -112,7 +112,7 @@ const Auth = (function () {
     if (view === 'signup') return "Make an account and I'll get your " + place() + ' started.';
     if (view === 'reset') return "Forgotten it? Happens to me with the shed key. I'll email you a link to pick a new one.";
     if (view === 'newpassword') return "Pick a new password and I'll let you back in.";
-    if (view === 'inbox') return "I've sent a letter to " + prefillEmail + '. Tap the link inside, then come back here and sign in.';
+    if (view === 'inbox') return "I've sent an email to " + prefillEmail + '. Tap the link inside, then come back here and sign in.';
     if (view === 'newprofile') return 'What should I call you?';
     if (view === 'profiles') return Store.localProfiles().length
       ? "Hello! Who's tending today?"
@@ -392,7 +392,7 @@ const Auth = (function () {
     setBusy(false);
     if (error) {
       message('error', friendlyError(error));
-      if (/email not confirmed/i.test(error.message || '')) { prefillEmail = email; offerFix('Send the letter again', resend); }
+      if (/email not confirmed/i.test(error.message || '')) { prefillEmail = email; offerFix('Send the email again', resend); }
       else if (/invalid login credentials/i.test(error.message || '')) offerFix('Send me a reset link', () => go('reset'));
       return;
     }
@@ -636,7 +636,7 @@ const Auth = (function () {
   function friendlyError(error) {
     const m = (error && error.message) || 'Something went wrong.';
     if (/invalid login credentials/i.test(m)) return "That email and password didn't open the gate. Try again, or I can send you a reset link.";
-    if (/email not confirmed/i.test(m)) return "You haven't opened my letter yet. Tap the link in the email I sent, then sign in.";
+    if (/email not confirmed/i.test(m)) return "You haven't opened my email yet. Tap the link inside it, then sign in.";
     if (/already registered/i.test(m)) return "There's already an account with that email. Sign in instead?";
     if (/rate limit|too many|security purposes/i.test(m)) return 'Too many tries at once. Give it a minute and try again.';
     if (/fetch|network/i.test(m)) return "I can't reach the server. Check your connection and try again.";

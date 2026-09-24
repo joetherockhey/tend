@@ -57,6 +57,9 @@ const Worlds = (function () {
     function bucketSVG() {
       return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="4" y="10" width="8" height="6" fill="#8a8f98"/><rect x="3" y="9" width="10" height="1" fill="#a4aab3"/><rect x="5" y="6" width="6" height="1" fill="#6b7280"/></svg>`;
     }
+    function beehiveSVG() {
+      return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="2" width="2" height="2" fill="#6b4423"/><rect x="5" y="4" width="6" height="3" fill="#eda100"/><rect x="3" y="7" width="10" height="3" fill="#d18f00"/><rect x="2" y="10" width="12" height="3" fill="#eda100"/><rect x="3" y="13" width="10" height="3" fill="#d18f00"/><rect x="7" y="12" width="2" height="2" fill="#5a3a1e"/><rect x="4" y="16" width="8" height="2" fill="#8a5a2e"/><rect x="12" y="4" width="2" height="1" fill="#3b3f45"/><rect x="12" y="3" width="1" height="1" fill="#f7f7f2"/></svg>`;
+    }
     function axeSVG() {
       return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="4" width="2" height="14" fill="#8a5a2e"/><rect x="9" y="2" width="6" height="7" fill="#a4aab3"/><rect x="9" y="2" width="6" height="2" fill="#d3d6db"/><rect x="14" y="4" width="1" height="4" fill="#6b7280"/></svg>`;
     }
@@ -261,11 +264,16 @@ const Worlds = (function () {
        in the garden, while taking it off the shop shelf. The hose and the
        bucket never did anything - they were ornaments - so they are gone. */
     const SHOP_ITEMS = {
-      hoe: { label: 'Hoe', icon: '\u{26CF}\u{FE0F}', cost: 3, svg: hoeSVG },
+      hoe: { label: 'Hoe', icon: '\u{26CF}\u{FE0F}', cost: 3, svg: hoeSVG, tool: true,
+        desc: 'Turns the square you stand on into plantable dirt.' },
       hose: { label: 'Hose', icon: '\u{1F6BF}', cost: 4, svg: hoseSVG, retired: true },
       bucket: { label: 'Bucket', icon: '\u{1FAA3}', cost: 2, svg: bucketSVG, retired: true },
-      axe: { label: 'Axe', icon: '\u{1FA93}', cost: 6, svg: axeSVG },
-      shovel: { label: 'Shovel', icon: SHOVEL_GLYPH, cost: 6, svg: shovelSVG }
+      axe: { label: 'Axe', icon: '\u{1FA93}', cost: 6, svg: axeSVG, tool: true,
+        desc: 'Chops a tree or a grown sapling into a log.' },
+      shovel: { label: 'Shovel', icon: SHOVEL_GLYPH, cost: 6, svg: shovelSVG, tool: true,
+        desc: 'Digs up a bush so you can carry it somewhere else.' },
+      beehive: { label: 'Bee hive', icon: '\u{1F41D}', cost: 4, svg: beehiveSVG,
+        desc: 'A buzzing hive to stand in the garden. Just for looks - buy as many as you like.' }
     };
     const OUTFITS = {
       classic: { label: 'Classic', icon: '\u{1F455}', cost: 0, hat: '#6b4423', shirt: '#3f9142', pants: '#2c3e8f' },
@@ -791,11 +799,16 @@ const Worlds = (function () {
   const OCEAN_FOOD = { label: 'Fish food', icon: '\u{1F990}', cost: 1, gain: 18 };
 
   const OCEAN_ITEMS = {
-    hoe: { label: 'Sand rake', icon: '\u{1F3D6}\u{FE0F}', cost: 3, svg: sandRakeSVG },
+    hoe: { label: 'Sand rake', icon: '\u{1F3D6}\u{FE0F}', cost: 3, svg: sandRakeSVG, tool: true,
+      desc: 'Rakes the square you are on into seabed you can plant in.' },
     hose: { label: 'Current jet', icon: '\u{1F30A}', cost: 4, svg: currentJetSVG, retired: true },
     bucket: { label: 'Shell pail', icon: '\u{1F41A}', cost: 2, svg: shellPailSVG, retired: true },
-    axe: { label: 'Coral saw', icon: '\u{1FA9A}', cost: 6, svg: coralSawSVG },
-    shovel: { label: 'Sand scoop', icon: '\u{1F944}', cost: 6, svg: sandScoopSVG }
+    axe: { label: 'Coral saw', icon: '\u{1FA9A}', cost: 6, svg: coralSawSVG, tool: true,
+      desc: 'Cuts a kelp stalk or a grown sprout into driftwood.' },
+    shovel: { label: 'Sand scoop', icon: '\u{1F944}', cost: 6, svg: sandScoopSVG, tool: true,
+      desc: 'Scoops up a sponge so you can carry it somewhere else.' },
+    beehive: { label: 'Treasure chest', icon: '\u{1F4B0}', cost: 4, svg: chestSVG,
+      desc: 'A sunken chest to set on the reef. Just for looks - buy as many as you like.' }
   };
 
   const OCEAN_OUTFITS = {
@@ -867,6 +880,21 @@ const Worlds = (function () {
       detail: { tuft: '#7fd9b4', tuft2: '#4fae8c', patch: '#c9f0e2' } }
   ].map(function (o, i) { return Object.assign({}, SEASONS[i], o); });
 
+  /* Seed packets. Each one is a surprise from its own list of varieties. The
+     lists are indices into the plant arrays, which the two worlds keep slot
+     for slot, so one set of lists serves both and only the names differ. */
+  const PLANT_GROUPS = {
+    spring: [1, 3, 14, 15, 24, 26, 34, 35, 36, 37, 38, 42],
+    summer: [0, 2, 4, 11, 13, 17, 18, 19, 22, 23, 31, 32, 33, 40, 41, 49],
+    winter: [12, 16, 20, 25, 39],
+    tropical: [7, 8, 21, 27, 43, 44, 45, 46],
+    desert: [5, 6, 47, 48],
+    edible: [9, 10, 28, 29, 30]
+  };
+  function plantCategories(labels) {
+    return Object.keys(PLANT_GROUPS).map(id => ({ id, varieties: PLANT_GROUPS[id], ...labels[id] }));
+  }
+
   const GARDEN_WORLD = {
     id: 'garden',
     label: 'Garden',
@@ -893,6 +921,14 @@ const Worlds = (function () {
     surfaceBackground: surfaceBackground,
     stepSound: THEME_STEP_SOUND,
     plants: PLANT_VARIETIES,
+    plantCategories: plantCategories({
+      spring: { label: 'Spring flowers', icon: '\u{1F337}', desc: 'Tulips, daffodils, crocuses, bluebells and more.' },
+      summer: { label: 'Summer flowers', icon: '\u{1F33B}', desc: 'Roses, sunflowers, poppies, lavender and more.' },
+      winter: { label: 'Winter plants', icon: '\u{2744}\u{FE0F}', desc: 'Camellia, amaryllis, chrysanthemum and other cold-season bloomers.' },
+      tropical: { label: 'Tropical plants', icon: '\u{1F33A}', desc: 'Orchids, jasmine, bird of paradise, even a Venus flytrap.' },
+      desert: { label: 'Desert plants', icon: '\u{1F335}', desc: 'Cactus, succulent, prickly pear or string of pearls.' },
+      edible: { label: 'Fruit & veg', icon: '\u{1F345}', desc: 'Tomato, blueberry, strawberry, chilli or rosemary.' }
+    }),
     plantSVG: buildPlantSVG,
     pets: PET_TYPES,
     food: PET_FOOD,
@@ -946,6 +982,14 @@ const Worlds = (function () {
     surfaceBackground: oceanSurfaceBackground,
     stepSound: OCEAN_STEP_SOUND,
     plants: OCEAN_PLANTS,
+    plantCategories: plantCategories({
+      spring: { label: 'Shallows corals', icon: '\u{1FAB8}', desc: 'Anemones, sea moss, sea grape, moon coral and more.' },
+      summer: { label: 'Bright reef corals', icon: '\u{1F420}', desc: 'Sea rose, brain coral, starfish, kelp and more.' },
+      winter: { label: 'Cold-water corals', icon: '\u{2744}\u{FE0F}', desc: 'Sea pen, tube worms, star coral or lily anemone.' },
+      tropical: { label: 'Exotic reef life', icon: '\u{1F33A}', desc: 'Fan coral, giant clam, pearl anemone and other rare finds.' },
+      desert: { label: 'Spiky corals', icon: '\u{1F994}', desc: 'Pipe sponge, coral polyps, spine coral or pearl chain weed.' },
+      edible: { label: 'Sponges & grasses', icon: '\u{1F33F}', desc: 'Berry sponge, barrel sponge, sea grass, bubble or fire coral.' }
+    }),
     plantSVG: oceanPlantSVG,
     pets: OCEAN_PETS,
     food: OCEAN_FOOD,

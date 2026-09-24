@@ -1356,16 +1356,16 @@ const Garden = (function () {
   /* A plant is only ever flagged held while somebody is carrying it, and that
      lasts one session. So anything still flagged when the garden loads was
      interrupted - a reload, an update, a sync landing mid-carry - and is put
-     back down where it was picked up rather than left invisible. */
+     back down where it was picked up rather than left invisible.
+
+     Only in memory. Saving it here meant the OTHER device, reloading while you
+     carried a plant, wrote the plant back to its old square and synced that -
+     and if its save landed after yours, your plant jumped back. */
   function releaseHeldPlants() {
-    let changed = false;
     Object.keys(gardenLayout).forEach(id => {
-      if (gardenLayout[id] && gardenLayout[id].held) {
-        delete gardenLayout[id].held;
-        changed = true;
-      }
+      if (id === keepHeldPlantId) return;   /* still in our hands - see loadAll */
+      if (gardenLayout[id] && gardenLayout[id].held) delete gardenLayout[id].held;
     });
-    if (changed) saveGardenLayout();
   }
 
   /* ------------------------------------------------------------------ */
@@ -1810,6 +1810,9 @@ const Garden = (function () {
           b.setAttribute('aria-selected', on ? 'true' : 'false');
         });
         document.querySelectorAll('[data-shop-sec]').forEach(sec => sec.classList.toggle('on', sec.dataset.shopSec === tab));
+        /* A description of something on another tab would be a riddle. */
+        const desc = document.getElementById('shop-desc');
+        if (desc) desc.textContent = SHOP_HINT;
       });
     });
   }
@@ -2049,8 +2052,14 @@ const Garden = (function () {
   /* A tool is used where you stand rather than set down, so the second button
      has to say so - "Put down" on a hoe would be a lie. */
   function heldIsTool() {
-    return !!(heldDecoration && (heldDecoration.kind === 'hoe'
-      || heldDecoration.kind === 'axe' || heldDecoration.kind === 'shovel'));
+    const def = heldDecoration && W().items[heldDecoration.kind];
+    return !!(def && def.tool);
+  }
+
+  /* A tool does its job whether you own one or five, so the shop sells each
+     one once. Decorations are just for looks and can be bought again. */
+  function ownsTool(kind) {
+    return purchasedItems.some(p => p.kind === kind);
   }
 
   function isHoldingSomething() {
@@ -2079,6 +2088,7 @@ const Garden = (function () {
     /* Always says Use. The world renames the tools - a coral saw, a sand
        rake - and any of those names on a four-button row wraps the lot. */
     if (useBtn) useBtn.disabled = !heldIsTool();
+    renderSellBar();
 
   }
 
@@ -2717,8 +2727,9 @@ const Garden = (function () {
     heldPlantGrown = !isSeedling(gardenLayout[taskId]);
     heldPlantWaters = gardenLayout[taskId].waterCount || 0;
     heldPlantId = taskId;
+    /* Not saved: picking up changes nothing anyone else needs to know about
+       until it is put down or sold, and every save is a sync. */
     gardenLayout[taskId].held = true;
-    saveGardenLayout();
     renderShop();
     playPickupSound();
     renderGarden();
@@ -2974,7 +2985,7 @@ const Garden = (function () {
 
   function buyItem(kind) {
     const def = W().items[kind];
-    if (!def || def.retired || coins < def.cost) return;
+    if (!def || def.retired || coins < def.cost || (def.tool && ownsTool(kind))) return;
     spendCoins(def.cost);
     const cell = findFreeCellNearHero() || { row: heroPos.row, col: heroPos.col };
     purchasedItems.push({
@@ -2992,23 +3003,49 @@ const Garden = (function () {
      task, rather than something that appears on its own. It arrives as a
      seedling: every one looks the same until it has grown, and which variety
      it turns out to be is a surprise kept until then. */
-  /* Cash in whatever you are carrying. Only works on a plant in your hands,
+  /* What the thing in your hands would sell for, or null when it is not
+     something you bought (a log you chopped, a bush you dug up). A plant keeps
+     its own rate; anything else from the shop gives back half its price. */
+  function heldSale() {
+    if (heldPlantId != null) return { name: heldItemName(), value: heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE };
+    if (heldDecoration && heldDecoration.source === 'item') {
+      const def = W().items[heldDecoration.kind];
+      return def ? { name: def.label, value: Math.max(1, Math.floor(def.cost / 2)) } : null;
+    }
+    if (heldSapling) return { name: cap(terms().sprout), value: Math.floor(SAPLING_COST / 2) };
+    if (heldTreat) return { name: W().food.label, value: W().food.cost };
+    return null;
+  }
+
+  /* Sell whatever you are carrying. Only works on something in your hands,
      which means you have already picked it deliberately. */
-  function sellHeldPlant() {
-    if (heldPlantId == null) return;
-    const value = heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE;
-    earnCoins(value);
-    /* Cashing in is the one thing that really removes a plant. */
-    delete gardenLayout[heldPlantId];
-    heldPlantId = null;
-    heldPlantVariety = null;
-    heldPlantPot = null;
-    heldPlantGrown = true;
-    heldPlantWaters = 0;
-    saveGardenLayout();
+  function sellHeld() {
+    const sale = heldSale();
+    if (!sale) return;
+    if (heldPlantId != null) {
+      delete gardenLayout[heldPlantId];
+      heldPlantId = null;
+      heldPlantVariety = null;
+      heldPlantPot = null;
+      heldPlantGrown = true;
+      heldPlantWaters = 0;
+      saveGardenLayout();
+    } else if (heldDecoration) {
+      purchasedItems = purchasedItems.filter(p => p.id !== heldDecoration.sourceId);
+      heldDecoration = null;
+      savePurchasedItems();
+    } else if (heldSapling) {
+      saplings = saplings.filter(x => x.id !== heldSapling.id);
+      heldSapling = null;
+      saveSaplings();
+    } else if (heldTreat) {
+      heldTreat = null;   /* already off the ground since it was picked up */
+    }
+    earnCoins(sale.value);
     renderGarden();
     positionHero();
-    showThought('+' + value + (value === 1 ? ' coin' : ' coins'));
+    renderShop();
+    showThought('+' + sale.value + (sale.value === 1 ? ' coin' : ' coins'));
   }
 
   /* Said when there is nowhere left to stand anything. */
@@ -3016,8 +3053,11 @@ const Garden = (function () {
     return 'No room left - plant or cash one in first';
   }
 
-  function buyPlant() {
+  /* With a category, the surprise is drawn from that packet's varieties only. */
+  function buyPlant(categoryId) {
     if (coins < PLANT_COST) return;
+    const category = categoryId && (W().plantCategories || []).find(c => c.id === categoryId);
+    const pool = category ? category.varieties : null;
     /* Find the room before taking the coin. Buying with nowhere to stand used
        to spend the coin and lose the seedling. */
     const cell = findPottingSpot();
@@ -3031,7 +3071,7 @@ const Garden = (function () {
     gardenLayout[id] = {
       row: cell.row,
       col: cell.col,
-      variety: Math.floor(Math.random() * W().plants.length),
+      variety: pool ? pool[Math.floor(Math.random() * pool.length)] : Math.floor(Math.random() * W().plants.length),
       potColor: POT_COLORS[Math.floor(Math.random() * POT_COLORS.length)],
       grown: false,
       waterCount: 0
@@ -3085,80 +3125,110 @@ const Garden = (function () {
     renderGarden();
   }
 
+  /* One shop tile. The picture and the name only say what the thing is - on
+     a phone a stray tap on a picture used to spend a coin - and the coin
+     button under them is the one thing that buys. */
+  function shopTile({ icon, label, desc, action, onclick, disabled, dim = disabled, cls = '' }) {
+    return `<div class="shop-tile${cls ? ' ' + cls : ''}${dim ? ' off' : ''}">
+      <button type="button" class="shop-tile-info" onclick="describeShopItem(this)"
+        data-desc="${Util.escapeHtml(label + ': ' + desc)}" aria-label="What is ${Util.escapeHtml(label)}?">
+        <span class="shop-tile-icon">${icon}</span>
+        <span class="shop-tile-label">${Util.escapeHtml(label)}</span>
+      </button>
+      <button type="button" class="shop-tile-action" ${disabled ? 'disabled' : ''}${onclick ? ` onclick="${onclick}"` : ''}>${action}</button>
+    </div>`;
+  }
+
+  const SHOP_HINT = 'Tap a picture to see what it does. Tap the coin button to buy.';
+
+  function describeShopItem(btn) {
+    const box = document.getElementById('shop-desc');
+    if (box) box.textContent = btn.dataset.desc;
+    document.querySelectorAll('.shop-tile.picked').forEach(el => el.classList.remove('picked'));
+    btn.parentElement.classList.add('picked');
+  }
+
+  function price(cost) { return coinSVG() + cost; }
+
+  /* Selling sits above the tabs, so whatever you are carrying can be sold
+     from any of them. Redrawn with the Holding box too, because on a computer
+     the shop is open beside the plot while you pick things up. */
+  function renderSellBar() {
+    const sellWrap = document.getElementById('shop-sell');
+    if (!sellWrap) return;
+    const sale = heldSale();
+    sellWrap.innerHTML = sale
+      ? `<button type="button" class="shop-sell-btn" onclick="sellHeld()">Sell ${Util.escapeHtml(sale.name)} <span>+${price(sale.value)}</span></button>`
+      : '';
+    sellWrap.hidden = !sale;
+  }
+
   function renderShop() {
+    renderSellBar();
+    const descBox = document.getElementById('shop-desc');
+    if (descBox && !descBox.textContent) descBox.textContent = SHOP_HINT;
+
     const petsWrap = document.getElementById('shop-pets');
     if (petsWrap) {
       const capped = ownedPets.length >= MAX_PETS;
-      const tiles = Object.entries(W().pets).map(([type, def]) => `
-        <button class="shop-tile" ${(coins < def.cost || capped) ? 'disabled' : ''} onclick="buyPet('${type}')">
-          <span class="shop-tile-icon">${def.icon}</span>
-          <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
-          <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
-        </button>`).join('') +
-        `<button class="shop-tile" ${(coins < UNLOCK_PET_COST || capped) ? 'disabled' : ''} onclick="unlockRandomPet()">
-          <span class="shop-tile-icon">\u{2728}</span>
-          <span class="shop-tile-label">Mystery pet</span>
-          <span class="shop-tile-action">${coinSVG()}${UNLOCK_PET_COST}</span>
-        </button>`;
+      const tiles = Object.entries(W().pets).map(([type, def]) => shopTile({
+        icon: def.icon, label: def.label,
+        desc: `A ${def.temperament} companion that wanders ${terms().place}. Feed it to win it over.`,
+        action: price(def.cost), onclick: `buyPet('${type}')`, disabled: coins < def.cost || capped
+      })).join('') + shopTile({
+        icon: '\u{2728}', label: 'Mystery pet', desc: 'A random companion - it could be any of them.',
+        action: price(UNLOCK_PET_COST), onclick: 'unlockRandomPet()', disabled: coins < UNLOCK_PET_COST || capped
+      });
       petsWrap.innerHTML = `<div class="shop-info">Pets: ${ownedPets.length}/${MAX_PETS}</div><div class="shop-grid">${tiles}</div>`;
     }
 
     const plantsWrap = document.getElementById('shop-plants');
     if (plantsWrap) {
-      const holding = heldPlantId != null;
-      const value = heldPlantGrown ? PLANT_VALUE : SEEDLING_VALUE;
       const noRoom = !findPottingSpot();
-      /* Two lines of explanation used to sit here under the word Plants: the
-         coin rate with a note about building to raise it, and a tally of what
-         is growing. Both said things that are said better elsewhere - the
-         tally is the sentence at the top of the garden, and the coin rate
-         belongs with the thing that changes it, so it lives in the Building
-         help panel now. What is left is the one line you cannot read anywhere
-         else, and only when it applies. */
+      const t = terms();
+      const seedDisabled = coins < PLANT_COST || noRoom;
+      const packets = (W().plantCategories || []).map(c => shopTile({
+        icon: c.icon, label: c.label,
+        desc: c.desc + ' Starts as a seedling - which one it grows into is a surprise.',
+        action: price(PLANT_COST), onclick: `buyPlant('${c.id}')`, disabled: seedDisabled
+      })).join('');
       plantsWrap.innerHTML =
         (noRoom ? '<div class="shop-info">No room for another - clear a square first.</div>' : '') +
-        `<div class="shop-grid">
-           <button class="shop-tile" ${(coins < PLANT_COST || noRoom) ? 'disabled' : ''} onclick="buyPlant()"
-             title="${noRoom ? 'The garden is full - plant or cash one in to make room' : ''}">
-             <span class="shop-tile-icon">\u{1F331}</span>
-             <span class="shop-tile-label">Seedling</span>
-             <span class="shop-tile-action">${coinSVG()}${PLANT_COST}</span>
-           </button>
-           <button class="shop-tile" ${(coins < SAPLING_COST || !findFreeCellAtTop()) ? 'disabled' : ''} onclick="buySapling()">
-             <span class="shop-tile-icon">\u{1F331}</span>
-             <span class="shop-tile-label">${Util.escapeHtml(cap(terms().sprout))} (water 5x to grow)</span>
-             <span class="shop-tile-action">${coinSVG()}${SAPLING_COST}</span>
-           </button>
-           <button class="shop-tile ${holding ? 'sell' : ''}" ${holding ? '' : 'disabled'} onclick="sellHeldPlant()"
-             title="${holding ? 'Cash in what you are carrying' : 'Pick a ' + terms().plant + ' up first, then cash it in here'}">
-             <span class="shop-tile-icon">\u{1F4B0}</span>
-             <span class="shop-tile-label">${holding ? 'Cash in what you are holding' : 'Cash in a ' + Util.escapeHtml(terms().plant)}</span>
-             <span class="shop-tile-action">${holding ? '+' + coinSVG() + value : 'seedling 1, grown 2'}</span>
-           </button>
-         </div>`;
+        `<div class="shop-grid">` +
+        shopTile({
+          icon: '\u{1F331}', label: 'Mystery seedling',
+          desc: `Could grow into any of the ${W().plants.length} ${t.plants}.`,
+          action: price(PLANT_COST), onclick: 'buyPlant()', disabled: seedDisabled
+        }) + packets +
+        shopTile({
+          icon: '\u{1F331}', label: cap(t.sprout),
+          desc: `Plant it and water it and it grows into a ${t.sprouted} you can chop for ${t.logs}.`,
+          action: price(SAPLING_COST), onclick: 'buySapling()', disabled: coins < SAPLING_COST || !findFreeCellAtTop()
+        }) +
+        `</div>`;
     }
 
     const itemsWrap = document.getElementById('shop-items');
     if (itemsWrap) {
-      const tiles = Object.entries(W().items).filter(([, def]) => !def.retired).map(([kind, def]) => `
-        <button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyItem('${kind}')">
-          <span class="shop-tile-icon">${def.icon}</span>
-          <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
-          <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
-        </button>`).join('') +
-        (hasLens
-          ? `<button class="shop-tile owned" onclick="toggleLens()"
-               title="${lensOn ? 'Tap to stop naming things' : 'Tap to name things again'}">
-              <span class="shop-tile-icon">\u{1F50D}</span>
-              <span class="shop-tile-label">Magnifying glass</span>
-              <span class="shop-tile-action ${lensOn ? 'on' : 'off'}">Naming: ${lensOn ? 'on' : 'off'}</span>
-            </button>`
-          : `<button class="shop-tile" ${coins < LENS_COST ? 'disabled' : ''} onclick="buyLens()"
-               title="Walk up to anything and it tells you what it is">
-              <span class="shop-tile-icon">\u{1F50D}</span>
-              <span class="shop-tile-label">Magnifying glass (names things)</span>
-              <span class="shop-tile-action">${coinSVG()}${LENS_COST}</span>
-            </button>`);
+      const tiles = Object.entries(W().items).filter(([, def]) => !def.retired).map(([kind, def]) => {
+        const owned = def.tool && ownsTool(kind);
+        return shopTile({
+          icon: def.icon, label: def.label, desc: def.desc || '',
+          action: owned ? 'Owned' : price(def.cost), onclick: owned ? '' : `buyItem('${kind}')`,
+          disabled: owned || coins < def.cost, dim: !owned && coins < def.cost, cls: owned ? 'owned' : ''
+        });
+      }).join('') + (hasLens
+        ? shopTile({
+            icon: '\u{1F50D}', label: 'Magnifying glass',
+            desc: 'Owned. Tap the button to turn naming ' + (lensOn ? 'off.' : 'on.'),
+            action: `<span class="${lensOn ? 'on' : 'off'}">Naming: ${lensOn ? 'on' : 'off'}</span>`,
+            onclick: 'toggleLens()', cls: 'owned'
+          })
+        : shopTile({
+            icon: '\u{1F50D}', label: 'Magnifying glass',
+            desc: 'Walk up to anything and it tells you what it is.',
+            action: price(LENS_COST), onclick: 'buyLens()', disabled: coins < LENS_COST
+          }));
       itemsWrap.innerHTML = `<div class="shop-grid">${tiles}</div>`;
     }
 
@@ -3168,11 +3238,10 @@ const Garden = (function () {
         treatsWrap.innerHTML = `<div class="shop-empty">Buy a companion to unlock ${Util.escapeHtml(W().food.label.toLowerCase())}.</div>`;
       } else {
         const def = W().food;
-        const tile = `<button class="shop-tile" ${coins < def.cost ? 'disabled' : ''} onclick="buyFood()">
-            <span class="shop-tile-icon">${def.icon}</span>
-            <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
-            <span class="shop-tile-action">${coinSVG()}${def.cost}</span>
-          </button>`;
+        const tile = shopTile({
+          icon: def.icon, label: def.label, desc: 'Carry it over to a companion to make friends faster.',
+          action: price(def.cost), onclick: 'buyFood()', disabled: coins < def.cost
+        });
         /* Who still needs winning over, so the one food tile is enough. */
         const roster = ownedPets.map(p => {
           const petDef = W().pets[p.type];
@@ -3188,19 +3257,10 @@ const Garden = (function () {
       const tiles = Object.entries(W().outfits).map(([id, def]) => {
         const owned = ownedOutfits.includes(id);
         const equipped = equippedOutfit === id;
-        let action, onclick, disabled, cls = '';
-        if (equipped) {
-          action = 'Equipped'; onclick = ''; disabled = true; cls = ' equipped';
-        } else if (owned) {
-          action = 'Equip'; onclick = `equipOutfit('${id}')`; disabled = false;
-        } else {
-          action = `${coinSVG()}${def.cost}`; onclick = `buyOutfit('${id}')`; disabled = coins < def.cost;
-        }
-        return `<button class="shop-tile${cls}" ${disabled ? 'disabled' : ''} onclick="${onclick}">
-          <span class="shop-tile-icon">${def.icon}</span>
-          <span class="shop-tile-label">${Util.escapeHtml(def.label)}</span>
-          <span class="shop-tile-action">${action}</span>
-        </button>`;
+        const desc = `Changes what your ${terms().hero} wears.`;
+        if (equipped) return shopTile({ icon: def.icon, label: def.label, desc, action: 'Equipped', disabled: true, dim: false, cls: 'equipped' });
+        if (owned) return shopTile({ icon: def.icon, label: def.label, desc, action: 'Equip', onclick: `equipOutfit('${id}')` });
+        return shopTile({ icon: def.icon, label: def.label, desc, action: price(def.cost), onclick: `buyOutfit('${id}')`, disabled: coins < def.cost });
       }).join('');
       outfitsWrap.innerHTML = `<div class="shop-grid">${tiles}</div>`;
     }
@@ -3791,8 +3851,8 @@ const Garden = (function () {
       },
       cashin: {
         icon: '\u{1F4B0}', title: 'Selling',
-        body: 'Pick up a ' + t.plant + ', then use Cash in at the top of the shop.'
-          + ' A seedling gives 1 coin back. A grown one gives 2.'
+        body: 'Pick up something you bought, then press Sell at the top of the shop.'
+          + ' A seedling gives 1 coin back and a grown ' + t.plant + ' 2. Anything else gives back half its price.'
       },
       unlock: {
         icon: '\u{1F512}', title: 'More room',
@@ -3863,7 +3923,21 @@ const Garden = (function () {
 
   /* Read every piece of garden state for the account that is currently
      loaded in Store, dropping anything held mid-air from a previous account. */
-  function loadAll() {
+  /* The plant a sync must not put back down: loadAll({ keepHands }) sets it
+     for the length of the reload. */
+  let keepHeldPlantId = null;
+
+  /* With keepHands - a sync from another device landing - whatever you are
+     carrying stays in your hands, as long as it still exists. It used to be
+     dropped back where you picked it up, mid-walk, every time a sync came in. */
+  function loadAll(opts) {
+    const hands = opts && opts.keepHands ? {
+      plantId: heldPlantId, variety: heldPlantVariety, pot: heldPlantPot,
+      grown: heldPlantGrown, waters: heldPlantWaters,
+      decoration: heldDecoration, treat: heldTreat, log: heldLog, sapling: heldSapling,
+      treats: pendingTreats, thought: activeThought
+    } : null;
+    keepHeldPlantId = hands ? hands.plantId : null;
     stateLoaded = false;
     heldPlantId = null;
     heldPlantVariety = null;
@@ -3897,7 +3971,34 @@ const Garden = (function () {
     loadAwardedCoins();
     loadCoinExtra();
     loadCoinLedger();
+    keepHeldPlantId = null;
+    if (hands) restoreHands(hands);
     stateLoaded = true;
+  }
+
+  function restoreHands(h) {
+    pendingTreats = h.treats;
+    activeThought = h.thought;
+    if (h.plantId != null && gardenLayout[h.plantId]) {
+      heldPlantId = h.plantId;
+      heldPlantVariety = h.variety;
+      heldPlantPot = h.pot;
+      /* Growth only counts up, and the other device may have watered it. */
+      heldPlantGrown = h.grown || !isSeedling(gardenLayout[h.plantId]);
+      heldPlantWaters = Math.max(h.waters, gardenLayout[h.plantId].waterCount || 0);
+      gardenLayout[h.plantId].held = true;
+    }
+    if (h.decoration && (h.decoration.source !== 'item'
+        || purchasedItems.some(p => p.id === h.decoration.sourceId))) {
+      heldDecoration = h.decoration;
+    }
+    if (h.sapling && saplings.some(x => x.id === h.sapling.id && !x.planted)) heldSapling = h.sapling;
+    heldTreat = h.treat;
+    if (h.log) {
+      heldLog = h.log;
+      /* Our pick-up may not have reached the server yet. */
+      groundLogs = groundLogs.filter(l => l.id !== h.log.id);
+    }
   }
 
   /* A phone has no keys and a desktop has no buttons, so neither is ever told
@@ -4002,7 +4103,8 @@ const Garden = (function () {
   window.buyFood = buyFood;
   window.buyLens = buyLens;
   window.buySection = buySection;
-  window.sellHeldPlant = sellHeldPlant;
+  window.sellHeld = sellHeld;
+  window.describeShopItem = describeShopItem;
   window.toggleLens = toggleLens;
   window.unlockRandomPet = unlockRandomPet;
   window.showHelpTopic = showHelpTopic;

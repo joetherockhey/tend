@@ -541,12 +541,58 @@ const App = (function () {
       el => el.offsetParent !== null || el === document.activeElement);
   }
 
+  /* ==================== oriented transitions ====================
+     A popup grows out of whatever opened it - tap a task and its box swells
+     out of that row, tap Shop and the shop comes out of the button - and
+     shrinks back into the same spot when it closes, so the eye can follow
+     where it came from and where it went. The origin is the last press; a
+     keyboard open uses the focused element instead.                      */
+
+  let lastPress = null;
+  document.addEventListener('pointerdown', e => {
+    lastPress = { x: e.clientX, y: e.clientY, at: Date.now() };
+  }, true);
+
+  function pressOrigin() {
+    if (lastPress && Date.now() - lastPress.at < 1500) return lastPress;
+    const el = document.activeElement;
+    if (!el || el === document.body) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  function reduceMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  /* Runs the box between the origin point and where it really sits. Calls
+     done when finished, or straight away when there is nothing to animate. */
+  function orientedTransition(box, backdrop, origin, closing, done) {
+    if (!box || !origin || !box.animate || reduceMotion()) { if (done) done(); return; }
+    box.getAnimations().forEach(a => a.cancel());
+    if (backdrop) backdrop.getAnimations().forEach(a => a.cancel());
+    const r = box.getBoundingClientRect();
+    const dx = origin.x - (r.left + r.width / 2);
+    const dy = origin.y - (r.top + r.height / 2);
+    const small = { transform: `translate(${dx}px, ${dy}px) scale(0.08)`, opacity: 0 };
+    const full = { transform: 'translate(0, 0) scale(1)', opacity: 1 };
+    const opts = closing
+      ? { duration: 170, easing: 'cubic-bezier(0.4, 0, 1, 1)' }
+      : { duration: 260, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)' };
+    const anim = box.animate(closing ? [full, small] : [small, full], opts);
+    if (backdrop) backdrop.animate(closing ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1 }], opts);
+    if (done) anim.onfinish = done;
+  }
+
   function openBackdrop(id) {
     const bd = document.getElementById(id);
     if (!bd) return;
     if (!modalStack.length) focusBeforeModal = document.activeElement;
     if (modalStack.indexOf(id) === -1) modalStack.push(id);
+    bd.dataset.closing = '';
     bd.classList.add('active');
+    bd.orientedOrigin = pressOrigin();
+    orientedTransition(bd.querySelector('.modal'), bd, bd.orientedOrigin);
     /* Some of these focus their own first field straight after calling us;
        this is only for the ones that do not. */
     const modal = bd.querySelector('.modal');
@@ -560,8 +606,14 @@ const App = (function () {
     const bd = document.getElementById(id);
     /* Escape closes all four in a row, so one that was never open must not
        reach in and move anybody's focus. */
-    if (!bd || !bd.classList.contains('active')) return;
-    bd.classList.remove('active');
+    if (!bd || !bd.classList.contains('active') || bd.dataset.closing) return;
+    /* Stays on screen while it shrinks back to where it came from. */
+    bd.dataset.closing = '1';
+    orientedTransition(bd.querySelector('.modal'), bd, bd.orientedOrigin, true, () => {
+      if (!bd.dataset.closing) return;   /* reopened on the way out */
+      bd.dataset.closing = '';
+      bd.classList.remove('active');
+    });
     modalStack = modalStack.filter(x => x !== id);
     if (modalStack.length) {
       const top = document.getElementById(modalStack[modalStack.length - 1]);
@@ -2300,29 +2352,49 @@ const App = (function () {
      write into elements by id, and two of anything would leave one of them
      silently stale.                                                        */
 
-  function stowPanel(panelId, slotId, homeSelector) {
+  function stowPanel(panelId, slotId, homeSelector, always) {
     const panel = document.getElementById(panelId);
     const slot = document.getElementById(slotId);
     const home = document.querySelector(homeSelector);
     if (!panel || !slot || !home) return;
-    const target = phoneView ? slot : home;
+    const target = (phoneView || always) ? slot : home;
     if (panel.parentElement === target) return;
-    /* Only reachable in phone view, so a move always means the sheet is on
-       its way out - closing it first stops the panel being carried off while
-       it is still on screen. */
+    /* A move means the layout just changed under an open sheet - closing it
+       first stops the panel being carried off while it is still on screen. */
     closeShop(); closeGardenHelp();
     target.appendChild(panel);
   }
 
   function placeGardenPanels() {
-    stowPanel('shop-panel', 'shop-modal-slot', '.garden-col');
+    /* The shop is a sheet on a computer too, opened from its own button -
+       it used to sit under the plot, below the fold. */
+    stowPanel('shop-panel', 'shop-modal-slot', '.garden-col', true);
     stowPanel('garden-help-block', 'garden-help-slot', '#garden-panel');
   }
 
   function openShop() {
     /* Coins and stock move while the sheet is shut. */
     if (hasGarden() && Garden.renderShop) Garden.renderShop();
+    coverGarden(document.querySelector('#shop-modal-backdrop .modal'));
     openBackdrop('shop-modal-backdrop');
+  }
+
+  /* On a computer the shop sheet lies exactly over the garden, so it reads as
+     the garden's own shop rather than a box somewhere on the page. If the
+     garden is mostly off screen it falls back to the middle of the window. */
+  function coverGarden(sheet) {
+    const garden = document.getElementById('garden-panel');
+    if (!sheet) return;
+    sheet.removeAttribute('style');
+    if (phoneView || !garden) return;
+    const r = garden.getBoundingClientRect();
+    const top = Math.max(8, r.top);
+    const bottom = Math.min(window.innerHeight - 8, r.bottom);
+    if (bottom - top < 320 || r.width < 260) return;
+    Object.assign(sheet.style, {
+      position: 'fixed', left: r.left + 'px', top: top + 'px',
+      width: r.width + 'px', height: (bottom - top) + 'px', maxWidth: 'none', maxHeight: 'none'
+    });
   }
   function closeShop() { closeBackdrop('shop-modal-backdrop'); }
   function closeShopOnBackdrop(e) { if (e.target.id === 'shop-modal-backdrop') closeShop(); }
@@ -2463,6 +2535,7 @@ const App = (function () {
     if (e) e.stopPropagation();
     const dd = document.getElementById('account-dropdown');
     dd.hidden = !dd.hidden;
+    if (!dd.hidden) orientedTransition(dd, null, pressOrigin());
   }
 
   function renderSyncBadge(status) {
@@ -4082,7 +4155,17 @@ const App = (function () {
     armToastTimer(el, toastHoldMs);
   }
 
-  function flashSynced() { showToast('Updated from your other device'); }
+  /* Said once in a while, not every time. Two devices open side by side sync
+     every few seconds, and a toast each time buried the screen - the change
+     itself is already on screen, so the note is only there to explain the
+     first surprise. */
+  const SYNCED_NOTE_EVERY_MS = 10 * 60 * 1000;
+  let lastSyncedNote = 0;
+  function flashSynced() {
+    if (Date.now() - lastSyncedNote < SYNCED_NOTE_EVERY_MS) return;
+    lastSyncedNote = Date.now();
+    showToast('Updated from your other device');
+  }
 
   /* A new account used to open on an empty list, a locked garden and three
      bullet points about which keys to press. Two tasks demonstrate the whole
@@ -4106,7 +4189,7 @@ const App = (function () {
     const today = Util.todayStr();
     const starters = [
       { title: 'Tick this box to earn your first coin',
-        notes: 'Every task you finish pays one coin. Coins buy plants in the shop below the garden.' },
+        notes: 'Every task you finish pays one coin. Coins buy plants - press Shop on the garden.' },
       { title: 'Spend that coin on a seedling, then water it',
         notes: 'Walk into a seedling five times to grow it. Grown plants can be cashed in for more coins.' }
     ];
@@ -4182,7 +4265,7 @@ const App = (function () {
          garden included. */
       if (Store.onChange) {
         Store.onChange(function () {
-          Garden.loadAll();
+          Garden.loadAll({ keepHands: true });
           applyTheme();
           applyDark();
           renderAll();

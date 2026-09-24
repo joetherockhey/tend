@@ -93,7 +93,7 @@
     document.getElementById('c-title').textContent = 'That link has gone stale';
     bubble.className = 'gate-bubble error';
     bubble.textContent = 'That link was already used, or it has expired. Open Tend and sign in. '
-      + "If your email still needs confirming, I'll send you a fresh letter from there.";
+      + "If your email still needs confirming, I'll send you a fresh email from there.";
     const desc = params.get('error_description');
     if (desc && params.get('error_code') !== 'otp_expired') {
       const note = document.getElementById('c-note');
