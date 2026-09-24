@@ -179,9 +179,11 @@ const Auth = (function () {
   async function resend() {
     const email = prefillEmail || typedEmail();
     if (!email) { say('Put your email in above first, then I can send it.', 'error'); return; }
+    const captchaToken = takeCaptcha();
+    if (captchaToken === null) return;
     resendReadyAt = Date.now() + 60000;
     tickResend();
-    const { error } = await Store.client().auth.resend({ type: 'signup', email, options: { emailRedirectTo: CONFIRM_URL } });
+    const { error } = await Store.client().auth.resend({ type: 'signup', email, options: { emailRedirectTo: CONFIRM_URL, captchaToken } });
     if (error) { say(friendlyError(error), 'error'); return; }
     say('Sent another. The newest link is the one that works.', 'success');
   }
@@ -354,6 +356,68 @@ const Auth = (function () {
 
   function msgSlot() { return '<div class="auth-msg" id="auth-msg"></div>'; }
 
+  /* ---- bot check (Cloudflare Turnstile) ----
+     Bots filling in the sign-up form with made-up addresses made the
+     confirmation emails bounce, and Supabase threatened to stop sending any.
+     With TURNSTILE_SITE_KEY set, every form that makes Supabase send an email
+     or check a password carries a Turnstile token, and Supabase refuses the
+     request without one (Authentication > Attack Protection). Most people
+     never see a puzzle - it checks quietly and ticks itself. Blank key: no
+     widget, and everything works as before. */
+  const CAPTCHA_KEY = (CFG.TURNSTILE_SITE_KEY || '').trim();
+  let captchaToken = null;
+  let captchaWidget = null;
+  let turnstileLoading = null;
+
+  function loadTurnstile() {
+    if (window.turnstile) return Promise.resolve();
+    if (!turnstileLoading) {
+      turnstileLoading = new Promise((resolve, reject) => {
+        const tag = document.createElement('script');
+        tag.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        tag.async = true;
+        tag.onload = () => resolve();
+        tag.onerror = () => { turnstileLoading = null; reject(new Error('turnstile')); };
+        document.head.appendChild(tag);
+      });
+    }
+    return turnstileLoading;
+  }
+
+  function captchaHTML() {
+    return CAPTCHA_KEY ? '<div class="auth-captcha" id="auth-captcha"></div>' : '';
+  }
+
+  /* Called after a form is drawn. Each form gets a fresh widget. */
+  function mountCaptcha() {
+    captchaToken = null;
+    const box = document.getElementById('auth-captcha');
+    if (!CAPTCHA_KEY || !box) return;
+    loadTurnstile().then(() => {
+      if (!document.body.contains(box)) return;   /* moved on to another form */
+      if (captchaWidget != null) { try { window.turnstile.remove(captchaWidget); } catch (e) { /* gone */ } }
+      captchaWidget = window.turnstile.render(box, {
+        sitekey: CAPTCHA_KEY,
+        theme: document.documentElement.hasAttribute('data-dark') ? 'dark' : 'auto',
+        size: 'flexible',
+        callback: token => { captchaToken = token; },
+        'expired-callback': () => { captchaToken = null; },
+        'error-callback': () => { captchaToken = null; }
+      });
+    }).catch(() => say("I couldn't load the robot check. Check your connection, or turn off a blocker for challenges.cloudflare.com.", 'error'));
+  }
+
+  /* The token for one request, or null (and a word why) if it is not ready.
+     A token works once, so the widget is reset to fetch the next. */
+  function takeCaptcha() {
+    if (!CAPTCHA_KEY) return undefined;
+    const token = captchaToken;
+    if (!token) { say('One moment - the robot check under the form has not finished yet.', 'error'); return null; }
+    captchaToken = null;
+    if (captchaWidget != null && window.turnstile) { try { window.turnstile.reset(captchaWidget); } catch (e) { /* gone */ } }
+    return token;
+  }
+
   /* ---- cloud: sign in ---- */
 
   function renderSignin() {
@@ -369,6 +433,7 @@ const Auth = (function () {
           <label for="auth-password">Password</label>
           <input type="password" id="auth-password" autocomplete="current-password" required>
         </div>
+        ${captchaHTML()}
         <button type="submit" class="auth-submit">Sign in</button>
       </form>
       <div class="auth-alt">
@@ -380,6 +445,7 @@ const Auth = (function () {
     document.getElementById('link-reset').onclick = () => go('reset');
     const su = document.getElementById('link-signup');
     if (su) su.onclick = () => go('signup');
+    mountCaptcha();
   }
 
   async function submitSignin(e) {
@@ -387,8 +453,10 @@ const Auth = (function () {
     if (busy) return;
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
+    const captchaToken = takeCaptcha();
+    if (captchaToken === null) return;
     setBusy(true, 'Signing in...');
-    const { data, error } = await Store.client().auth.signInWithPassword({ email, password });
+    const { data, error } = await Store.client().auth.signInWithPassword({ email, password, options: { captchaToken } });
     setBusy(false);
     if (error) {
       message('error', friendlyError(error));
@@ -419,6 +487,7 @@ const Auth = (function () {
           <input type="password" id="auth-password" autocomplete="new-password" minlength="8" required>
         </div>
         ${chooserHTML()}
+        ${captchaHTML()}
         <button type="submit" class="auth-submit">Create account</button>
       </form>
       <div class="auth-alt">
@@ -429,6 +498,7 @@ const Auth = (function () {
     wireChooser(el.body);
     wireCoach();
     document.getElementById('link-signin').onclick = () => go('signin');
+    mountCaptcha();
   }
 
   async function submitSignup(e) {
@@ -438,6 +508,8 @@ const Auth = (function () {
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
     if (password.length < 8) { message('error', 'Use at least 8 characters for your password.'); return; }
+    const captchaToken = takeCaptcha();
+    if (captchaToken === null) return;
 
     setBusy(true, 'Creating your account...');
     const { data, error } = await Store.client().auth.signUp({
@@ -445,6 +517,7 @@ const Auth = (function () {
       password,
       options: {
         emailRedirectTo: CONFIRM_URL,
+        captchaToken,
         data: { display_name: name, world: pickedWorld, hero: pickedHero }
       }
     });
@@ -477,6 +550,7 @@ const Auth = (function () {
         Open the link on any device, then sign in here.</p>
       <div class="auth-form">
         <button type="button" class="auth-submit" id="btn-inbox-signin">I've confirmed, sign me in</button>
+        ${captchaHTML()}
         <button type="button" class="auth-secondary" id="btn-resend">Send it again</button>
       </div>
       <div class="auth-alt">
@@ -486,6 +560,7 @@ const Auth = (function () {
     document.getElementById('btn-resend').onclick = resend;
     document.getElementById('link-signup').onclick = () => { view = 'signup'; render(); };
     tickResend();
+    mountCaptcha();
   }
 
   /* ---- cloud: password reset ---- */
@@ -499,6 +574,7 @@ const Auth = (function () {
           <label for="auth-email">Email</label>
           <input type="email" id="auth-email" autocomplete="email" required>
         </div>
+        ${captchaHTML()}
         <button type="submit" class="auth-submit">Send reset link</button>
       </form>
       <div class="auth-alt">
@@ -506,15 +582,19 @@ const Auth = (function () {
       </div>`;
     document.getElementById('auth-form').addEventListener('submit', submitReset);
     document.getElementById('link-signin').onclick = () => go('signin');
+    mountCaptcha();
   }
 
   async function submitReset(e) {
     e.preventDefault();
     if (busy) return;
     const email = document.getElementById('auth-email').value.trim();
+    const captchaToken = takeCaptcha();
+    if (captchaToken === null) return;
     setBusy(true, 'Sending...');
     const { error } = await Store.client().auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.href.split('#')[0]
+      redirectTo: window.location.href.split('#')[0],
+      captchaToken
     });
     setBusy(false);
     if (error) { message('error', friendlyError(error)); return; }
@@ -640,6 +720,7 @@ const Auth = (function () {
     if (/already registered/i.test(m)) return "There's already an account with that email. Sign in instead?";
     if (/rate limit|too many|security purposes/i.test(m)) return 'Too many tries at once. Give it a minute and try again.';
     if (/fetch|network/i.test(m)) return "I can't reach the server. Check your connection and try again.";
+    if (/captcha/i.test(m)) return "The robot check didn't go through. Give it a second to tick, then try again.";
     return m;
   }
 

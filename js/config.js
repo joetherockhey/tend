@@ -34,6 +34,18 @@ window.TEND_CONFIG = {
      from the Supabase dashboard can sign in. Ignored in local mode. */
   ALLOW_SIGNUP: true,
 
+  /* Cloudflare Turnstile site key, to keep bots off the sign-in, sign-up and
+     reset forms (their made-up addresses bounce Supabase's emails). The site
+     key is public - it is meant to sit in the page. Setup, in this order:
+       1. Cloudflare dashboard > Turnstile > Add widget, hostname
+          joetherockhey.github.io, mode Managed. Paste the site key here and
+          publish.
+       2. Supabase > Authentication > Attack Protection > Enable CAPTCHA,
+          provider Turnstile, paste the SECRET key there (never here).
+     Doing 2 before 1 is live locks everyone out of signing in. Leave blank
+     for no bot check. */
+  TURNSTILE_SITE_KEY: '',
+
   /* Optional. Set this to "your-username/your-repo" and a "Suggest something"
      link appears in the app that opens a pre-filled issue on your GitHub
      repository's Issues tab. Issues are public and permanent, which makes them

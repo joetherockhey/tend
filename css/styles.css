@@ -2273,6 +2273,9 @@ body.gated { overflow: hidden; }
 }
 
 .auth-form { display: flex; flex-direction: column; gap: 12px; }
+/* Turnstile's box, held open so the button below does not jump when it
+   arrives. Only drawn at all when a site key is set. */
+.auth-captcha { min-height: 65px; }
 
 .auth-form label {
   font-size: 0.78rem;
