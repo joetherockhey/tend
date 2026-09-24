@@ -5452,7 +5452,7 @@ html[data-mode="phone"] .plan-head .cal-view-toggle { order: 3; }
 /* The thumb row sits on the bottom bar, whatever height the garden is. With
    only a section or two open the plot is shorter than the screen, and the
    buttons used to follow it up into the middle. */
-html.garden-full .garden-controls { margin-top: auto; padding-top: 6px; padding-bottom: 0; }
+html.garden-full .garden-controls { margin-top: auto; padding-top: 6px; padding-bottom: 5px; }
 html.garden-full .garden-plot { will-change: transform; }
 
 /* ===================== shop sheet, second pass =====================
@@ -5520,6 +5520,10 @@ html[data-mode="phone"] .shop-tile-action { white-space: normal; text-align: cen
 :root[data-dark] .help-gardener .hg-thought,
 :root[data-dark] .help-gardener .hg-thought::after { background: #3a2f12; }
 :root[data-dark] .help-gardener .hg-thought { color: #f2cf7c; }
+
+/* The dance is the Macarena now, stepped pose by pose in boot.js, so the
+   front view only needs showing - no sway of its own. */
+.lg-front { animation: lg-show 0.01s 4.4s forwards; }
 
 </style>
 </head>
@@ -11051,6 +11055,9 @@ const Garden = (function () {
   }
 
   /* The ground moves only when the gardener would otherwise leave the window. */
+  let lookedAway = false;
+  let lookedAwayFrom = '';
+
   function followHero() {
     const plot = document.getElementById('garden-plot');
     if (!plot) return false;
@@ -11059,6 +11066,13 @@ const Garden = (function () {
       plotPan = 0;
       return true;
     }
+    /* After a look, the view stays where it was left until the gardener
+       actually moves. Every redraw of the plot (a pet taking a step redraws
+       it every five seconds) comes through here, and used to snap the view
+       straight back to the gardener in the middle of looking around. */
+    const at = heroPos.row + ',' + heroPos.col;
+    if (lookedAway && at === lookedAwayFrom) return false;
+    lookedAway = false;
     const v = plotViewport();
     if (!v) return false;
     const next = panFor(heroPos.row, v.cell, v.shownRows, v.viewH, plotPan);
@@ -11146,13 +11160,21 @@ const Garden = (function () {
      to a stop. ponytail: both are feel, not maths - LOOK_GAIN is how far per
      finger pixel, LOOK_FRICTION how quickly the glide dies. */
   const LOOK_GAIN = 1.6;
-  const LOOK_FRICTION = 0.994;   /* per millisecond */
+  const LOOK_FRICTION = 0.997;   /* per millisecond - about a phone's own scroll */
   let lookGlide = 0;
 
   function lookBy(start, dy) {
-    if (!start.view) start.view = plotViewport();   /* measured once per drag, not per move */
+    if (!start.view) {
+      start.view = plotViewport();   /* measured once per drag, not per move */
+      /* Measured from where the look began, so the slop it took to tell a
+         look from a tap is not paid as a jump. */
+      start.dy0 = dy;
+      lookedAway = true;
+      lookedAwayFrom = heroPos.row + ',' + heroPos.col;
+    }
     const v = start.view;
     if (!v) return;
+    dy -= start.dy0;
     const now = performance.now();
     if (start.lastT) {
       const dt = now - start.lastT;
@@ -11161,8 +11183,9 @@ const Garden = (function () {
     start.lastDy = dy;
     start.lastT = now;
     plotPan = Math.max(0, Math.min(v.maxPan, start.pan - dy * LOOK_GAIN));
-    /* At most one paint per frame, however fast the touch events come. */
-    if (!start.frame) start.frame = requestAnimationFrame(() => { start.frame = 0; applyPlotTransform(); });
+    /* Straight onto the screen: waiting for the next frame put the ground a
+       frame behind the finger, which is the lag that reads as clunky. */
+    applyPlotTransform();
   }
 
   function stopGlide() {
@@ -11237,7 +11260,6 @@ const Garden = (function () {
        takes brings them back into it. */
     if (start.look) {
       event.preventDefault();
-      if (start.frame) { cancelAnimationFrame(start.frame); start.frame = 0; }
       glide(start);
       return;
     }
@@ -12555,6 +12577,9 @@ const Garden = (function () {
   }
 
   function stepAllPets() {
+    /* Not while the view is being dragged or is gliding: this redraws the
+       whole plot, and a redraw mid-drag is a stutter. They catch up next tick. */
+    if (lookGlide || (touchStart && touchStart.look)) return;
     if (ownedPets.length) {
       ownedPets.forEach(stepPet);
       savePets();
@@ -18370,7 +18395,7 @@ const Auth = (function () {
      seedling becomes - one of the fifty, a different one on each load.
      Always the garden farmer, whatever world was last here, since watering a
      seedling is a garden thing. The side sprite's own little can comes out,
-     because they carry the big one; the front one keeps its can for the dance. */
+     because they carry the big one; for the dance they put it down. */
   (function () {
     const flower = document.getElementById('tend-loading-flower');
     const side = document.getElementById('tend-loading-side');
@@ -18381,9 +18406,55 @@ const Auth = (function () {
     let hero = Worlds.DEFAULT_HERO;
     try { hero = (JSON.parse(localStorage.getItem('tend:gate-look')) || {}).hero || hero; } catch (e) { /* private mode */ }
     const fit = svg => svg.replace(/width="\d+" height="\d+"/, 'width="19" height="20"');
-    side.innerHTML = fit(Worlds.heroSVG('garden', hero, 'right')).replace(/<rect[^>]*#8a8f98[^>]*\/>/g, '');
-    front.innerHTML = fit(Worlds.heroSVG('garden', hero, 'down'));
+    const noCan = svg => svg.replace(/<rect[^>]*#8a8f98[^>]*\/>/g, '');
+    const sideArt = noCan(fit(Worlds.heroSVG('garden', hero, 'right')));
+    side.innerHTML = sideArt;
+    const body = noCan(fit(Worlds.heroSVG('garden', hero, 'down')))
+      .replace(/<rect x="(1|13)" y="10" width="2" height="\d" fill="#f2c48d"\/>/g, '');
+    macarena(front, body, sideArt);
   })();
+
+  /* The dance at the end of the loading scene is the Macarena, as near as
+     nineteen pixels allow: right arm out, left arm out, palms up, hands to
+     the opposite shoulders, behind the head, to the opposite hips, onto
+     their own hips for the wiggle, then the quarter-turn hop - and round
+     again until the app has loaded. The arms are drawn per pose over the
+     sprite with its own arms taken out; the can is set down on the ground. */
+  function macarena(host, body, sideArt) {
+    const SKIN = '#f2c48d';
+    const r = (x, y, w, h) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + SKIN + '"/>';
+    /* L is the arm on the viewer's left - the gardener's right. */
+    const ARMS = {
+      L: { down: r(1, 10, 2, 5), out: r(-4, 10, 7, 2) + r(-4, 12, 2, 1), up: r(-4, 10, 7, 2) + r(-4, 9, 2, 1),
+           cross: r(3, 11, 10, 2), head: r(1, 4, 2, 7) + r(3, 3, 2, 2), hip: r(3, 13, 10, 2), own: r(1, 10, 2, 3) + r(2, 13, 2, 2) },
+      R: { down: r(13, 10, 2, 5), out: r(13, 10, 7, 2) + r(18, 12, 2, 1), up: r(13, 10, 7, 2) + r(18, 9, 2, 1),
+           cross: r(3, 13, 10, 2), head: r(13, 4, 2, 7) + r(11, 3, 2, 2), hip: r(3, 15, 10, 1), own: r(13, 10, 2, 3) + r(12, 13, 2, 2) }
+    };
+    const CAN = '<g><rect x="17" y="16" width="4" height="4" fill="#b9bec6"/><rect x="21" y="17" width="2" height="1" fill="#a4aab3"/><rect x="18" y="15" width="2" height="1" fill="#a4aab3"/></g>';
+    const STEPS = [
+      ['out', 'down'], ['out', 'out'], ['up', 'out'], ['up', 'up'],
+      ['cross', 'up'], ['cross', 'cross'], ['head', 'cross'], ['head', 'head'],
+      ['hip', 'head'], ['hip', 'hip'],
+      ['own', 'own', -1], ['own', 'own', 1], ['own', 'own', -1], ['own', 'own', 1],
+      'hop'
+    ];
+    const pose = step => {
+      if (step === 'hop') return CAN + '<g transform="translate(0,-3)">' + sideArt + '</g>';
+      const art = body.replace('</svg>', ARMS.L[step[0]] + ARMS.R[step[1]] + '</svg>');
+      return CAN + '<g transform="translate(' + (step[2] || 0) + ',0)">' + art + '</g>';
+    };
+    host.innerHTML = pose(['down', 'down']);
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let i = 0, timer = 0;
+    /* In step with the CSS that turns them to face you (lg-front, 4.4s). */
+    setTimeout(function () {
+      timer = setInterval(function () {
+        /* Sign-in has replaced the loading screen: stop dancing. */
+        if (!document.body.contains(host)) { clearInterval(timer); return; }
+        host.innerHTML = pose(STEPS[i++ % STEPS.length]);
+      }, 380);
+    }, 4400);
+  }
 
   const authBrand = document.getElementById('auth-brand');
   authBrand.innerHTML = markHTML() + '<span class="auth-brand-name">' + Util.escapeHtml(NAME) + '</span>';

@@ -1725,6 +1725,9 @@ const Garden = (function () {
   }
 
   /* The ground moves only when the gardener would otherwise leave the window. */
+  let lookedAway = false;
+  let lookedAwayFrom = '';
+
   function followHero() {
     const plot = document.getElementById('garden-plot');
     if (!plot) return false;
@@ -1733,6 +1736,13 @@ const Garden = (function () {
       plotPan = 0;
       return true;
     }
+    /* After a look, the view stays where it was left until the gardener
+       actually moves. Every redraw of the plot (a pet taking a step redraws
+       it every five seconds) comes through here, and used to snap the view
+       straight back to the gardener in the middle of looking around. */
+    const at = heroPos.row + ',' + heroPos.col;
+    if (lookedAway && at === lookedAwayFrom) return false;
+    lookedAway = false;
     const v = plotViewport();
     if (!v) return false;
     const next = panFor(heroPos.row, v.cell, v.shownRows, v.viewH, plotPan);
@@ -1820,13 +1830,21 @@ const Garden = (function () {
      to a stop. ponytail: both are feel, not maths - LOOK_GAIN is how far per
      finger pixel, LOOK_FRICTION how quickly the glide dies. */
   const LOOK_GAIN = 1.6;
-  const LOOK_FRICTION = 0.994;   /* per millisecond */
+  const LOOK_FRICTION = 0.997;   /* per millisecond - about a phone's own scroll */
   let lookGlide = 0;
 
   function lookBy(start, dy) {
-    if (!start.view) start.view = plotViewport();   /* measured once per drag, not per move */
+    if (!start.view) {
+      start.view = plotViewport();   /* measured once per drag, not per move */
+      /* Measured from where the look began, so the slop it took to tell a
+         look from a tap is not paid as a jump. */
+      start.dy0 = dy;
+      lookedAway = true;
+      lookedAwayFrom = heroPos.row + ',' + heroPos.col;
+    }
     const v = start.view;
     if (!v) return;
+    dy -= start.dy0;
     const now = performance.now();
     if (start.lastT) {
       const dt = now - start.lastT;
@@ -1835,8 +1853,9 @@ const Garden = (function () {
     start.lastDy = dy;
     start.lastT = now;
     plotPan = Math.max(0, Math.min(v.maxPan, start.pan - dy * LOOK_GAIN));
-    /* At most one paint per frame, however fast the touch events come. */
-    if (!start.frame) start.frame = requestAnimationFrame(() => { start.frame = 0; applyPlotTransform(); });
+    /* Straight onto the screen: waiting for the next frame put the ground a
+       frame behind the finger, which is the lag that reads as clunky. */
+    applyPlotTransform();
   }
 
   function stopGlide() {
@@ -1911,7 +1930,6 @@ const Garden = (function () {
        takes brings them back into it. */
     if (start.look) {
       event.preventDefault();
-      if (start.frame) { cancelAnimationFrame(start.frame); start.frame = 0; }
       glide(start);
       return;
     }
@@ -3231,6 +3249,9 @@ const Garden = (function () {
   }
 
   function stepAllPets() {
+    /* Not while the view is being dragged or is gliding: this redraws the
+       whole plot, and a redraw mid-drag is a stutter. They catch up next tick. */
+    if (lookGlide || (touchStart && touchStart.look)) return;
     if (ownedPets.length) {
       ownedPets.forEach(stepPet);
       savePets();
