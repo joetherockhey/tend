@@ -1676,7 +1676,8 @@ const Garden = (function () {
     const plot = document.getElementById('garden-plot');
     if (!plot) return;
     const parts = [];
-    if (plotPan) parts.push('translateY(' + -Math.round(plotPan) + 'px)');
+    /* Not rounded: whole-pixel steps read as stutter at the slow end of a glide. */
+    if (plotPan) parts.push('translateY(' + -plotPan.toFixed(2) + 'px)');
     if (plotScale !== 1) parts.push('scale(' + plotScale.toFixed(4) + ')');
     plot.style.transformOrigin = parts.length ? 'top left' : '';
     plot.style.transform = parts.join(' ');
@@ -1853,11 +1854,13 @@ const Garden = (function () {
     if (!v) return;
     dy -= start.dy0;
     const now = performance.now();
-    if (start.lastT) {
-      const dt = now - start.lastT;
-      if (dt > 0) start.vel = -(dy - start.lastDy) * LOOK_GAIN / dt;
-    }
-    start.lastDy = dy;
+    /* Speed over the last ~100ms of the drag, not the last two touch events:
+       those can land a millisecond apart and fling the glide off at random. */
+    const samples = start.samples || (start.samples = []);
+    samples.push({ t: now, dy });
+    while (samples.length > 2 && now - samples[0].t > 100) samples.shift();
+    const first = samples[0];
+    if (now > first.t) start.vel = -(dy - first.dy) * LOOK_GAIN / (now - first.t);
     start.lastT = now;
     plotPan = Math.max(0, Math.min(v.maxPan, start.pan - dy * LOOK_GAIN));
     /* Straight onto the screen: waiting for the next frame put the ground a
