@@ -1,4 +1,4 @@
-/* ============================================================================
+﻿/* ============================================================================
    Tend - garden.js
    The reward garden. Every completed task becomes a plant; every ten
    completed tasks unlocks another section of the garden. Watering, chopping,
@@ -1837,7 +1837,7 @@ const Garden = (function () {
      crosses a section, and it keeps gliding after the finger lifts, slowing
      to a stop. ponytail: both are feel, not maths - LOOK_GAIN is how far per
      finger pixel, LOOK_FRICTION how quickly the glide dies. */
-  const LOOK_GAIN = 1.6;
+  const LOOK_GAIN = 1.4;
   const LOOK_FRICTION = 0.997;   /* per millisecond - about a phone's own scroll */
   let lookGlide = 0;
 
@@ -3620,7 +3620,7 @@ const Garden = (function () {
 
         const unlocked = !!(d.choppable && choppedTrees.has(instanceId));
 
-        // Axe-felled trees vanish entirely — they leave a separate ground log behind instead.
+        // Axe-felled trees vanish entirely â€” they leave a separate ground log behind instead.
         if (unlocked && d.toolRequired === 'axe') return;
 
         const isMovableNow = d.movable || (unlocked && d.toolRequired === 'shovel');
@@ -3761,11 +3761,11 @@ const Garden = (function () {
     ).join('');
 
     const saplingsHtml = placedDecorations.filter(d => d.source === 'sapling').map(d =>
-      `<div class="garden-decor" style="left:${d.col * CELL_SIZE}px; top:${d.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${isSaplingGrown(saplings.find(s => s.id === d.sourceId) || {}) ? 'Grown tree — chop it with the axe!' : `Sapling (watered ${(saplings.find(s => s.id === d.sourceId) || {}).waterCount || 0}/${SAPLING_WATERS_NEEDED})`}"><div class="sprite-shadow"></div>${d.svg}</div>`
+      `<div class="garden-decor" style="left:${d.col * CELL_SIZE}px; top:${d.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${isSaplingGrown(saplings.find(s => s.id === d.sourceId) || {}) ? 'Grown tree â€” chop it with the axe!' : `Sapling (watered ${(saplings.find(s => s.id === d.sourceId) || {}).waterCount || 0}/${SAPLING_WATERS_NEEDED})`}"><div class="sprite-shadow"></div>${d.svg}</div>`
     ).join('');
 
     const unplantedSaplingsHtml = saplings.filter(s => !s.planted && !(heldSapling && heldSapling.id === s.id)).map(s =>
-      `<div class="garden-decor" style="left:${s.col * CELL_SIZE}px; top:${s.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${terms().sprout} — carry it somewhere and press E to plant it"><div class="sprite-shadow"></div>${W().art.sapling()}</div>`
+      `<div class="garden-decor" style="left:${s.col * CELL_SIZE}px; top:${s.row * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px;" title="${terms().sprout} â€” carry it somewhere and press E to plant it"><div class="sprite-shadow"></div>${W().art.sapling()}</div>`
     ).join('');
 
     const groundLogsHtml = groundLogs.map(l =>
