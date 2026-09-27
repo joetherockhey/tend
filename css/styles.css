@@ -74,6 +74,10 @@ html[data-dark] {
    Stated once here so every hideable element behaves. */
 [hidden] { display: none !important; }
 
+/* No double-tap zoom anywhere. On html so it covers the strip below body too;
+   pinch-zoom still works. */
+html { touch-action: manipulation; }
+
 body {
   margin: 0;
   background: var(--bg);
