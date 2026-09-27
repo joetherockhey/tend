@@ -1772,7 +1772,14 @@ const Garden = (function () {
   function handleGardenTouchStart(event, outside) {
     stopWalking();
     /* A finger down catches a glide where it is. */
-    if (lookGlide) { stopGlide(); const pl = document.getElementById('garden-plot'); if (pl) pl.style.transition = ''; }
+    if (lookGlide) {
+      stopGlide();
+      const pl = document.getElementById('garden-plot');
+      if (pl) pl.style.transition = '';
+      /* Caught mid-bounce: the slide takes it the rest of the way back. */
+      const v = plotViewport();
+      if (v && (plotPan < 0 || plotPan > v.maxPan)) { plotPan = Math.max(0, Math.min(v.maxPan, plotPan)); applyPlotTransform(); }
+    }
     const t = event.changedTouches && event.changedTouches[0];
     if (!t) return;
     const cell = cellFromPoint(t.clientX, t.clientY);
@@ -1862,7 +1869,11 @@ const Garden = (function () {
     const first = samples[0];
     if (now > first.t) start.vel = -(dy - first.dy) * LOOK_GAIN / (now - first.t);
     start.lastT = now;
-    plotPan = Math.max(0, Math.min(v.maxPan, start.pan - dy * LOOK_GAIN));
+    /* Past either end the ground still follows, but less and less - the
+       stretch every other page has - and springs back when let go. */
+    const raw = start.pan - dy * LOOK_GAIN;
+    plotPan = raw < 0 ? -rubber(-raw, v.viewH)
+      : raw > v.maxPan ? v.maxPan + rubber(raw - v.maxPan, v.viewH) : raw;
     /* Straight onto the screen: waiting for the next frame put the ground a
        frame behind the finger, which is the lag that reads as clunky. */
     applyPlotTransform();
@@ -1873,6 +1884,38 @@ const Garden = (function () {
     lookGlide = 0;
   }
 
+  /* How far the ground shows for a finger `over` pixels past the end: about
+     half at first, never more than the window. iOS's own curve. */
+  function rubber(over, viewH) {
+    return (1 - 1 / (over * 0.55 / viewH + 1)) * viewH;
+  }
+
+  /* How quickly a stretched or overshot view springs back, per ms. Critically
+     damped, so it settles without wobbling past the edge. ponytail: feel. */
+  const LOOK_BOUNCE = 0.015;
+
+  /* One frame of the glide, as numbers only so node can check it:
+     test/look.test.js. Inside the garden it coasts down by LOOK_FRICTION;
+     past an end it is on a spring back to that end. Returns [pan, vel, done]. */
+  function glideStep(pan, vel, dt, maxPan) {
+    for (let left = dt; left > 0; left -= 8) {
+      const h = Math.min(8, left);
+      const edge = pan < 0 ? 0 : pan > maxPan ? maxPan : null;
+      if (edge === null) {
+        pan += vel * h;
+        vel *= Math.pow(LOOK_FRICTION, h);
+      } else {
+        vel += (-LOOK_BOUNCE * LOOK_BOUNCE * (pan - edge) - 2 * LOOK_BOUNCE * vel) * h;
+        pan += vel * h;
+      }
+    }
+    const out = pan < 0 || pan > maxPan;
+    if (Math.abs(vel) > 0.02) return [pan, vel, false];
+    if (!out) return [pan, 0, true];
+    const edge = pan < 0 ? 0 : maxPan;
+    return Math.abs(pan - edge) < 0.5 ? [edge, 0, true] : [pan, vel, false];
+  }
+
   function glide(start) {
     stopGlide();
     const plot = document.getElementById('garden-plot');
@@ -1880,16 +1923,17 @@ const Garden = (function () {
     /* A finger that stopped before it lifted means stop here. */
     let vel = (start.lastT && performance.now() - start.lastT < 80) ? (start.vel || 0) : 0;
     const done = () => { lookGlide = 0; applyPlotTransform(); if (plot) plot.style.transition = ''; };
-    if (!v || Math.abs(vel) < 0.05) { done(); return; }
+    const stretched = v && (plotPan < 0 || plotPan > v.maxPan);
+    if (!v || (Math.abs(vel) < 0.05 && !stretched)) { done(); return; }
     let last = performance.now();
     const step = now => {
       const dt = Math.min(40, now - last);
       last = now;
-      plotPan = Math.max(0, Math.min(v.maxPan, plotPan + vel * dt));
-      vel *= Math.pow(LOOK_FRICTION, dt);
+      let finished;
+      [plotPan, vel, finished] = glideStep(plotPan, vel, dt, v.maxPan);
       applyPlotTransform();
-      if (Math.abs(vel) > 0.02 && plotPan > 0 && plotPan < v.maxPan) lookGlide = requestAnimationFrame(step);
-      else done();
+      if (finished) done();
+      else lookGlide = requestAnimationFrame(step);
     };
     lookGlide = requestAnimationFrame(step);
   }
