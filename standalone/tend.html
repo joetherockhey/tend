@@ -19009,18 +19009,22 @@ const Auth = (function () {
     const noCan = svg => svg.replace(/<rect[^>]*#8a8f98[^>]*\/>/g, '');
     const sideArt = noCan(fit(Worlds.heroSVG('garden', hero, 'right')));
     side.innerHTML = sideArt;
-    const body = noCan(fit(Worlds.heroSVG('garden', hero, 'down')))
-      .replace(/<rect x="(1|13)" y="10" width="2" height="\d" fill="#f2c48d"\/>/g, '');
-    macarena(front, body, sideArt);
+    const noArms = svg => svg.replace(/<rect x="(1|13)" y="10" width="2" height="\d" fill="#f2c48d"\/>/g, '');
+    const body = noArms(noCan(fit(Worlds.heroSVG('garden', hero, 'down'))));
+    const back = noArms(noCan(fit(Worlds.heroSVG('garden', hero, 'up'))));
+    const sideBody = sideArt.replace('<rect x="12" y="10" width="3" height="5" fill="#f2c48d"/>', '');
+    macarena(front, body, back, sideBody);
   })();
 
   /* The dance at the end of the loading scene is the Macarena, as near as
      nineteen pixels allow: right arm out, left arm out, palms up, hands to
      the opposite shoulders, behind the head, to the opposite hips, onto
      their own hips for the wiggle, then the quarter-turn hop - and round
-     again until the app has loaded. The arms are drawn per pose over the
-     sprite with its own arms taken out; the can is set down on the ground. */
-  function macarena(host, body, sideArt) {
+     again until the app has loaded. Each hop lands a quarter turn on: side
+     on, back to you, the other side, then facing you again. The arms are
+     drawn per pose over the sprite with its own arms taken out; the can is
+     set down on the ground. */
+  function macarena(host, body, back, sideBody) {
     const SKIN = '#f2c48d';
     const r = (x, y, w, h) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + SKIN + '"/>';
     /* L is the arm on the viewer's left - the gardener's right. */
@@ -19030,7 +19034,29 @@ const Auth = (function () {
       R: { down: r(13, 10, 2, 5), out: r(13, 10, 7, 2) + r(18, 12, 2, 1), up: r(13, 10, 7, 2) + r(18, 9, 2, 1),
            cross: r(3, 13, 10, 2), head: r(13, 4, 2, 7) + r(11, 3, 2, 2), hip: r(3, 15, 10, 1), own: r(13, 10, 2, 3) + r(12, 13, 2, 2) }
     };
-    const CAN = '<g><rect x="17" y="16" width="4" height="4" fill="#b9bec6"/><rect x="21" y="17" width="2" height="1" fill="#a4aab3"/><rect x="18" y="15" width="2" height="1" fill="#a4aab3"/></g>';
+    /* Side on, only the near arm shows in full; the far one is a shade darker
+       and drawn behind the body, so it peeks out only when raised. Drawn
+       facing right; facing left is the same, mirrored. */
+    const FAR = '#d9a877';
+    const SIDE = {
+      down: [12, 10, 3, 5], out: [12, 10, 7, 2], up: [12, 10, 7, 2, 17, 9, 2, 1],
+      cross: [12, 10, 3, 2], head: [13, 4, 2, 6], hip: [12, 13, 3, 2], own: [11, 12, 2, 3]
+    };
+    const sideArm = (name, fill, dx) => {
+      const s = SIDE[name];
+      let out = '';
+      for (let k = 0; k < s.length; k += 4) out += '<rect x="' + (s[k] + dx) + '" y="' + s[k + 1] + '" width="' + s[k + 2] + '" height="' + s[k + 3] + '" fill="' + fill + '"/>';
+      return out;
+    };
+    const FACINGS = ['front', 'right', 'back', 'left'];
+    const dancer = (facing, a, b) => {
+      if (facing === 'front') return body.replace('</svg>', ARMS.L[a] + ARMS.R[b] + '</svg>');
+      /* From behind, the gardener's right arm is on your right. */
+      if (facing === 'back') return back.replace('</svg>', ARMS.L[b] + ARMS.R[a] + '</svg>');
+      const art = sideBody.replace(/(<svg[^>]*>)/, '$1' + sideArm(a, FAR, -1)).replace('</svg>', sideArm(b, SKIN, 0) + '</svg>');
+      return facing === 'left' ? '<g transform="translate(19,0) scale(-1,1)">' + art + '</g>' : art;
+    };
+    const CAN ='<g><rect x="17" y="16" width="4" height="4" fill="#b9bec6"/><rect x="21" y="17" width="2" height="1" fill="#a4aab3"/><rect x="18" y="15" width="2" height="1" fill="#a4aab3"/></g>';
     const STEPS = [
       ['out', 'down'], ['out', 'out'], ['up', 'out'], ['up', 'up'],
       ['cross', 'up'], ['cross', 'cross'], ['head', 'cross'], ['head', 'head'],
@@ -19038,10 +19064,13 @@ const Auth = (function () {
       ['own', 'own', -1], ['own', 'own', 1], ['own', 'own', -1], ['own', 'own', 1],
       'hop'
     ];
+    let turn = 0;
     const pose = step => {
-      if (step === 'hop') return CAN + '<g transform="translate(0,-3)">' + sideArt + '</g>';
-      const art = body.replace('</svg>', ARMS.L[step[0]] + ARMS.R[step[1]] + '</svg>');
-      return CAN + '<g transform="translate(' + (step[2] || 0) + ',0)">' + art + '</g>';
+      /* The hop is in the air already turned, and they land that way. */
+      if (step === 'hop') turn++;
+      const facing = FACINGS[turn % FACINGS.length];
+      if (step === 'hop') return CAN + '<g transform="translate(0,-3)">' + dancer(facing, 'down', 'down') + '</g>';
+      return CAN + '<g transform="translate(' + (step[2] || 0) + ',0)">' + dancer(facing, step[0], step[1]) + '</g>';
     };
     host.innerHTML = pose(['down', 'down']);
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
