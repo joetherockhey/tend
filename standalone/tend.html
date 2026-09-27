@@ -11490,12 +11490,12 @@ const Garden = (function () {
     wrap.addEventListener('touchend', e => { if (off(e)) handleGardenTouchEnd(e); }, { passive: false });
   }
 
-  /* A look moves the ground a little further than the finger, so one swipe
-     crosses a section, and it keeps gliding after the finger lifts, slowing
-     to a stop. ponytail: both are feel, not maths - LOOK_GAIN is how far per
-     finger pixel, LOOK_FRICTION how quickly the glide dies. */
-  const LOOK_GAIN = 1.4;
-  const LOOK_FRICTION = 0.997;   /* per millisecond - about a phone's own scroll */
+  /* A look scrolls like every other page: the ground stays under the finger,
+     and after the finger lifts it glides to a stop at the phone's own rate.
+     ponytail: LOOK_GAIN is how far per finger pixel, LOOK_FRICTION how
+     quickly the glide dies - 0.998 per ms is iOS's normal scroll. */
+  const LOOK_GAIN = 1;
+  const LOOK_FRICTION = 0.998;
   let lookGlide = 0;
 
   function lookBy(start, dy) {
