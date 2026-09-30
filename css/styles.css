@@ -3317,6 +3317,22 @@ body.gated { overflow: hidden; }
   padding: 6px;
 }
 
+/* On a computer the tasks waiting for a time sit beside the clock rather than
+   under it, and stay in view while the day scrolls, so a drag is a short hop
+   sideways instead of a trip down the page. A phone keeps them stacked. */
+html:not([data-mode="phone"]) .plan-times {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 16px;
+  align-items: start;
+}
+html:not([data-mode="phone"]) .plan-tray {
+  order: -1;
+  margin-top: 0;
+  position: sticky;
+  top: 12px;
+}
+
 /* On a phone the row is the width of the screen and the clock column costs
    width the titles want, so the time shrinks and the numbers go. */
 html[data-mode="phone"] .plan-head { flex-wrap: wrap; }

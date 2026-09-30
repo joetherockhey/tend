@@ -2782,7 +2782,8 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-10-01', items: [
-      'Fixed: the mouse pointer turning white and hard to see. It stays the normal arrow everywhere now, including over the Plan rows, and only turns into a text bar in boxes you type into.'
+      'Fixed: the mouse pointer turning white and hard to see. It stays the normal arrow everywhere now, including over the Plan rows, and only turns into a text bar in boxes you type into.',
+      'Plan My Day with times, on a computer: the tasks waiting for a time now sit beside the clock instead of under it, so dragging one onto a time is a short hop across.'
     ]},
     { date: '2026-09-24', items: [
       'The seasons have a new order. Your first ground is Summer, now a softer green instead of yellow. The first piece you open up is Autumn, all orange and crimson with leaves coming down. Winter is third and Spring fourth.',
@@ -3723,7 +3724,7 @@ const App = (function () {
         <ul class="plan-drop plan-tray-drop">${unplaced.map(t => planRowHtml(t, true)).join('')}</ul>
       </div>`;
 
-    return `<ul class="plan-slots">${slotsHtml}</ul>${tray}`;
+    return `<div class="plan-times"><ul class="plan-slots">${slotsHtml}</ul>${tray}</div>`;
   }
 
   /* The bottom bar's icon is a calendar with one day in it, and the day is
@@ -3806,6 +3807,7 @@ const App = (function () {
       x: e.clientX,
       y: e.clientY,
       grabOffset: 0,
+      grabOffsetX: 0,
       frame: 0,
       hold: 0,
       waitsForHold: e.pointerType === 'touch' && !fromGrip,
@@ -3827,7 +3829,9 @@ const App = (function () {
        point it was grabbed rather than jumping its middle there. Read now
        rather than on the way down: after a hold, or a few pixels of mouse, the
        pointer is no longer quite where it landed. */
-    planDrag.grabOffset = planDrag.y - planDrag.li.getBoundingClientRect().top;
+    const box = planDrag.li.getBoundingClientRect();
+    planDrag.grabOffset = planDrag.y - box.top;
+    planDrag.grabOffsetX = planDrag.x - box.left;
     planDrag.li.classList.add('dragging');
     window.addEventListener('touchmove', planBlockScroll, { passive: false });
     try { planDrag.target.setPointerCapture(planDrag.pointerId); } catch (err) { /* older Safari */ }
@@ -3926,9 +3930,12 @@ const App = (function () {
   function planFollowPointer() {
     const li = planDrag.li;
     li.style.transform = '';
-    const top = li.getBoundingClientRect().top;
-    const dy = Math.round(planDrag.y - planDrag.grabOffset - top);
-    li.style.transform = 'translateY(' + dy + 'px) scale(1.02)';
+    const box = li.getBoundingClientRect();
+    const dy = Math.round(planDrag.y - planDrag.grabOffset - box.top);
+    /* Sideways too: on a computer the tasks and the clock are side by side,
+       and a row that only slid up and down would leap across the gap. */
+    const dx = Math.round(planDrag.x - planDrag.grabOffsetX - box.left);
+    li.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(1.02)';
   }
 
   function planPointerUp() {
