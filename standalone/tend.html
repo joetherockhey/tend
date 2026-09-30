@@ -3166,7 +3166,7 @@ body.gated { overflow: hidden; }
   /* The whole row is the handle now. No touch-action here, though - a finger
      has to be able to scroll the page off a row, and the drag takes the
      gesture by cancelling it instead (planBeginDrag in app.js). */
-  cursor: grab;
+  cursor: move;
   user-select: none;
   -webkit-user-select: none;
   /* Rows displaced by a drag are put back where they looked and then let go
@@ -3244,12 +3244,10 @@ body.gated { overflow: hidden; }
   font-size: 0.85rem;
   letter-spacing: -3px;
   padding: 8px 6px;
-  cursor: grab;
+  cursor: move;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
 }
-
-.plan-grip:active { cursor: grabbing; }
 
 /* Held. No transition, because it is following a finger and has to be exactly
    where the finger is - the easing goes back on the moment it is let go, which
@@ -3261,7 +3259,7 @@ body.gated { overflow: hidden; }
   border-color: var(--accent);
   box-shadow: 0 10px 24px rgba(31, 36, 48, 0.28);
   will-change: transform;
-  cursor: grabbing;
+  cursor: move;
 }
 
 /* The gap it came out of, so the list does not look like it has a hole in it
@@ -4498,7 +4496,13 @@ html[data-mode="phone"] .cat-toggle button { white-space: nowrap; flex: none; }
    This block sits last on purpose. `cursor` inherits, so a container set to
    `default` covers everything inside it that does not say otherwise, and the
    re-assertions below have to come after it.
+
+   The arrow is the default for the whole page, not just the list below: any
+   dark panel or theme the list missed would bring the white I-beam back. Only
+   the fields you type into keep it.
    --------------------------------------------------------------------------- */
+
+html { cursor: default; }
 
 header,
 .auth-screen,
@@ -16660,6 +16664,9 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-10-01', items: [
+      'Fixed: the mouse pointer turning white and hard to see. It stays the normal arrow everywhere now, including over the Plan rows, and only turns into a text bar in boxes you type into.'
+    ]},
     { date: '2026-09-24', items: [
       'The seasons have a new order. Your first ground is Summer, now a softer green instead of yellow. The first piece you open up is Autumn, all orange and crimson with leaves coming down. Winter is third and Spring fourth.',
       'The snowman, pumpkin and other little things in the corner of each section are gone. They looked like something you could walk up to, and they did nothing.',

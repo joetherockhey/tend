@@ -2781,6 +2781,9 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-10-01', items: [
+      'Fixed: the mouse pointer turning white and hard to see. It stays the normal arrow everywhere now, including over the Plan rows, and only turns into a text bar in boxes you type into.'
+    ]},
     { date: '2026-09-24', items: [
       'The seasons have a new order. Your first ground is Summer, now a softer green instead of yellow. The first piece you open up is Autumn, all orange and crimson with leaves coming down. Winter is third and Spring fourth.',
       'The snowman, pumpkin and other little things in the corner of each section are gone. They looked like something you could walk up to, and they did nothing.',
