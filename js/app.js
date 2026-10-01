@@ -1079,6 +1079,7 @@ const App = (function () {
     sub.done = !sub.done;
     Store.saveTickets();
     renderList();
+    renderPlan();
     renderStats();
   }
 
@@ -1087,7 +1088,9 @@ const App = (function () {
     if (el) el.hidden = !el.hidden;
   }
 
-  function renderSubtaskList(t) {
+  /* `open` is for Plan My Day: the steps are always showing there, and a click
+     on one must not fall through to the row and open the task. */
+  function renderSubtaskList(t, open) {
     const list = subtasksOf(t);
     if (!list.length) return '';
     const rows = list.map(sub => `
@@ -1095,7 +1098,9 @@ const App = (function () {
         <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="App.toggleSubtask('${t.id}', '${sub.id}')">
         <span>${Util.escapeHtml(sub.title)}</span>
       </li>`).join('');
-    return `<ul class="subtask-list" id="subs-${t.id}" hidden>${rows}</ul>`;
+    return open
+      ? `<ul class="subtask-list" onclick="event.stopPropagation()">${rows}</ul>`
+      : `<ul class="subtask-list" id="subs-${t.id}" hidden>${rows}</ul>`;
   }
 
   /* ---- the editor used inside the new and edit forms ---- */
@@ -2783,7 +2788,8 @@ const App = (function () {
   const UPDATES = [
     { date: '2026-10-01', items: [
       'Fixed: the mouse pointer turning white and hard to see. It stays the normal arrow everywhere now, including over the Plan rows, and only turns into a text bar in boxes you type into.',
-      'Plan My Day with times, on a computer: the tasks waiting for a time now sit beside the clock instead of under it, so dragging one onto a time is a short hop across.'
+      'Plan My Day with times, on a computer: the tasks waiting for a time now sit beside the clock instead of under it, so dragging one onto a time is a short hop across.',
+      'A task’s steps now show under it on Plan My Day, and you can tick them off right there.'
     ]},
     { date: '2026-09-24', items: [
       'The seasons have a new order. Your first ground is Summer, now a softer green instead of yellow. The first piece you open up is Autumn, all orange and crimson with leaves coming down. Winter is third and Spring fourth.',
@@ -3680,6 +3686,7 @@ const App = (function () {
         <div class="plan-row-body" onclick="App.showTaskDetail('${t.id}')">
           <span class="plan-row-title">${Util.escapeHtml(t.title)}</span>
           ${chip}${due}
+          ${renderSubtaskList(t, true)}
         </div>
         <button type="button" class="plan-unstar" title="Take it off today's plan"
                 aria-label="Take off the plan" onclick="App.togglePriority('${t.id}')">&#9733;</button>
