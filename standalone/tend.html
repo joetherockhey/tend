@@ -5612,6 +5612,115 @@ html[data-mode="phone"] .shop-tile-action { white-space: normal; text-align: cen
    front view only needs showing - no sway of its own. */
 .lg-front { animation: lg-show 0.01s 4.4s forwards; }
 
+/* ---------------------------------------------------------------------------
+   Ponds, and what lives in and around them.
+   --------------------------------------------------------------------------- */
+
+/* The rim and the rounded corners come from garden.js, square by square, so a
+   run of water reads as one pond. A slow shimmer of light across it. */
+.garden-water {
+  background-color: #4fa3d1;
+  /* 17px divides the 34px square, so the glints line up across the join
+     between one square of pond and the next. */
+  background-image: radial-gradient(circle at 30% 35%, rgba(255, 255, 255, 0.2) 0 1.5px, transparent 2.5px);
+  background-size: 17px 17px;
+  animation: pond-shimmer 7s linear infinite;
+}
+
+@keyframes pond-shimmer {
+  from { background-position: 0 0; }
+  to   { background-position: 17px 0; }
+}
+
+/* Over the water and the soil, under the plants and the scenery. */
+.pond-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pond-creature {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.pond-creature svg { display: block; image-rendering: pixelated; }
+
+/* Seen through the water. */
+.pond-creature.koi { opacity: 0.92; }
+.pond-creature.tadpole { opacity: 0.85; }
+
+/* A frog is moved a whole square at a time; the transition is the hop across
+   and the keyframes lift it on the way. */
+.pond-creature.frog { transition: transform 0.38s ease-out; }
+.pond-creature.frog .frog-swim { display: none; }
+.pond-creature.frog.in-water .frog-sit { display: none; }
+.pond-creature.frog.in-water .frog-swim { display: block; }
+.pond-creature.frog.hop-a > span { animation: frog-hop-a 0.38s ease-out; }
+.pond-creature.frog.hop-b > span { animation: frog-hop-b 0.38s ease-out; }
+@keyframes frog-hop-a { 50% { transform: translateY(-9px); } }
+@keyframes frog-hop-b { 50% { transform: translateY(-9px); } }
+.pond-creature.frog > span { display: block; }
+
+/* Birds. Where they are comes from garden.js; what they look like doing it -
+   wings going, sitting, splashing, pecking - is the class. */
+.garden-bird { opacity: 1; z-index: 26; }
+.garden-bird > span { display: none; }
+.garden-bird svg { display: block; image-rendering: pixelated; }
+.garden-bird.flying .bird-fly-a { display: block; animation: bird-flap-a 0.24s steps(1) infinite; }
+.garden-bird.flying .bird-fly-b { display: block; position: absolute; top: 0; left: 0; animation: bird-flap-b 0.24s steps(1) infinite; }
+.garden-bird:not(.flying) .bird-sit { display: block; }
+@keyframes bird-flap-a { 0% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes bird-flap-b { 0% { opacity: 0; } 50% { opacity: 1; } }
+
+/* In the bath: sunk to its middle in the water and bobbing. */
+.garden-bird.bathe .bird-sit {
+  clip-path: inset(0 0 45% 0);
+  animation: bird-bathe 0.36s ease-in-out infinite alternate;
+}
+@keyframes bird-bathe {
+  from { transform: translateY(0) rotate(-6deg); }
+  to   { transform: translateY(1px) rotate(8deg); }
+}
+
+/* Head down to the seed, and up again. */
+.garden-bird.eat .bird-sit {
+  transform-origin: 40% 90%;
+  animation: bird-peck 1.1s steps(1) infinite;
+}
+@keyframes bird-peck {
+  0%   { transform: rotate(0); }
+  55%  { transform: rotate(22deg); }
+  70%  { transform: rotate(0); }
+  80%  { transform: rotate(22deg); }
+  90%  { transform: rotate(0); }
+}
+
+.garden-splash {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #c8ecfb;
+  box-shadow: 3px -1px 0 #9bd8f3, -3px 0 0 #e6f6fd;
+  pointer-events: none;
+  z-index: 27;
+  animation: garden-splash 0.6s ease-out forwards;
+}
+@keyframes garden-splash {
+  0%   { transform: translate(0, 0); opacity: 1; }
+  60%  { transform: translate(var(--dx), -7px); opacity: 1; }
+  100% { transform: translate(var(--dx), 0); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-water { animation: none; }
+  .pond-creature.frog { transition: none; }
+  .pond-creature.frog > span { animation: none !important; }
+}
+
 </style>
 </head>
 <body class="gated">
@@ -5792,7 +5901,7 @@ html[data-mode="phone"] .shop-tile-action { white-space: normal; text-align: cen
     <div class="garden-help-block" id="garden-help-block">
     <ul class="garden-hint">
       <li id="garden-move-hint">Click the garden, then move with WASD or the arrow keys.</li>
-      <li id="garden-use-hint">Press E to pick up, plant, or use whatever you are next to.</li>
+      <li id="garden-use-hint">Press E to pick up, plant, or use whatever you are next to. Q puts it down.</li>
       <li id="garden-buy-hint">Finish a task to earn a coin, then buy a seedling - plant it in the ground and water it 5x to grow.</li>
     </ul>
     <!-- Eleven of these used to sit in one undifferentiated row, labelled only
@@ -5818,6 +5927,7 @@ html[data-mode="phone"] .shop-tile-action { white-space: normal; text-align: cen
           <button class="help-icon-btn" onclick="showHelpTopic('axe')" title="Axe" aria-label="Axe"><span class="help-icon-glyph" aria-hidden="true">&#x1FA93;</span><span class="help-icon-word">Axe</span></button>
           <button class="help-icon-btn" onclick="showHelpTopic('hoe')" title="Hoe" aria-label="Hoe"><span class="help-icon-glyph" aria-hidden="true">&#x26CF;&#xFE0F;</span><span class="help-icon-word">Hoe</span></button>
           <button class="help-icon-btn" onclick="showHelpTopic('shovel')" title="Shovel" aria-label="Shovel"><span class="help-icon-glyph" aria-hidden="true"><svg class="glyph-icon" viewBox="0 0 16 20" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="6" height="2" fill="#9a6636"/><rect x="7" y="3" width="2" height="9" fill="#8a5a2e"/><rect x="4" y="11" width="8" height="1" fill="#7b818a"/><rect x="4" y="12" width="8" height="4" fill="#b9bec6"/><rect x="5" y="16" width="6" height="2" fill="#b9bec6"/><rect x="6" y="18" width="4" height="1" fill="#a4aab3"/><rect x="9" y="12" width="3" height="4" fill="#a4aab3"/><rect x="9" y="16" width="2" height="2" fill="#a4aab3"/></svg></span><span class="help-icon-word">Shovel</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('turf')" title="Grass seed" aria-label="Grass seed"><span class="help-icon-glyph" aria-hidden="true">&#x1F33E;</span><span class="help-icon-word">Grass seed</span></button>
         </div>
       </div>
       <div class="help-group">
@@ -5826,6 +5936,8 @@ html[data-mode="phone"] .shop-tile-action { white-space: normal; text-align: cen
           <button class="help-icon-btn" onclick="showHelpTopic('sapling')" title="Saplings" aria-label="Saplings"><span class="help-icon-glyph" aria-hidden="true">&#x1F331;</span><span class="help-icon-word">Saplings</span></button>
           <button class="help-icon-btn" onclick="showHelpTopic('cabin')" title="Building" aria-label="Building"><span class="help-icon-glyph" aria-hidden="true">&#x1FAB5;</span><span class="help-icon-word">Building</span></button>
           <button class="help-icon-btn" onclick="showHelpTopic('pets')" title="Animals" aria-label="Animals"><span class="help-icon-glyph" aria-hidden="true">&#x1F43E;</span><span class="help-icon-word">Animals</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('ponds')" title="Ponds" aria-label="Ponds"><span class="help-icon-glyph" aria-hidden="true">&#x1F41F;</span><span class="help-icon-word">Ponds</span></button>
+          <button class="help-icon-btn" onclick="showHelpTopic('birds')" title="Birds" aria-label="Birds"><span class="help-icon-glyph" aria-hidden="true">&#x1F426;</span><span class="help-icon-word">Birds</span></button>
         </div>
       </div>
     </div>
@@ -7380,6 +7492,17 @@ const Worlds = (function () {
     function bucketSVG() {
       return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="4" y="10" width="8" height="6" fill="#8a8f98"/><rect x="3" y="9" width="10" height="1" fill="#a4aab3"/><rect x="5" y="6" width="6" height="1" fill="#6b7280"/></svg>`;
     }
+    function birdBathSVG() {
+      return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="1" y="5" width="14" height="1" fill="#d4d8de"/><rect x="1" y="6" width="14" height="3" fill="#b9bec6"/><rect x="2" y="6" width="12" height="1" fill="#7cc8ec"/><rect x="4" y="6" width="3" height="1" fill="#c8ecfb"/><rect x="3" y="9" width="10" height="1" fill="#9aa0a8"/><rect x="6" y="10" width="4" height="6" fill="#b9bec6"/><rect x="9" y="10" width="1" height="6" fill="#9aa0a8"/><rect x="4" y="16" width="8" height="2" fill="#a4aab3"/><rect x="3" y="18" width="10" height="1" fill="#8a8f98"/></svg>`;
+    }
+    function birdFeederSVG() {
+      return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="3" y="2" width="10" height="1" fill="#c0392b"/><rect x="2" y="3" width="12" height="1" fill="#a93226"/><rect x="3" y="4" width="1" height="3" fill="#8a5a2e"/><rect x="12" y="4" width="1" height="3" fill="#8a5a2e"/><rect x="6" y="4" width="4" height="3" fill="#f3e6c4"/><rect x="7" y="5" width="2" height="2" fill="#e0c27a"/><rect x="2" y="7" width="1" height="1" fill="#8a5a2e"/><rect x="13" y="7" width="1" height="1" fill="#8a5a2e"/><rect x="3" y="7" width="10" height="1" fill="#e0c27a"/><rect x="4" y="7" width="1" height="1" fill="#c49a4a"/><rect x="11" y="7" width="1" height="1" fill="#c49a4a"/><rect x="2" y="8" width="12" height="1" fill="#a97a45"/><rect x="7" y="9" width="2" height="9" fill="#8a5a2e"/><rect x="5" y="18" width="6" height="1" fill="#6b4423"/></svg>`;
+    }
+    /* A seed bag. The reef's sand smoother is the same bag in its own colours. */
+    function seedBagSVG(label) {
+      return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="6" y="4" width="4" height="1" fill="#8a5a2e"/><rect x="4" y="5" width="8" height="1" fill="#b9a37a"/><rect x="4" y="6" width="8" height="12" fill="#d9c39a"/><rect x="11" y="6" width="1" height="12" fill="#c4ad82"/><rect x="5" y="10" width="6" height="5" fill="${label}"/><rect x="7" y="11" width="2" height="3" fill="#2f7a34"/><rect x="6" y="11" width="1" height="1" fill="#2f7a34"/><rect x="9" y="12" width="1" height="1" fill="#2f7a34"/></svg>`;
+    }
+    function grassSeedSVG() { return seedBagSVG('#5fae46'); }
     function beehiveSVG() {
       return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="2" width="2" height="2" fill="#6b4423"/><rect x="5" y="4" width="6" height="3" fill="#eda100"/><rect x="3" y="7" width="10" height="3" fill="#d18f00"/><rect x="2" y="10" width="12" height="3" fill="#eda100"/><rect x="3" y="13" width="10" height="3" fill="#d18f00"/><rect x="7" y="12" width="2" height="2" fill="#5a3a1e"/><rect x="4" y="16" width="8" height="2" fill="#8a5a2e"/><rect x="12" y="4" width="2" height="1" fill="#3b3f45"/><rect x="12" y="3" width="1" height="1" fill="#f7f7f2"/></svg>`;
     }
@@ -7596,7 +7719,15 @@ const Worlds = (function () {
       shovel: { label: 'Shovel', icon: SHOVEL_GLYPH, cost: 6, svg: shovelSVG, tool: true,
         desc: 'Digs up a bush so you can carry it somewhere else.' },
       beehive: { label: 'Bee hive', icon: '\u{1F41D}', cost: 4, svg: beehiveSVG,
-        desc: 'A buzzing hive to stand in the garden. Just for looks - buy as many as you like.' }
+        desc: 'A buzzing hive to stand in the garden. Just for looks - buy as many as you like.' },
+      turf: { label: 'Grass seed', icon: '\u{1F33E}', cost: 2, svg: grassSeedSVG, tool: true,
+        desc: 'Turns dug soil, or a square of pond, back into grass.' },
+      /* These two bring birds. Only the garden sells them - the reef has no
+         birds - so the ocean's list simply leaves them out. */
+      birdbath: { label: 'Bird bath', icon: '\u{1F426}', cost: 6, svg: birdBathSVG,
+        desc: 'Birds come to perch on it, splash about in it and flit round it.' },
+      feeder: { label: 'Bird feeder', icon: '\u{1F33B}', cost: 8, svg: birdFeederSVG,
+        desc: 'Brings more birds than a bath does. They sit on it and eat the seed.' }
     };
     const OUTFITS = {
       classic: { label: 'Classic', icon: '\u{1F455}', cost: 0, hat: '#6b4423', shirt: '#3f9142', pants: '#2c3e8f' },
@@ -8131,7 +8262,9 @@ const Worlds = (function () {
     shovel: { label: 'Sand scoop', icon: '\u{1F944}', cost: 6, svg: sandScoopSVG, tool: true,
       desc: 'Scoops up a sponge so you can carry it somewhere else.' },
     beehive: { label: 'Treasure chest', icon: '\u{1F4B0}', cost: 4, svg: chestSVG,
-      desc: 'A sunken chest to set on the reef. Just for looks - buy as many as you like.' }
+      desc: 'A sunken chest to set on the reef. Just for looks - buy as many as you like.' },
+    turf: { label: 'Sand smoother', icon: '\u{1F41A}', cost: 2, svg: function () { return seedBagSVG('#4a9cb2'); }, tool: true,
+      desc: 'Smooths raked seabed back into plain sand.' }
   };
 
   const OCEAN_OUTFITS = {
@@ -8576,7 +8709,38 @@ const Store = (function () {
     return JSON.stringify(out);
   }
 
+  /* What each square of ground has been turned into - dug, pond, or back to
+     grass - with a count of how many times it has changed. A list of dug
+     squares could only ever grow when two devices merged, so a square put back
+     to grass came straight back as soil. The higher count is the later change
+     and wins, square by square. */
+  function mergeGround(a, b) {
+    const x = parseJson(a, {}) || {}, y = parseJson(b, {}) || {};
+    const out = Object.assign({}, y);
+    Object.keys(x).forEach(k => {
+      const gx = Number(x[k] && x[k].g) || 0, gy = Number(y[k] && y[k].g) || 0;
+      if (gx >= gy) out[k] = x[k];
+    });
+    return JSON.stringify(out);
+  }
+
+  const GROUND_KEY = 'garden-ground-v1';
+  const DUG_KEY = 'garden-dug-v1';
+
+  /* The old dug list is still written - the Friends view reads it - but it is
+     a union, so after a merge it is cut back to what the ground map says. */
+  function settleDugList(bag) {
+    if (bag[GROUND_KEY] === undefined) return;
+    const ground = parseJson(bag[GROUND_KEY], {}) || {};
+    const dug = parseJson(bag[DUG_KEY], []);
+    const out = (Array.isArray(dug) ? dug : []).filter(k => !ground[k]);
+    Object.keys(ground).forEach(k => { if (ground[k] && ground[k].t === 'dug') out.push(k); });
+    bag[DUG_KEY] = JSON.stringify(out);
+  }
+
   const OWNED_KEYS = {
+    'garden-ground-v1': mergeGround,
+    'garden-pondlife-v1': unionById,
     'garden-layout-v5': mergePlots,
     'garden-found-v1': unionOfList,
     'garden-lens-v1': keepFlag,
@@ -8614,6 +8778,7 @@ const Store = (function () {
       if (b === undefined) { out[k] = a; return; }
       out[k] = OWNED_KEYS[k](a, b);
     });
+    settleDugList(out);
     return out;
   }
 
@@ -9288,10 +9453,12 @@ const Store = (function () {
 
   async function listGardens() {
     if (!CLOUD || !client) return localGardens();
-    const { data, error } = await client
-      .from('gardens')
-      .select('user_id, display_name, world, hero, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets, outfits, hero_pos, coins')
-      .order('display_name');
+    const cols = 'user_id, display_name, world, hero, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets, outfits, hero_pos, coins';
+    /* ground and pondlife arrived with ponds. Until supabase/gardens.sql has
+       been run again the view does not have them, so asking for them fails -
+       and then the old columns are asked for instead, ponds left out. */
+    let { data, error } = await client.from('gardens').select(cols + ', ground, pondlife').order('display_name');
+    if (error) ({ data, error } = await client.from('gardens').select(cols).order('display_name'));
     if (error) throw error;
     return (data || []).map(r => ({
       id: r.user_id,
@@ -9309,6 +9476,8 @@ const Store = (function () {
       logs: safeParse(r.logs, []),
       cabins: safeParse(r.cabins, []),
       dug: safeParse(r.dug, []),
+      ground: safeParse(r.ground, {}),
+      pondLife: safeParse(r.pondlife, []),
       pets: safeParse(r.pets, []),
       outfits: safeParse(r.outfits, {}),
       heroPos: safeParse(r.hero_pos, null),
@@ -9355,6 +9524,8 @@ const Store = (function () {
         logs: safeParse(get('garden-logs-v1'), []),
         cabins: safeParse(get('garden-cabins-v1'), []),
         dug: safeParse(get('garden-dug-v1'), []),
+        ground: safeParse(get('garden-ground-v1'), {}),
+        pondLife: safeParse(get('garden-pondlife-v1'), []),
         pets: safeParse(get('garden-pets-v1'), []),
         outfits: safeParse(get('garden-outfits-v1'), {}),
         heroPos: safeParse(get('garden-hero-v5'), null),
@@ -9923,7 +10094,15 @@ const Garden = (function () {
     const rows = bands * SECTION_ROWS;
     const chopped = new Set(g.chopped || []);
     const movables = g.movables || {};
-    const dug = new Set((g.dug || []).map(String));
+    /* The ground map wins over the old dug list, the same as in your own. */
+    const ground = (g.ground && typeof g.ground === 'object') ? g.ground : {};
+    const dug = new Set((g.dug || []).map(String).filter(k => !ground[k]));
+    const water = new Set();
+    Object.keys(ground).forEach(k => {
+      const t = ground[k] && ground[k].t;
+      if (t === 'dug') dug.add(k);
+      else if (t === 'water') water.add(k);
+    });
     const px = n => n * CELL_SIZE;
 
     const themeOf = i => sectionInfo(i, world).theme;
@@ -9993,6 +10172,23 @@ const Garden = (function () {
     const movablesHtml = placed.filter(d => d.movable)
       .map(d => decor(d.row, d.col, d.width, d.height, d.svg)).join('');
 
+    /* Their koi and tadpoles, held still in the water, and their frogs sat on
+       the bank. A visit is a glance, so they stay where they are drawn. */
+    const waterList = [...water].filter(k => Number(k.split(':')[0]) < rows);
+    const pondHtml = (Array.isArray(g.pondLife) ? g.pondLife : []).map((p, i) => {
+      if (!p || !waterList.length) return '';
+      const kind = pondKind(p);
+      const [r, c] = waterList[(hashStr(String(p.id)) + i) % waterList.length].split(':').map(Number);
+      const cx = px(c) + CELL_SIZE / 2, cy = px(r) + CELL_SIZE / 2;
+      if (kind === 'frog') {
+        return `<div class="pond-creature frog in-water" style="transform:translate(${px(c) + 10}px, ${px(r) + 13}px);">${frogSVG()}</div>`;
+      }
+      const turn = ((hashStr(p.id + ':a') % 628) / 100).toFixed(2);
+      const off = kind === 'koi' ? [6.5, 3.5] : [4.5, 2];
+      const art = kind === 'koi' ? koiSVG(hashStr(String(p.id))) : tadpoleSVG();
+      return `<div class="pond-creature ${kind}" style="transform:translate(${cx - off[0] + (i % 3) * 5 - 5}px, ${cy - off[1]}px) rotate(${turn}rad);">${art}</div>`;
+    }).join('');
+
     /* --- the plants, with the same sway, nudge and half-grown stage --- */
     let cellsHtml = '';
     Object.keys(layout).forEach(id => {
@@ -10053,7 +10249,8 @@ const Garden = (function () {
     const heroHtml = `<div class="garden-hero garden-preview-hero" style="width:${CELL_SIZE}px; height:${CELL_SIZE}px; transform:translate(${px(heroCol)}px, ${px(heroRow)}px);"><div class="sprite-shadow"></div>${heroArt}</div>`;
 
     return `<div class="garden-plot garden-preview" style="width:${px(GARDEN_COLS)}px; height:${px(rows)}px;">`
-      + bandsHtml + dugHtml + cellsHtml + movablesHtml + itemsHtml + saplingsHtml
+      + bandsHtml + dugHtml + waterHtml(water) + `<div class="pond-layer">${pondHtml}</div>`
+      + cellsHtml + movablesHtml + itemsHtml + saplingsHtml
       + logsHtml + cabinsHtml + treatsHtml + petsHtml + heroHtml
       + `<div class="garden-effects"></div></div>`;
   }
@@ -10474,6 +10671,8 @@ const Garden = (function () {
   const SAPLINGS_KEY = 'garden-saplings-v1';
   const SECTIONS_KEY = 'garden-sections-v1';
   const DUG_TILES_KEY = 'garden-dug-v1';
+  const GROUND_KEY = 'garden-ground-v1';
+  const POND_LIFE_KEY = 'garden-pondlife-v1';
   const COINS_AWARDED_KEY = 'coins-awarded-v1';
   const COINS_SPENT_KEY = 'coins-spent-v1';
   const COINS_BONUS_KEY = 'coins-bonus-v1';
@@ -10501,6 +10700,11 @@ const Garden = (function () {
   let heldLog = null;
   let heldSapling = null;
   let dugTiles = new Set();
+  let waterTiles = new Set();
+  let groundMap = {};
+  /* Koi and tadpoles, as bought: { id, kind, at }. Where they are swimming is
+     never saved - they are drawn wherever there is water. */
+  let pondLife = [];
   let hasLens = false;
   let lensOn = true;
   let lensLastKey = '';
@@ -10604,15 +10808,43 @@ const Garden = (function () {
     if (recomputeCoins()) renderCoins();
   }
 
+  /* What each square of ground has been made into. The old dug list only ever
+     grew - a square could be turned but never turned back - so the ground map
+     sits over it: an entry there wins, and carries a count of how many times
+     the square has changed, which is what lets two devices agree on the later
+     change (see mergeGround in store.js). The dug list is still written, as
+     what the map says is dug, for the Friends view and older copies. */
   function loadDugTiles() {
-    try {
-      dugTiles = new Set(JSON.parse(Store.kv.getItem(DUG_TILES_KEY)) || []);
-    } catch (e) {
-      dugTiles = new Set();
-    }
+    let listed = [];
+    try { listed = JSON.parse(Store.kv.getItem(DUG_TILES_KEY)) || []; } catch (e) { listed = []; }
+    try { groundMap = JSON.parse(Store.kv.getItem(GROUND_KEY)) || {}; } catch (e) { groundMap = {}; }
+    if (!groundMap || typeof groundMap !== 'object' || Array.isArray(groundMap)) groundMap = {};
+    dugTiles = new Set(listed.filter(k => !groundMap[k]));
+    waterTiles = new Set();
+    Object.keys(groundMap).forEach(k => {
+      const t = groundMap[k] && groundMap[k].t;
+      if (t === 'dug') dugTiles.add(k);
+      else if (t === 'water') waterTiles.add(k);
+    });
   }
   function saveDugTiles() {
     Store.kv.setItem(DUG_TILES_KEY, JSON.stringify([...dugTiles]));
+    Store.kv.setItem(GROUND_KEY, JSON.stringify(groundMap));
+  }
+
+  /* t is 'dug', 'water' or 'grass'. */
+  function setGround(key, t) {
+    const was = groundMap[key] ? (Number(groundMap[key].g) || 0) : (dugTiles.has(key) ? 1 : 0);
+    groundMap[key] = { g: was + 1, t: t };
+    dugTiles.delete(key);
+    waterTiles.delete(key);
+    if (t === 'dug') dugTiles.add(key);
+    else if (t === 'water') waterTiles.add(key);
+    saveDugTiles();
+  }
+
+  function isWater(row, col) {
+    return waterTiles.has(row + ':' + col);
   }
 
   function loadChoppedTrees() {
@@ -10715,6 +10947,7 @@ const Garden = (function () {
     if (cabinSites.some(s => s.row === row && s.col === col)) return true;
     if (pendingTreats.some(t => t.row === row && t.col === col)) return true;
     if (ownedPets.some(p => p.row === row && p.col === col)) return true;
+    if (isWater(row, col)) return true;
     /* The shop asks "where can a new seedling land", and the answer must not be
        under the gardener's feet. Setting something down is the opposite
        question - you are standing there on purpose - so it passes ignoreHero.
@@ -10759,6 +10992,44 @@ const Garden = (function () {
   }
   function savePurchasedItems() {
     Store.kv.setItem(PURCHASED_ITEMS_KEY, JSON.stringify(purchasedItems));
+  }
+
+  /* ---------- Pond life ---------- */
+
+  const KOI_COST = 5;
+  const TADPOLE_COST = 3;
+  /* A tadpole is a frog a day after it went in. */
+  const TADPOLE_GROW_MS = 24 * 60 * 60 * 1000;
+  /* Two to a square of water, so a one-square pond is not a tin of sardines. */
+  const POND_LIFE_PER_SQUARE = 2;
+
+  function loadPondLife() {
+    try { pondLife = JSON.parse(Store.kv.getItem(POND_LIFE_KEY)) || []; } catch (e) { pondLife = []; }
+    if (!Array.isArray(pondLife)) pondLife = [];
+  }
+  function savePondLife() {
+    Store.kv.setItem(POND_LIFE_KEY, JSON.stringify(pondLife));
+  }
+
+  function pondKind(p, now) {
+    if (p.kind !== 'tadpole') return p.kind;
+    return (now || Date.now()) - (Number(p.at) || 0) >= TADPOLE_GROW_MS ? 'frog' : 'tadpole';
+  }
+
+  function pondRoom() {
+    return waterTiles.size * POND_LIFE_PER_SQUARE - pondLife.length;
+  }
+
+  function buyPondLife(kind) {
+    const cost = kind === 'koi' ? KOI_COST : kind === 'tadpole' ? TADPOLE_COST : 0;
+    if (!cost || coins < cost || pondRoom() <= 0) return;
+    spendCoins(cost);
+    pondLife.push({ id: 'pond-' + hashStr(kind + pondLife.length + Date.now() + Math.random()), kind: kind, at: Date.now() });
+    savePondLife();
+    playWaterSound();
+    renderCoins();
+    renderGarden();
+    renderShop();
   }
 
   function loadPets() {
@@ -12123,6 +12394,14 @@ const Garden = (function () {
       return;
     }
 
+    /* Put down, and only put down. E tries the tool first, and a shovel facing
+       grass now digs a pond - so there has to be a key that just lets go. */
+    if (key === 'q') {
+      event.preventDefault();
+      if (isHoldingSomething()) togglePickup({ use: false });
+      return;
+    }
+
     /* A development shortcut: finishes every planted sapling at once. It is
        off unless DEV_SHORTCUTS is turned on in js/config.js, because F sits
        right beside the WASD keys used to walk, and one stray press would
@@ -12190,6 +12469,7 @@ const Garden = (function () {
     }
 
     if (findBlockingSceneryAt(targetRow, targetCol)) return blocked();
+    if (isWater(targetRow, targetCol)) return blocked();
 
     const cabinHere = cabinSites.find(s => s.row === targetRow && s.col === targetCol);
     if (cabinHere && cabinHere.complete) return blocked();
@@ -12330,11 +12610,32 @@ const Garden = (function () {
       const key = heroPos.row + ':' + heroPos.col;
       if (dugTiles.has(key) || findPlantAt(heroPos.row, heroPos.col)
           || findDecorationAt(heroPos.row, heroPos.col)) return false;
-      dugTiles.add(key);
-      saveDugTiles();
+      setGround(key, 'dug');
       playDirtSound();
       renderGarden();
       return true;
+    }
+
+    /* Grass seed undoes the hoe and the shovel: the square you are on first,
+       then the one you face, whichever is soil or pond. Soil with a plant in
+       it is left alone - the plant would be sitting on grass in no pot. */
+    if (heldDecoration.kind === 'turf') {
+      const [fr, fc] = facingSquare();
+      for (const [r, c] of [[heroPos.row, heroPos.col], [fr, fc]]) {
+        const key = r + ':' + c;
+        if (!dugTiles.has(key) && !waterTiles.has(key)) continue;
+        if (findPlantAt(r, c)) continue;
+        if (waterTiles.has(key) && waterTiles.size === 1 && pondLife.length) {
+          showThought('The fish need somewhere to swim');
+          return true;
+        }
+        setGround(key, 'grass');
+        spawnSparkleAt(r, c);
+        playDirtSound();
+        renderGarden();
+        return true;
+      }
+      return false;
     }
 
     if (heldDecoration.kind === 'axe') {
@@ -12384,8 +12685,26 @@ const Garden = (function () {
         renderGarden();
         return true;
       }
+      /* With no bush in reach, the shovel digs the square in front of you
+         into water - one square a pond, a line of them a stream. */
+      const [fr, fc] = facingSquare();
+      if (canDigWater(fr, fc)) {
+        setGround(fr + ':' + fc, 'water');
+        playWaterSound();
+        renderGarden();
+        return true;
+      }
     }
     return false;
+  }
+
+  /* Bare ground only: open grass or dug soil, inside the land you own, with
+     nothing standing on it. Garden only - the reef is under water already. */
+  function canDigWater(r, c) {
+    if (W().id !== 'garden') return false;
+    if (r < 0 || r > gardenMaxUnlockedRow || c < 0 || c >= GARDEN_COLS) return false;
+    if (isWater(r, c) || cellOccupied(r, c)) return false;
+    return !placedDecorations.some(d => r >= d.row && r < d.row + d.height && c >= d.col && c < d.col + d.width);
   }
 
   /* Why the swing found nothing, in the gardener's own bubble - so a Use that
@@ -12395,6 +12714,7 @@ const Garden = (function () {
     if (kind === 'axe') return 'Nothing to chop here';
     if (kind === 'shovel') return 'Nothing to dig up here';
     if (kind === 'hoe') return 'This square will not turn';
+    if (kind === 'turf') return 'Nothing here to grass over';
     return 'Nothing to use';
   }
 
@@ -12540,6 +12860,7 @@ const Garden = (function () {
      soil, the mower, the fence - everything you walked past - which buried the
      one thing it is for. */
   function describeAt(row, col) {
+    if (isWater(row, col)) return 'Pond';
     const plantId = findPlantAt(row, col);
     if (!plantId) return null;
     const pos = gardenLayout[plantId];
@@ -12892,6 +13213,26 @@ const Garden = (function () {
     sellWrap.hidden = !sale;
   }
 
+  /* Koi and tadpoles, under the items. Garden only, and only once there is
+     water to put them in - the shovel digs it. */
+  function pondShopHtml() {
+    if (W().id !== 'garden') return '';
+    const room = pondRoom();
+    const why = !waterTiles.size
+      ? 'Dig a pond with the shovel first - hold it, face some grass and ' + (phoneControls() ? 'tap Use' : 'press E') + '.'
+      : room <= 0 ? 'The pond is full. Dig it bigger to add more.' : '';
+    const tile = (kind, icon, label, cost, desc) => shopTile({
+      icon, label, desc, action: price(cost), onclick: `buyPondLife('${kind}')`,
+      disabled: coins < cost || room <= 0
+    });
+    return `<div class="shop-section-title">For the pond</div>`
+      + (why ? `<div class="shop-info">${Util.escapeHtml(why)}</div>` : '')
+      + `<div class="shop-grid">`
+      + tile('koi', '\u{1F41F}', 'Koi', KOI_COST, 'A koi carp that glides about your pond.')
+      + tile('tadpole', '\u{1F438}', 'Tadpole', TADPOLE_COST, 'Wriggles about the pond, and grows into a frog after a day.')
+      + `</div>`;
+  }
+
   function renderShop() {
     renderSellBar();
     const descBox = document.getElementById('shop-desc');
@@ -12958,7 +13299,7 @@ const Garden = (function () {
             desc: 'Walk up to anything and it tells you what it is.',
             action: price(LENS_COST), onclick: 'buyLens()', disabled: coins < LENS_COST
           }));
-      itemsWrap.innerHTML = `<div class="shop-grid">${tiles}</div>`;
+      itemsWrap.innerHTML = `<div class="shop-grid">${tiles}</div>` + pondShopHtml();
     }
 
     const treatsWrap = document.getElementById('shop-treats');
@@ -13030,7 +13371,7 @@ const Garden = (function () {
     const nc = Math.max(0, Math.min(GARDEN_COLS - 1, p.col + dc));
     if (nr === p.row && nc === p.col) return;
     if (nr === heroPos.row && nc === heroPos.col) return;
-    if (findPlantAt(nr, nc) || findDecorationAt(nr, nc)) return;
+    if (findPlantAt(nr, nc) || findDecorationAt(nr, nc) || isWater(nr, nc)) return;
     if (ownedPets.some(o => o !== p && o.row === nr && o.col === nc)) return;
 
     p.row = nr;
@@ -13264,8 +13605,10 @@ const Garden = (function () {
     ambientFrame = requestAnimationFrame(ambientLoop);
     const dt = ambientLast ? Math.min(80, ts - ambientLast) : 16;
     ambientLast = ts;
-    if (document.hidden || !ambientFlyers.length) return;
-    ambientStep(dt);
+    if (document.hidden) return;
+    if (ambientFlyers.length) ambientStep(dt);
+    if (birds.length) stepBirds(dt);
+    if (swimmers.size && !ambientReducedMotion()) stepSwimmers(dt);
   }
 
   function ambientReducedMotion() {
@@ -13275,6 +13618,7 @@ const Garden = (function () {
   function clearAmbient() {
     ambientFlyers.forEach(f => { if (f.el.parentElement) f.el.remove(); });
     ambientFlyers = [];
+    clearBirds();
   }
 
   /* Keeps the population honest: tops up towards the target a few at a time,
@@ -13284,6 +13628,9 @@ const Garden = (function () {
     const plot = document.getElementById('garden-plot');
     if (!plot || !plot.offsetParent) return;      /* not on screen */
     if (ambientReducedMotion()) { clearAmbient(); return; }
+
+    syncPond();
+    birdTick();
 
     const target = ambientTarget();
     if (ambientFlyers.length > target) {
@@ -13302,6 +13649,408 @@ const Garden = (function () {
       ambientLast = 0;
       ambientFrame = requestAnimationFrame(ambientLoop);
     }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Water, and what lives in and around it                               */
+  /* Squares dug with the shovel join up into ponds and streams. Koi and   */
+  /* tadpoles swim about in them, tadpoles turn into frogs that hop round  */
+  /* the edge, and a bird bath or feeder brings birds down to visit. All   */
+  /* of it moves frame by frame from the same loop as the butterflies, for */
+  /* the same reason: a redraw must never send anything back to the start. */
+  /* ------------------------------------------------------------------ */
+
+  /* The water squares, with the corners rounded and a rim drawn wherever the
+     neighbour is not water - so a run of squares reads as one pond. */
+  function waterHtml(tiles) {
+    const R = 11;
+    return [...tiles].map(key => {
+      const [r, c] = key.split(':').map(Number);
+      if (!isFinite(r) || !isFinite(c)) return '';
+      const has = (dr, dc) => tiles.has((r + dr) + ':' + (c + dc));
+      const n = has(-1, 0), so = has(1, 0), w = has(0, -1), e = has(0, 1);
+      const radius = [!n && !w, !n && !e, !so && !e, !so && !w].map(v => (v ? R : 0) + 'px').join(' ');
+      const rim = [];
+      if (!n) rim.push('inset 0 3px 0 rgba(20, 60, 90, 0.35)');
+      if (!so) rim.push('inset 0 -2px 0 rgba(255, 255, 255, 0.35)');
+      if (!w) rim.push('inset 3px 0 0 rgba(20, 60, 90, 0.25)');
+      if (!e) rim.push('inset -2px 0 0 rgba(20, 60, 90, 0.18)');
+      return `<div class="garden-surface garden-water" style="left:${c * CELL_SIZE}px; top:${r * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px; border-radius:${radius}; box-shadow:${rim.length ? rim.join(', ') : 'none'};"></div>`;
+    }).join('');
+  }
+
+  /* --- art --- */
+
+  const KOI_COLOURS = [['#f4f1ea', '#e8742a'], ['#f4f1ea', '#d93a2a'], ['#f2c14a', '#e8742a'], ['#f4f1ea', '#2a2f36']];
+
+  function koiSVG(seed) {
+    const [body, patch] = KOI_COLOURS[seed % KOI_COLOURS.length];
+    return `<svg width="13" height="7" viewBox="0 0 13 7" shape-rendering="crispEdges">
+      <rect x="0" y="1" width="1" height="2" fill="${body}" opacity="0.8"/><rect x="0" y="4" width="1" height="2" fill="${body}" opacity="0.8"/>
+      <rect x="1" y="2" width="1" height="3" fill="${body}" opacity="0.85"/>
+      <rect x="4" y="1" width="2" height="1" fill="${body}" opacity="0.6"/><rect x="4" y="5" width="2" height="1" fill="${body}" opacity="0.6"/>
+      <rect x="2" y="2" width="8" height="3" fill="${body}"/><rect x="10" y="2" width="2" height="3" fill="${body}"/>
+      <rect x="3" y="2" width="2" height="2" fill="${patch}"/><rect x="6" y="3" width="2" height="2" fill="${patch}"/><rect x="10" y="2" width="1" height="1" fill="${patch}"/>
+      <rect x="11" y="2" width="1" height="1" fill="#1f2430"/><rect x="11" y="4" width="1" height="1" fill="#1f2430"/></svg>`;
+  }
+
+  function tadpoleSVG() {
+    return `<svg width="9" height="4" viewBox="0 0 9 4" shape-rendering="crispEdges">
+      <rect x="0" y="1" width="2" height="1" fill="#3a403a" opacity="0.7"/><rect x="2" y="1" width="3" height="2" fill="#3a403a"/>
+      <rect x="5" y="0" width="3" height="4" fill="#2a2f2a"/><rect x="7" y="1" width="1" height="1" fill="#c8d0c0"/></svg>`;
+  }
+
+  /* Sitting on the bank, and up to its eyes in the water. */
+  function frogSVG() {
+    return `<span class="frog-sit"><svg width="14" height="12" viewBox="0 0 12 10" shape-rendering="crispEdges">
+      <rect x="3" y="1" width="2" height="2" fill="#5fae46"/><rect x="7" y="1" width="2" height="2" fill="#5fae46"/>
+      <rect x="4" y="1" width="1" height="1" fill="#1f2430"/><rect x="7" y="1" width="1" height="1" fill="#1f2430"/>
+      <rect x="3" y="3" width="6" height="2" fill="#5fae46"/><rect x="2" y="4" width="8" height="4" fill="#4f9a3a"/>
+      <rect x="4" y="4" width="4" height="1" fill="#3a7a2a"/><rect x="4" y="6" width="4" height="2" fill="#c8e08a"/>
+      <rect x="1" y="7" width="2" height="2" fill="#3f8a30"/><rect x="9" y="7" width="2" height="2" fill="#3f8a30"/>
+      <rect x="0" y="9" width="3" height="1" fill="#3f8a30"/><rect x="9" y="9" width="3" height="1" fill="#3f8a30"/></svg></span>
+      <span class="frog-swim"><svg width="14" height="12" viewBox="0 0 12 10" shape-rendering="crispEdges">
+      <rect x="3" y="4" width="2" height="2" fill="#5fae46"/><rect x="7" y="4" width="2" height="2" fill="#5fae46"/>
+      <rect x="4" y="4" width="1" height="1" fill="#1f2430"/><rect x="7" y="4" width="1" height="1" fill="#1f2430"/>
+      <rect x="3" y="6" width="6" height="2" fill="#4f9a3a"/>
+      <rect x="1" y="8" width="10" height="1" fill="rgba(255, 255, 255, 0.55)"/></svg></span>`;
+  }
+
+  const BIRD_COLOURS = [
+    { main: '#8a6a4a', head: '#8a6a4a', breast: '#e0703a', wing: '#6b5038' },   /* robin */
+    { main: '#7aa0c8', head: '#3f6fb5', breast: '#f2d24a', wing: '#4f7fb0' },   /* blue tit */
+    { main: '#a9825a', head: '#7a5a3a', breast: '#d8c6a8', wing: '#7a5a3a' },   /* sparrow */
+    { main: '#c99a3a', head: '#d23a2a', breast: '#e8d27a', wing: '#3a3a3a' }    /* goldfinch */
+  ];
+
+  /* Side on, facing right. Sitting, and two wing beats for flying. */
+  function birdSVG(c) {
+    const body = `<rect x="1" y="4" width="2" height="2" fill="${c.wing}"/><rect x="3" y="4" width="6" height="3" fill="${c.main}"/>
+      <rect x="6" y="5" width="3" height="2" fill="${c.breast}"/><rect x="7" y="2" width="3" height="3" fill="${c.head}"/>
+      <rect x="9" y="3" width="1" height="1" fill="#1f2430"/><rect x="10" y="3" width="2" height="1" fill="#e8a33c"/>`;
+    const svg = inner => `<svg width="12" height="10" viewBox="0 0 12 10" shape-rendering="crispEdges">${body}${inner}</svg>`;
+    return `<span class="bird-sit">${svg(`<rect x="4" y="4" width="3" height="2" fill="${c.wing}"/><rect x="5" y="7" width="1" height="2" fill="#6b4a2b"/><rect x="7" y="7" width="1" height="2" fill="#6b4a2b"/>`)}</span>`
+      + `<span class="bird-fly-a">${svg(`<rect x="4" y="0" width="3" height="4" fill="${c.wing}"/>`)}</span>`
+      + `<span class="bird-fly-b">${svg(`<rect x="4" y="6" width="3" height="3" fill="${c.wing}"/>`)}</span>`;
+  }
+
+  /* --- pond creatures --- */
+
+  let pondLayer = null;
+  const swimmers = new Map();
+
+  /* Above the water and the soil, under the plants and the scenery. Kept as
+     one element across redraws, like the effects layer. */
+  function pondLayerEl() {
+    const plot = document.getElementById('garden-plot');
+    if (!plot) return null;
+    if (!pondLayer) {
+      pondLayer = document.createElement('div');
+      pondLayer.className = 'pond-layer';
+    }
+    if (pondLayer.parentElement !== plot) plot.appendChild(pondLayer);
+    return pondLayer;
+  }
+
+  function tileCentre(key) {
+    const [r, c] = key.split(':').map(Number);
+    return { r, c, x: c * CELL_SIZE + CELL_SIZE / 2, y: r * CELL_SIZE + CELL_SIZE / 2 };
+  }
+
+  function randomOf(list) {
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  function waterNeighbours(key) {
+    const { r, c } = tileCentre(key);
+    return [key, ...[[-1, 0], [1, 0], [0, -1], [0, 1]].map(([dr, dc]) => (r + dr) + ':' + (c + dc))]
+      .filter(k => waterTiles.has(k));
+  }
+
+  /* Somewhere a frog can sit: open ground that touches water, or the water
+     itself, inside the land you own. With no water at all, any open ground. */
+  function frogCanSit(r, c) {
+    if (r < 0 || r > gardenMaxUnlockedRow || c < 0 || c >= GARDEN_COLS) return false;
+    if (isWater(r, c)) return true;
+    if (findPlantAt(r, c) || findDecorationAt(r, c) || (r === heroPos.row && c === heroPos.col)) return false;
+    if (!waterTiles.size) return true;
+    return [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dr, dc]) => isWater(r + dr, c + dc));
+  }
+
+  function placeSwimmer(s) {
+    if (s.kind === 'frog') {
+      const spots = [];
+      waterTiles.forEach(k => {
+        const { r, c } = tileCentre(k);
+        [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dr, dc]) => {
+          if (!isWater(r + dr, c + dc) && frogCanSit(r + dr, c + dc)) spots.push([r + dr, c + dc]);
+        });
+      });
+      const [r, c] = spots.length ? randomOf(spots) : [heroPos.row, heroPos.col];
+      s.r = r; s.c = c;
+      return;
+    }
+    s.tile = randomOf([...waterTiles]);
+    const p = tileCentre(s.tile);
+    s.x = p.x; s.y = p.y;
+    pickSwimTarget(s);
+  }
+
+  function pickSwimTarget(s) {
+    s.tile = randomOf(waterNeighbours(s.tile));
+    const p = tileCentre(s.tile);
+    /* Kept well inside the square, so a fish crossing to the next one never
+       cuts a corner over the grass. */
+    s.tx = p.x + (Math.random() * 18 - 9);
+    s.ty = p.y + (Math.random() * 18 - 9);
+    s.rest = s.kind === 'koi' ? 300 + Math.random() * 1800 : 100 + Math.random() * 600;
+  }
+
+  function makeSwimmer(p, kind) {
+    const el = document.createElement('div');
+    el.className = 'pond-creature ' + kind;
+    el.innerHTML = kind === 'koi' ? koiSVG(hashStr(p.id)) : kind === 'tadpole' ? tadpoleSVG() : frogSVG();
+    return { id: p.id, kind, el, x: 0, y: 0, tx: 0, ty: 0, angle: 0, rest: 0, phase: Math.random() * 6, wait: 600 + Math.random() * 2000, tile: null, r: null, c: null };
+  }
+
+  function positionFrog(s) {
+    const inWater = isWater(s.r, s.c);
+    s.el.classList.toggle('in-water', inWater);
+    s.el.style.transform = 'translate(' + (s.c * CELL_SIZE + 10) + 'px, ' + (s.r * CELL_SIZE + (inWater ? 13 : 20)) + 'px)';
+  }
+
+  function drawSwimmer(s) {
+    const wiggle = s.kind === 'tadpole' ? Math.sin(s.phase * 3) * 0.35 : Math.sin(s.phase) * 0.08;
+    const half = s.kind === 'koi' ? [6.5, 3.5] : [4.5, 2];
+    s.el.style.transform = 'translate(' + (s.x - half[0]).toFixed(1) + 'px, ' + (s.y - half[1]).toFixed(1) + 'px) rotate(' + (s.angle + wiggle).toFixed(3) + 'rad)';
+  }
+
+  /* Matches the creatures on screen to the ones you own, and a tadpole whose
+     day is up to the frog it has become. */
+  function syncPond() {
+    const layer = pondLayerEl();
+    if (!layer) return;
+    const now = Date.now();
+    const alive = new Set();
+    pondLife.forEach(p => {
+      const kind = pondKind(p, now);
+      alive.add(p.id);
+      let s = swimmers.get(p.id);
+      if (s && s.kind !== kind) { s.el.remove(); s = null; }
+      if (!s) {
+        s = makeSwimmer(p, kind);
+        swimmers.set(p.id, s);
+      }
+      if (s.el.parentElement !== layer) layer.appendChild(s.el);
+      if (s.kind === 'frog') {
+        if (s.r == null || !frogCanSit(s.r, s.c)) placeSwimmer(s);
+        positionFrog(s);
+        return;
+      }
+      if (!waterTiles.size) { s.el.style.display = 'none'; s.tile = null; return; }
+      s.el.style.display = '';
+      if (!s.tile || !waterTiles.has(s.tile)) placeSwimmer(s);
+      drawSwimmer(s);
+    });
+    swimmers.forEach((s, id) => { if (!alive.has(id)) { s.el.remove(); swimmers.delete(id); } });
+  }
+
+  function stepSwimmers(dt) {
+    const k = Math.min(3, dt / 16);
+    swimmers.forEach(s => {
+      if (s.el.style.display === 'none') return;
+      if (s.kind === 'frog') {
+        s.wait -= dt;
+        if (s.wait > 0) return;
+        s.wait = 1800 + Math.random() * 4200;
+        const options = [[-1, 0], [1, 0], [0, -1], [0, 1]]
+          .map(([dr, dc]) => [s.r + dr, s.c + dc])
+          .filter(([r, c]) => frogCanSit(r, c));
+        if (!options.length) return;
+        [s.r, s.c] = randomOf(options);
+        /* Two copies of the same hop, swapped each time, so the animation
+           starts again without having to force a reflow. */
+        const a = !s.el.classList.contains('hop-a');
+        s.el.classList.toggle('hop-a', a);
+        s.el.classList.toggle('hop-b', !a);
+        positionFrog(s);
+        return;
+      }
+      s.phase += 0.12 * k;
+      const dx = s.tx - s.x, dy = s.ty - s.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 1.5) {
+        s.rest -= dt;
+        if (s.rest <= 0) pickSwimTarget(s);
+      } else {
+        const step = Math.min(dist, (s.kind === 'koi' ? 0.22 : 0.34) * k);
+        s.x += dx / dist * step;
+        s.y += dy / dist * step;
+        /* Turn towards where it is going rather than snapping round. */
+        let turn = Math.atan2(dy, dx) - s.angle;
+        while (turn > Math.PI) turn -= Math.PI * 2;
+        while (turn < -Math.PI) turn += Math.PI * 2;
+        s.angle += turn * Math.min(1, 0.08 * k);
+      }
+      drawSwimmer(s);
+    });
+  }
+
+  /* --- birds --- */
+
+  let birds = [];
+  /* ponytail: a fixed cap, so a lawn of feeders is not a swarm. */
+  const MAX_BIRDS = 6;
+
+  function birdHomes() {
+    if (W().id !== 'garden') return [];
+    return purchasedItems.filter(it => (it.kind === 'birdbath' || it.kind === 'feeder')
+      && it.row <= gardenMaxUnlockedRow
+      && !(heldDecoration && heldDecoration.sourceId === it.id));
+  }
+
+  /* A bath brings one bird at a time and a feeder two. */
+  function birdTarget() {
+    return Math.min(MAX_BIRDS, birdHomes().reduce((n, h) => n + (h.kind === 'feeder' ? 2 : 1), 0));
+  }
+
+  /* Points on the sprite, in plot pixels, worked out from the art: the rim of
+     the bath, the water in it, the tray of the feeder, the ground below. */
+  function homeSpots(h) {
+    const x = h.col * CELL_SIZE, y = h.row * CELL_SIZE;
+    return h.kind === 'birdbath'
+      ? { perches: [[x + 8, y + 10], [x + 26, y + 10]], bath: [x + 17, y + 13] }
+      : { perches: [[x + 10, y + 12], [x + 24, y + 12]], ground: [[x + 5, y + 32], [x + 29, y + 32]] };
+  }
+
+  function spawnBird() {
+    const homes = birdHomes();
+    if (!homes.length) return;
+    /* Feeders count twice in the draw, the same as in the target. */
+    const pool = [];
+    homes.forEach(h => { pool.push(h); if (h.kind === 'feeder') pool.push(h); });
+    const home = randomOf(pool);
+    const layer = effects();
+    if (!layer) return;
+    const b = ambientBounds();
+    const el = document.createElement('div');
+    el.className = 'garden-ambient garden-bird flying';
+    el.innerHTML = birdSVG(randomOf(BIRD_COLOURS));
+    layer.appendChild(el);
+    const fromSide = Math.random() < 0.5;
+    birds.push({
+      el, homeId: home.id,
+      x: fromSide ? (Math.random() < 0.5 ? -14 : b.w + 14) : Math.random() * b.w,
+      y: fromSide ? Math.random() * Math.min(b.h, 200) : -12,
+      dir: 1, legs: [], visits: 2 + Math.floor(Math.random() * 3), pose: 'flying', splash: 0
+    });
+  }
+
+  /* The next stretch of a visit: down to the bath or feeder, a while there,
+     a flit round about. When the visits run out, or the thing it came for has
+     gone, off it flies. */
+  function birdLegs(bird) {
+    const home = birdHomes().find(h => h.id === bird.homeId);
+    const bounds = ambientBounds();
+    if (!home || bird.visits <= 0) {
+      bird.visits = 0;
+      const left = bird.x < bounds.w / 2;
+      return [{ fly: [left ? -20 : bounds.w + 20, Math.max(-20, bird.y - 60)] }, { gone: true }];
+    }
+    bird.visits--;
+    const spots = homeSpots(home);
+    const ms = (a, b) => a + Math.random() * (b - a);
+    const perch = randomOf(spots.perches);
+    const legs = [{ fly: perch }];
+    if (home.kind === 'birdbath') {
+      legs.push({ sit: ms(1200, 3000), pose: 'sit' });
+      if (Math.random() < 0.75) {
+        legs.push({ fly: spots.bath }, { sit: ms(2200, 4200), pose: 'bathe' }, { fly: perch }, { sit: ms(600, 1400), pose: 'sit' });
+      }
+    } else {
+      legs.push({ sit: ms(2500, 5500), pose: 'eat' });
+      if (Math.random() < 0.5) legs.push({ fly: randomOf(spots.ground) }, { sit: ms(1500, 3000), pose: 'eat' });
+    }
+    const cx = home.col * CELL_SIZE + CELL_SIZE / 2, cy = home.row * CELL_SIZE + CELL_SIZE / 2;
+    const nx = Math.max(6, Math.min(bounds.w - 6, cx + (Math.random() * 90 - 45)));
+    const ny = Math.max(10, Math.min(bounds.h - 2, cy + (Math.random() * 70 - 30)));
+    legs.push({ fly: [nx, ny] }, { sit: ms(900, 2200), pose: 'eat' });
+    return legs;
+  }
+
+  function setBirdPose(bird, pose) {
+    if (bird.pose === pose) return;
+    bird.el.classList.remove(bird.pose);
+    bird.el.classList.add(pose);
+    bird.pose = pose;
+  }
+
+  function splashAt(x, y) {
+    const layer = effects();
+    if (!layer) return;
+    const el = document.createElement('div');
+    el.className = 'garden-splash';
+    el.style.left = (x + Math.random() * 10 - 5).toFixed(1) + 'px';
+    el.style.top = (y - 4).toFixed(1) + 'px';
+    el.style.setProperty('--dx', (Math.random() * 12 - 6).toFixed(1) + 'px');
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), 600);
+  }
+
+  function stepBirds(dt) {
+    const k = Math.min(3, dt / 16);
+    for (let i = birds.length - 1; i >= 0; i--) {
+      const bird = birds[i];
+      if (!bird.legs.length) bird.legs = birdLegs(bird);
+      const leg = bird.legs[0];
+      if (leg.gone) {
+        bird.el.remove();
+        birds.splice(i, 1);
+        continue;
+      }
+      if (!bird.el.parentElement) {
+        const layer = effects();
+        if (layer) layer.appendChild(bird.el);
+      }
+      if (leg.fly) {
+        setBirdPose(bird, 'flying');
+        const dx = leg.fly[0] - bird.x, dy = leg.fly[1] - bird.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 1.5) {
+          const step = Math.min(dist, 1.5 * k);
+          bird.x += dx / dist * step;
+          bird.y += dy / dist * step;
+          if (Math.abs(dx) > 0.5) bird.dir = dx < 0 ? -1 : 1;
+        } else {
+          bird.x = leg.fly[0];
+          bird.y = leg.fly[1];
+          bird.legs.shift();
+        }
+      } else {
+        setBirdPose(bird, leg.pose);
+        leg.sit -= dt;
+        if (leg.pose === 'bathe') {
+          bird.splash -= dt;
+          if (bird.splash <= 0) { splashAt(bird.x, bird.y); bird.splash = 220 + Math.random() * 200; }
+        }
+        if (leg.sit <= 0) bird.legs.shift();
+      }
+      bird.el.style.transform = 'translate(' + (bird.x - 6).toFixed(1) + 'px, ' + (bird.y - 10).toFixed(1) + 'px) scaleX(' + bird.dir + ')';
+    }
+  }
+
+  /* Tops the birds up towards what the baths and feeders bring, and sends an
+     extra on its way when one is sold or picked up. */
+  function birdTick() {
+    const want = birdTarget();
+    const staying = birds.filter(b => b.visits > 0);
+    if (staying.length < want && Math.random() < 0.5) spawnBird();
+    else if (staying.length > want) { staying[0].visits = 0; staying[0].legs = []; }
+  }
+
+  function clearBirds() {
+    birds.forEach(b => b.el.remove());
+    birds = [];
   }
 
   function startPetTicker() {
@@ -13503,7 +14252,7 @@ const Garden = (function () {
       return `<div class="garden-surface" style="left:${c * CELL_SIZE}px; top:${r * CELL_SIZE}px; width:${CELL_SIZE}px; height:${CELL_SIZE}px; background:${W().surfaceBackground('bed')};" title="${terms().tilled}"></div>`;
     }).join('');
 
-    plot.innerHTML = bandsHtml + dugTilesHtml + cellsHtml + movablesHtml + saplingsHtml + unplantedSaplingsHtml + groundLogsHtml + cabinsHtml + treatsHtml + petsHtml + gateHtml;
+    plot.innerHTML = bandsHtml + dugTilesHtml + waterHtml(waterTiles) + cellsHtml + movablesHtml + saplingsHtml + unplantedSaplingsHtml + groundLogsHtml + cabinsHtml + treatsHtml + petsHtml + gateHtml;
 
     /* After the contents, so the height is real. The plot never scrolls
        sideways - it shrinks to fit whatever room the column has. */
@@ -13517,8 +14266,10 @@ const Garden = (function () {
     plot.appendChild(heroEl);
 
     /* Put the effects layer back on top - the same element, so anything mid
-       animation carries on rather than restarting. */
+       animation carries on rather than restarting. The pond's creatures go
+       back the same way. */
     effects();
+    syncPond();
 
     heroPos.row = Math.min(heroPos.row, maxUnlockedRow);
     heroPos.col = Math.min(heroPos.col, GARDEN_COLS - 1);
@@ -13557,7 +14308,8 @@ const Garden = (function () {
     /* "tap Use" or "press E" - said the same way in every panel. */
     const use = phone ? 'tap Use' : 'press E';
     const pick = phone ? 'tap Pick up' : 'press E';
-    const drop = phone ? 'tap Put down' : 'press E';
+    const drop = phone ? 'tap Put down' : 'press Q';
+    const garden = W().id === 'garden';
     const cap1 = w => w.charAt(0).toUpperCase() + w.slice(1);
 
     return {
@@ -13606,6 +14358,27 @@ const Garden = (function () {
         icon: W().items.shovel.icon, title: cap1(W().items.shovel.label),
         body: 'Buy one from the shop. Hold it, stand next to ' + t.digTarget + ', and ' + use + '.'
           + ' You dig it up and end up holding it.'
+          + (garden ? ' With no bush in reach, it digs the square you are facing into water instead.' : '')
+      },
+      turf: {
+        icon: W().items.turf.icon, title: cap1(W().items.turf.label),
+        body: 'Buy it from the shop. Hold it and ' + use + ' to turn ' + t.tilled
+          + (garden ? ', or a square of pond,' : '') + ' back to how it was.'
+          + ' The square you are on goes first, then the one you are facing.'
+      },
+      ponds: {
+        icon: '\u{1F41F}', title: 'Ponds',
+        body: garden
+          ? 'Hold the shovel, face some grass and ' + use + '. Each square joins up with the next, so make a pond or a stream.'
+            + ' Then buy koi and tadpoles for it. A tadpole grows into a frog after a day.'
+          : 'Ponds are a garden thing - switch to the garden world to dig one.'
+      },
+      birds: {
+        icon: '\u{1F426}', title: 'Birds',
+        body: garden
+          ? 'Buy a bird bath or a bird feeder and birds come down to visit.'
+            + ' They perch on a bath and splash about in it, and sit on a feeder to eat. A feeder brings more of them.'
+          : 'Birds are a garden thing - switch to the garden world to bring them in.'
       },
       sapling: {
         icon: '\u{1F331}', title: cap1(t.sprout) + 's',
@@ -13696,6 +14469,7 @@ const Garden = (function () {
     loadSaplings();
     loadGardenVisibility();
     loadDugTiles();
+    loadPondLife();
     loadAwardedCoins();
     loadCoinExtra();
     loadCoinLedger();
@@ -13751,7 +14525,7 @@ const Garden = (function () {
       + ' and the like stop you.';
     if (!phoneControls()) {
       return own + ' Press E to pick up whatever you are standing on or facing,'
-        + ' and E again to put it down.';
+        + ' or to use the tool you are holding. Press Q to put it down.';
     }
     return own + ' Pick up, Use and Put down are under the '
       + terms().place.replace(/^the\s+/i, '')
@@ -13846,6 +14620,7 @@ const Garden = (function () {
   /* Put down means put down. It used to mean "use it if it is a tool, put it
      down otherwise", which is why an axe could not be swung on a phone: a
      miss dropped it, and there was no other button to try. */
+  window.buyPondLife = buyPondLife;
   window.gardenPutDown = function () { if (isHoldingSomething()) togglePickup({ use: false }); };
   window.gardenUse = function () {
     if (!heldIsTool()) return;
@@ -16688,6 +17463,13 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-10-02', items: [
+      'Grass seed is in the shop. Hold it and Use to turn dug soil back into grass.',
+      'Ponds and streams: hold the shovel, face some grass and Use, and that square becomes water. Squares next to each other join up.',
+      'Koi and tadpoles for your pond. The koi glide about, and a tadpole grows into a frog after a day and hops around the edge.',
+      'A bird bath and a bird feeder. Birds come down to perch on the bath, splash about in it and flit round it, and sit on the feeder to eat. A feeder brings more of them.',
+      'On a computer, Q now puts down whatever you are holding. E still picks up and uses things.'
+    ]},
     { date: '2026-10-01', items: [
       'Fixed: the mouse pointer turning white and hard to see. It stays the normal arrow everywhere now, including over the Plan rows, and only turns into a text bar in boxes you type into.',
       'Plan My Day with times, on a computer: the tasks waiting for a time now sit beside the clock instead of under it, so dragging one onto a time is a short hop across.',

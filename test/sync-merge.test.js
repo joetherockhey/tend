@@ -76,4 +76,22 @@ assert.notStrictEqual(fp(rows, [], { updated_at: 'x' }), fp([rows[0], { id: 'b',
 assert.notStrictEqual(fp(rows, [], { updated_at: 'x' }), fp([rows[0]], [], { updated_at: 'x' }));
 assert.notStrictEqual(fp(rows, [], { updated_at: 'x' }), fp(rows, [], { updated_at: 'y' }));
 
+/* Ground: a square put back to grass stays grass when it meets a device that
+   still has it dug - an old copy's dug list included - and a pond survives. */
+const ground = obj => JSON.stringify(obj);
+const regrassed = { 'garden-ground-v1': ground({ '1:1': { g: 2, t: 'grass' }, '2:1': { g: 1, t: 'water' } }), 'garden-dug-v1': '[]' };
+const staleDug = { 'garden-ground-v1': ground({ '1:1': { g: 1, t: 'dug' } }), 'garden-dug-v1': '["1:1","4:4"]' };
+const oldApp = { 'garden-dug-v1': '["1:1"]' };
+[staleDug, oldApp].forEach((other, i) => {
+  [mergeMine(regrassed, other, null), mergeMine(other, regrassed, null)].forEach((out, j) => {
+    const g = JSON.parse(out['garden-ground-v1']);
+    const dug = JSON.parse(out['garden-dug-v1']);
+    assert.strictEqual(g['1:1'].t, 'grass', 'regrassed square stays grass (' + i + ',' + j + ')');
+    assert.strictEqual(g['2:1'].t, 'water', 'the pond survives (' + i + ',' + j + ')');
+    assert.ok(dug.indexOf('1:1') === -1, 'the dug list is cut back to match (' + i + ',' + j + ')');
+  });
+});
+assert.ok(JSON.parse(mergeMine(regrassed, staleDug, null)['garden-dug-v1']).indexOf('4:4') !== -1,
+  'soil only the other device dug is kept');
+
 console.log('sync-merge: ok');

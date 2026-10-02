@@ -9,7 +9,7 @@
 --   * which world they picked (garden or reef)
 --   * their plot, the land they have unlocked, and which kinds they have found
 --   * the rest of what stands in the garden: trees they have felled or moved,
---     soil they have dug, tools they have set down, saplings, logs, cabins and
+--     soil they have dug, ponds and what lives in them, tools they have set down, saplings, logs, cabins and
 --     their animals - so a friend's garden looks like their garden
 --   * their gardener: which one they picked, the outfit they are wearing and
 --     where they were last standing
@@ -47,6 +47,8 @@ select
   s.garden ->> 'garden-logs-v1'                           as logs,
   s.garden ->> 'garden-cabins-v1'                         as cabins,
   s.garden ->> 'garden-dug-v1'                            as dug,
+  s.garden ->> 'garden-ground-v1'                         as ground,
+  s.garden ->> 'garden-pondlife-v1'                       as pondlife,
   s.garden ->> 'garden-pets-v1'                           as pets,
   s.garden ->> 'garden-outfits-v1'                        as outfits,
   s.garden ->> 'garden-hero-v5'                           as hero_pos,

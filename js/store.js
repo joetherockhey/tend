@@ -187,7 +187,38 @@ const Store = (function () {
     return JSON.stringify(out);
   }
 
+  /* What each square of ground has been turned into - dug, pond, or back to
+     grass - with a count of how many times it has changed. A list of dug
+     squares could only ever grow when two devices merged, so a square put back
+     to grass came straight back as soil. The higher count is the later change
+     and wins, square by square. */
+  function mergeGround(a, b) {
+    const x = parseJson(a, {}) || {}, y = parseJson(b, {}) || {};
+    const out = Object.assign({}, y);
+    Object.keys(x).forEach(k => {
+      const gx = Number(x[k] && x[k].g) || 0, gy = Number(y[k] && y[k].g) || 0;
+      if (gx >= gy) out[k] = x[k];
+    });
+    return JSON.stringify(out);
+  }
+
+  const GROUND_KEY = 'garden-ground-v1';
+  const DUG_KEY = 'garden-dug-v1';
+
+  /* The old dug list is still written - the Friends view reads it - but it is
+     a union, so after a merge it is cut back to what the ground map says. */
+  function settleDugList(bag) {
+    if (bag[GROUND_KEY] === undefined) return;
+    const ground = parseJson(bag[GROUND_KEY], {}) || {};
+    const dug = parseJson(bag[DUG_KEY], []);
+    const out = (Array.isArray(dug) ? dug : []).filter(k => !ground[k]);
+    Object.keys(ground).forEach(k => { if (ground[k] && ground[k].t === 'dug') out.push(k); });
+    bag[DUG_KEY] = JSON.stringify(out);
+  }
+
   const OWNED_KEYS = {
+    'garden-ground-v1': mergeGround,
+    'garden-pondlife-v1': unionById,
     'garden-layout-v5': mergePlots,
     'garden-found-v1': unionOfList,
     'garden-lens-v1': keepFlag,
@@ -225,6 +256,7 @@ const Store = (function () {
       if (b === undefined) { out[k] = a; return; }
       out[k] = OWNED_KEYS[k](a, b);
     });
+    settleDugList(out);
     return out;
   }
 
@@ -899,10 +931,12 @@ const Store = (function () {
 
   async function listGardens() {
     if (!CLOUD || !client) return localGardens();
-    const { data, error } = await client
-      .from('gardens')
-      .select('user_id, display_name, world, hero, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets, outfits, hero_pos, coins')
-      .order('display_name');
+    const cols = 'user_id, display_name, world, hero, layout, sections, found, chopped, movables, items, saplings, logs, cabins, dug, pets, outfits, hero_pos, coins';
+    /* ground and pondlife arrived with ponds. Until supabase/gardens.sql has
+       been run again the view does not have them, so asking for them fails -
+       and then the old columns are asked for instead, ponds left out. */
+    let { data, error } = await client.from('gardens').select(cols + ', ground, pondlife').order('display_name');
+    if (error) ({ data, error } = await client.from('gardens').select(cols).order('display_name'));
     if (error) throw error;
     return (data || []).map(r => ({
       id: r.user_id,
@@ -920,6 +954,8 @@ const Store = (function () {
       logs: safeParse(r.logs, []),
       cabins: safeParse(r.cabins, []),
       dug: safeParse(r.dug, []),
+      ground: safeParse(r.ground, {}),
+      pondLife: safeParse(r.pondlife, []),
       pets: safeParse(r.pets, []),
       outfits: safeParse(r.outfits, {}),
       heroPos: safeParse(r.hero_pos, null),
@@ -966,6 +1002,8 @@ const Store = (function () {
         logs: safeParse(get('garden-logs-v1'), []),
         cabins: safeParse(get('garden-cabins-v1'), []),
         dug: safeParse(get('garden-dug-v1'), []),
+        ground: safeParse(get('garden-ground-v1'), {}),
+        pondLife: safeParse(get('garden-pondlife-v1'), []),
         pets: safeParse(get('garden-pets-v1'), []),
         outfits: safeParse(get('garden-outfits-v1'), {}),
         heroPos: safeParse(get('garden-hero-v5'), null),

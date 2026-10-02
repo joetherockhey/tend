@@ -57,6 +57,17 @@ const Worlds = (function () {
     function bucketSVG() {
       return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="4" y="10" width="8" height="6" fill="#8a8f98"/><rect x="3" y="9" width="10" height="1" fill="#a4aab3"/><rect x="5" y="6" width="6" height="1" fill="#6b7280"/></svg>`;
     }
+    function birdBathSVG() {
+      return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="1" y="5" width="14" height="1" fill="#d4d8de"/><rect x="1" y="6" width="14" height="3" fill="#b9bec6"/><rect x="2" y="6" width="12" height="1" fill="#7cc8ec"/><rect x="4" y="6" width="3" height="1" fill="#c8ecfb"/><rect x="3" y="9" width="10" height="1" fill="#9aa0a8"/><rect x="6" y="10" width="4" height="6" fill="#b9bec6"/><rect x="9" y="10" width="1" height="6" fill="#9aa0a8"/><rect x="4" y="16" width="8" height="2" fill="#a4aab3"/><rect x="3" y="18" width="10" height="1" fill="#8a8f98"/></svg>`;
+    }
+    function birdFeederSVG() {
+      return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="3" y="2" width="10" height="1" fill="#c0392b"/><rect x="2" y="3" width="12" height="1" fill="#a93226"/><rect x="3" y="4" width="1" height="3" fill="#8a5a2e"/><rect x="12" y="4" width="1" height="3" fill="#8a5a2e"/><rect x="6" y="4" width="4" height="3" fill="#f3e6c4"/><rect x="7" y="5" width="2" height="2" fill="#e0c27a"/><rect x="2" y="7" width="1" height="1" fill="#8a5a2e"/><rect x="13" y="7" width="1" height="1" fill="#8a5a2e"/><rect x="3" y="7" width="10" height="1" fill="#e0c27a"/><rect x="4" y="7" width="1" height="1" fill="#c49a4a"/><rect x="11" y="7" width="1" height="1" fill="#c49a4a"/><rect x="2" y="8" width="12" height="1" fill="#a97a45"/><rect x="7" y="9" width="2" height="9" fill="#8a5a2e"/><rect x="5" y="18" width="6" height="1" fill="#6b4423"/></svg>`;
+    }
+    /* A seed bag. The reef's sand smoother is the same bag in its own colours. */
+    function seedBagSVG(label) {
+      return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="6" y="4" width="4" height="1" fill="#8a5a2e"/><rect x="4" y="5" width="8" height="1" fill="#b9a37a"/><rect x="4" y="6" width="8" height="12" fill="#d9c39a"/><rect x="11" y="6" width="1" height="12" fill="#c4ad82"/><rect x="5" y="10" width="6" height="5" fill="${label}"/><rect x="7" y="11" width="2" height="3" fill="#2f7a34"/><rect x="6" y="11" width="1" height="1" fill="#2f7a34"/><rect x="9" y="12" width="1" height="1" fill="#2f7a34"/></svg>`;
+    }
+    function grassSeedSVG() { return seedBagSVG('#5fae46'); }
     function beehiveSVG() {
       return `<svg width="26" height="34" viewBox="0 0 16 20" shape-rendering="crispEdges"><rect x="7" y="2" width="2" height="2" fill="#6b4423"/><rect x="5" y="4" width="6" height="3" fill="#eda100"/><rect x="3" y="7" width="10" height="3" fill="#d18f00"/><rect x="2" y="10" width="12" height="3" fill="#eda100"/><rect x="3" y="13" width="10" height="3" fill="#d18f00"/><rect x="7" y="12" width="2" height="2" fill="#5a3a1e"/><rect x="4" y="16" width="8" height="2" fill="#8a5a2e"/><rect x="12" y="4" width="2" height="1" fill="#3b3f45"/><rect x="12" y="3" width="1" height="1" fill="#f7f7f2"/></svg>`;
     }
@@ -273,7 +284,15 @@ const Worlds = (function () {
       shovel: { label: 'Shovel', icon: SHOVEL_GLYPH, cost: 6, svg: shovelSVG, tool: true,
         desc: 'Digs up a bush so you can carry it somewhere else.' },
       beehive: { label: 'Bee hive', icon: '\u{1F41D}', cost: 4, svg: beehiveSVG,
-        desc: 'A buzzing hive to stand in the garden. Just for looks - buy as many as you like.' }
+        desc: 'A buzzing hive to stand in the garden. Just for looks - buy as many as you like.' },
+      turf: { label: 'Grass seed', icon: '\u{1F33E}', cost: 2, svg: grassSeedSVG, tool: true,
+        desc: 'Turns dug soil, or a square of pond, back into grass.' },
+      /* These two bring birds. Only the garden sells them - the reef has no
+         birds - so the ocean's list simply leaves them out. */
+      birdbath: { label: 'Bird bath', icon: '\u{1F426}', cost: 6, svg: birdBathSVG,
+        desc: 'Birds come to perch on it, splash about in it and flit round it.' },
+      feeder: { label: 'Bird feeder', icon: '\u{1F33B}', cost: 8, svg: birdFeederSVG,
+        desc: 'Brings more birds than a bath does. They sit on it and eat the seed.' }
     };
     const OUTFITS = {
       classic: { label: 'Classic', icon: '\u{1F455}', cost: 0, hat: '#6b4423', shirt: '#3f9142', pants: '#2c3e8f' },
@@ -808,7 +827,9 @@ const Worlds = (function () {
     shovel: { label: 'Sand scoop', icon: '\u{1F944}', cost: 6, svg: sandScoopSVG, tool: true,
       desc: 'Scoops up a sponge so you can carry it somewhere else.' },
     beehive: { label: 'Treasure chest', icon: '\u{1F4B0}', cost: 4, svg: chestSVG,
-      desc: 'A sunken chest to set on the reef. Just for looks - buy as many as you like.' }
+      desc: 'A sunken chest to set on the reef. Just for looks - buy as many as you like.' },
+    turf: { label: 'Sand smoother', icon: '\u{1F41A}', cost: 2, svg: function () { return seedBagSVG('#4a9cb2'); }, tool: true,
+      desc: 'Smooths raked seabed back into plain sand.' }
   };
 
   const OCEAN_OUTFITS = {

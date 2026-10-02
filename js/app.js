@@ -2786,6 +2786,13 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-10-02', items: [
+      'Grass seed is in the shop. Hold it and Use to turn dug soil back into grass.',
+      'Ponds and streams: hold the shovel, face some grass and Use, and that square becomes water. Squares next to each other join up.',
+      'Koi and tadpoles for your pond. The koi glide about, and a tadpole grows into a frog after a day and hops around the edge.',
+      'A bird bath and a bird feeder. Birds come down to perch on the bath, splash about in it and flit round it, and sit on the feeder to eat. A feeder brings more of them.',
+      'On a computer, Q now puts down whatever you are holding. E still picks up and uses things.'
+    ]},
     { date: '2026-10-01', items: [
       'Fixed: the mouse pointer turning white and hard to see. It stays the normal arrow everywhere now, including over the Plan rows, and only turns into a text bar in boxes you type into.',
       'Plan My Day with times, on a computer: the tasks waiting for a time now sit beside the clock instead of under it, so dragging one onto a time is a short hop across.',
