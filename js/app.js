@@ -2786,6 +2786,9 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-10-04', items: [
+      'The shop on a computer now works like the phone: a tab each for Plants, Tools, Outfits and Pets, with big tiles and the price on the button, instead of everything in two long columns.'
+    ]},
     { date: '2026-10-02', items: [
       'Grass seed is in the shop. Hold it and Use to turn dug soil back into grass.',
       'Ponds and streams: hold the shovel, face some grass and Use, and that square becomes water. Squares next to each other join up.',

@@ -5291,21 +5291,19 @@ html.garden-full .garden-controls .garden-ctl-btn span { font-size: 0.62rem; }
 /* The look strips down the sides of the plot are drag areas, not the page. */
 html.garden-full .garden-plot-wrap { touch-action: none; }
 
-/* ===================== the shop, on a phone =====================
+/* ===================== the shop =====================
 
-   On a computer the shop is two columns of small rows, which suits a panel
-   beside the garden. In a phone sheet the same rows read like a web form.
-   There it gets a tab per kind of thing and a grid of big tiles, each with
-   its price on a button you can hit with a thumb. */
-.shop-tabs { display: none; }
-.shop-column .shop-sec:first-child .shop-section-title:first-child { margin-top: 0; }
+   A tab per kind of thing and a grid of big tiles, each with its price on a
+   button. It started as the phone's layout; the computer's two columns of
+   small rows, every section at once, were hard to find anything in, so both
+   now use it. */
 
-html[data-mode="phone"] .shop-tabs {
+.shop-tabs {
   display: flex;
   gap: 6px;
   margin: 4px 0 12px;
 }
-html[data-mode="phone"] .shop-tab {
+.shop-tab {
   flex: 1 1 0;
   min-width: 0;
   display: flex;
@@ -5323,30 +5321,30 @@ html[data-mode="phone"] .shop-tab {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-html[data-mode="phone"] .shop-tab span { font-size: 1.35rem; line-height: 1.1; }
-html[data-mode="phone"] .shop-tab.on {
+.shop-tab span { font-size: 1.35rem; line-height: 1.1; }
+.shop-tab.on {
   color: var(--text);
   background: var(--panel);
   border-color: #e0ab24;
   box-shadow: 0 3px 0 #a8770c;
 }
-html[data-mode="phone"] .shop-tab:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.shop-tab:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
-html[data-mode="phone"] .shop-columns { display: block; }
-html[data-mode="phone"] .shop-sec:not(.on) { display: none; }
+.shop-columns { display: block; }
+.shop-sec:not(.on) { display: none; }
 /* The tab already names the section; Food keeps its heading inside Pets. */
-html[data-mode="phone"] .shop-sec > .shop-section-title:first-child { display: none; }
-html[data-mode="phone"] .shop-subtitle { font-size: 0.72rem; margin: 16px 0 8px; }
-html[data-mode="phone"] .shop-info { font-size: 0.8rem; margin-bottom: 8px; }
-html[data-mode="phone"] .shop-desc { font-size: 0.8rem; margin: 6px 0 8px; }
-html[data-mode="phone"] .shop-sell-btn { font-size: 0.95rem; min-height: 40px; box-shadow: 0 3px 0 #1d7a4e; }
+.shop-sec > .shop-section-title:first-child { display: none; }
+.shop-subtitle { font-size: 0.72rem; margin: 16px 0 8px; }
+.shop-info { font-size: 0.8rem; margin-bottom: 8px; }
+.shop-desc { font-size: 0.8rem; margin: 6px 0 8px; }
+.shop-sell-btn { font-size: 0.95rem; min-height: 40px; box-shadow: 0 3px 0 #1d7a4e; }
 
-html[data-mode="phone"] .shop-grid {
+.shop-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
-html[data-mode="phone"] .shop-tile {
+.shop-tile {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
@@ -5358,12 +5356,12 @@ html[data-mode="phone"] .shop-tile {
   text-align: center;
   min-height: 132px;
 }
-html[data-mode="phone"] .shop-tile-icon { font-size: 2rem; }
-html[data-mode="phone"] .shop-tile-icon svg { width: 40px; height: 40px; }
-html[data-mode="phone"] .shop-tile-info { flex-direction: column; justify-content: space-between; align-self: stretch; gap: 6px; }
-html[data-mode="phone"] .shop-tile-label { font-size: 0.8rem; font-weight: 600; flex: 1; display: flex; align-items: center; }
+.shop-tile-icon { font-size: 2rem; }
+.shop-tile-icon svg { width: 40px; height: 40px; }
+.shop-tile-info { flex-direction: column; justify-content: space-between; align-self: stretch; gap: 6px; }
+.shop-tile-label { font-size: 0.8rem; font-weight: 600; flex: 1; display: flex; align-items: center; }
 /* The price is the button. */
-html[data-mode="phone"] .shop-tile-action {
+.shop-tile-action {
   align-self: stretch;
   display: flex;
   align-items: center;
@@ -5377,11 +5375,11 @@ html[data-mode="phone"] .shop-tile-action {
   box-shadow: 0 3px 0 #a8770c;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
 }
-html[data-mode="phone"] .shop-tile-action:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #a8770c; }
-html[data-mode="phone"] .shop-tile.equipped .shop-tile-action { background: var(--green); box-shadow: none; color: #fff; }
-html[data-mode="phone"] .shop-tile.owned .shop-tile-action { background: var(--bg); color: var(--text); box-shadow: inset 0 0 0 2px var(--border); text-shadow: none; }
-html[data-mode="phone"] .shop-tile-action:disabled { background: var(--border); color: var(--muted); box-shadow: none; text-shadow: none; }
-html[data-mode="phone"] .shop-coins { font-size: 1.1rem; font-weight: 700; }
+.shop-tile-action:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #a8770c; }
+.shop-tile.equipped .shop-tile-action { background: var(--green); box-shadow: none; color: #fff; }
+.shop-tile.owned .shop-tile-action { background: var(--bg); color: var(--text); box-shadow: inset 0 0 0 2px var(--border); text-shadow: none; }
+.shop-tile-action:disabled { background: var(--border); color: var(--muted); box-shadow: none; text-shadow: none; }
+.shop-coins { font-size: 1.1rem; font-weight: 700; }
 
 /* The gardener on the Overview, reading the numbers out. */
 .overview-guide { display: flex; align-items: flex-end; gap: 12px; margin: 0 0 16px; }
@@ -5545,18 +5543,18 @@ html.garden-full .garden-plot { will-change: transform; }
 /* ===================== shop sheet, second pass =====================
 
    One fixed size whichever tab is open, so the sheet does not jump when you
-   switch; the tabs along the bottom under the thumb, like the app's own bar;
-   and smaller tiles, three across, so a whole section mostly fits without
+   switch; on a phone the tabs along the bottom under the thumb, like the
+   app's own bar; and smaller tiles, three across, so a whole section mostly fits without
    scrolling. Only the tiles scroll, inside the sheet. */
-html[data-mode="phone"] .garden-sheet:has(#shop-panel) { overflow: hidden; display: flex; flex-direction: column; }
-html[data-mode="phone"] .garden-sheet #shop-modal-slot { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-html[data-mode="phone"] .garden-sheet #shop-panel {
+.garden-sheet:has(#shop-panel) { overflow: hidden; display: flex; flex-direction: column; }
+.garden-sheet #shop-modal-slot { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.garden-sheet #shop-panel {
   display: flex;
   flex-direction: column;
   height: min(64vh, 540px);
   min-height: 0;
 }
-html[data-mode="phone"] .garden-sheet #shop-panel .shop-columns {
+.garden-sheet #shop-panel .shop-columns {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -5571,19 +5569,21 @@ html[data-mode="phone"] .garden-sheet #shop-panel .shop-tabs {
   border-top: 1px solid var(--border);
 }
 html[data-mode="phone"] .shop-tab.on { box-shadow: 0 -3px 0 #a8770c inset; }
+/* On a computer the sheet is already a fixed height, so the shop fills it. */
+html:not([data-mode="phone"]) .garden-sheet #shop-panel { height: auto; flex: 1; }
 
-html[data-mode="phone"] .shop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-html[data-mode="phone"] .shop-tile { min-height: 0; padding: 8px 5px 6px; gap: 4px; border-radius: 12px; }
-html[data-mode="phone"] .shop-tile-icon { font-size: 1.4rem; }
-html[data-mode="phone"] .shop-tile-icon svg { width: 28px; height: 28px; }
-html[data-mode="phone"] .shop-tile-label { font-size: 0.68rem; line-height: 1.2; }
-html[data-mode="phone"] .shop-tile-action { min-height: 30px; font-size: 0.8rem; border-radius: 8px; }
-html[data-mode="phone"] .shop-tab { padding: 6px 2px 5px; }
-html[data-mode="phone"] .shop-tab span { font-size: 1.15rem; }
+.shop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.shop-tile { min-height: 0; padding: 8px 5px 6px; gap: 4px; border-radius: 12px; }
+.shop-tile-icon { font-size: 1.4rem; }
+.shop-tile-icon svg { width: 28px; height: 28px; }
+.shop-tile-label { font-size: 0.68rem; line-height: 1.2; }
+.shop-tile-action { min-height: 30px; font-size: 0.8rem; border-radius: 8px; }
+.shop-tab { padding: 6px 2px 5px; }
+.shop-tab span { font-size: 1.15rem; }
 /* The sheet is a flex column now; the close button keeps to its corner. */
-html[data-mode="phone"] .garden-sheet:has(#shop-panel) > .modal-close { align-self: flex-end; }
+.garden-sheet:has(#shop-panel) > .modal-close { align-self: flex-end; }
 /* "seedling 1, grown 2" is a note, not a price: let it wrap in the button. */
-html[data-mode="phone"] .shop-tile-action { white-space: normal; text-align: center; line-height: 1.1; padding: 2px 4px; font-size: 0.78rem; }
+.shop-tile-action { white-space: normal; text-align: center; line-height: 1.1; padding: 2px 4px; font-size: 0.78rem; }
 
 /* Help gardener, smaller, with a warm garden-gold thought bubble instead of
    the app's purple. */
@@ -5950,9 +5950,8 @@ html[data-mode="phone"] .shop-tile-action { white-space: normal; text-align: cen
     <div class="shop-coins" id="shop-coins-row"><span id="shop-coins-icon"></span> <span id="shop-coins-amt">0</span></div>
     <div class="shop-sell" id="shop-sell" hidden></div>
     <div class="shop-desc" id="shop-desc" aria-live="polite"></div>
-    <!-- Phone only: one tab per kind of thing, so the shop is a few big
-         buttons at a time rather than a page of small print. On a computer
-         the tabs are hidden and every section shows in the two columns. -->
+    <!-- One tab per kind of thing, so the shop is a few big buttons at a
+         time rather than a page of small print. -->
     <div class="shop-tabs" role="tablist" aria-label="Shop sections">
       <button type="button" role="tab" class="shop-tab on" data-shop-tab="plants" aria-selected="true"><span aria-hidden="true">&#x1F331;</span>Plants</button>
       <button type="button" role="tab" class="shop-tab" data-shop-tab="tools" aria-selected="false"><span aria-hidden="true">&#x1FA93;</span>Tools</button>
@@ -17463,6 +17462,9 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-10-04', items: [
+      'The shop on a computer now works like the phone: a tab each for Plants, Tools, Outfits and Pets, with big tiles and the price on the button, instead of everything in two long columns.'
+    ]},
     { date: '2026-10-02', items: [
       'Grass seed is in the shop. Hold it and Use to turn dug soil back into grass.',
       'Ponds and streams: hold the shovel, face some grass and Use, and that square becomes water. Squares next to each other join up.',
