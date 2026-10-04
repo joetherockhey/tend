@@ -912,8 +912,14 @@ const Worlds = (function () {
     desert: [5, 6, 47, 48],
     edible: [9, 10, 28, 29, 30]
   };
+  /* What a packet costs, by how hard the real thing is to come by: everyday
+     summer flowers and veg patch staples are cheap, bulbs and cacti a little
+     dearer, winter bloomers more, and orchids and flytraps the most. The
+     mystery seedling stays at one coin. The reef's packets cost the same as
+     the garden's they stand in for. */
+  const PLANT_GROUP_COST = { summer: 2, edible: 2, spring: 3, desert: 3, winter: 4, tropical: 5 };
   function plantCategories(labels) {
-    return Object.keys(PLANT_GROUPS).map(id => ({ id, varieties: PLANT_GROUPS[id], ...labels[id] }));
+    return Object.keys(PLANT_GROUPS).map(id => ({ id, varieties: PLANT_GROUPS[id], cost: PLANT_GROUP_COST[id], ...labels[id] }));
   }
 
   const GARDEN_WORLD = {

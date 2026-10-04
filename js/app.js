@@ -2787,6 +2787,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-10-04', items: [
+      'Seed packets now cost more the rarer the plants are: Summer flowers and Fruit & veg 2 coins, Spring flowers and Desert plants 3, Winter plants 4, Tropical plants 5. The mystery seedling is still 1 coin.',
       'The shop on a computer now works like the phone: a tab each for Plants, Tools, Outfits and Pets, with big tiles and the price on the button, instead of everything in two long columns.'
     ]},
     { date: '2026-10-02', items: [

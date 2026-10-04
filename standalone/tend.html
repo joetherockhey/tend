@@ -8346,8 +8346,14 @@ const Worlds = (function () {
     desert: [5, 6, 47, 48],
     edible: [9, 10, 28, 29, 30]
   };
+  /* What a packet costs, by how hard the real thing is to come by: everyday
+     summer flowers and veg patch staples are cheap, bulbs and cacti a little
+     dearer, winter bloomers more, and orchids and flytraps the most. The
+     mystery seedling stays at one coin. The reef's packets cost the same as
+     the garden's they stand in for. */
+  const PLANT_GROUP_COST = { summer: 2, edible: 2, spring: 3, desert: 3, winter: 4, tropical: 5 };
   function plantCategories(labels) {
-    return Object.keys(PLANT_GROUPS).map(id => ({ id, varieties: PLANT_GROUPS[id], ...labels[id] }));
+    return Object.keys(PLANT_GROUPS).map(id => ({ id, varieties: PLANT_GROUPS[id], cost: PLANT_GROUP_COST[id], ...labels[id] }));
   }
 
   const GARDEN_WORLD = {
@@ -13104,8 +13110,9 @@ const Garden = (function () {
 
   /* With a category, the surprise is drawn from that packet's varieties only. */
   function buyPlant(categoryId) {
-    if (coins < PLANT_COST) return;
     const category = categoryId && (W().plantCategories || []).find(c => c.id === categoryId);
+    const cost = (category && category.cost) || PLANT_COST;
+    if (coins < cost) return;
     const pool = category ? category.varieties : null;
     /* Find the room before taking the coin. Buying with nowhere to stand used
        to spend the coin and lose the seedling. */
@@ -13115,7 +13122,7 @@ const Garden = (function () {
       renderShop();
       return;
     }
-    spendCoins(PLANT_COST);
+    spendCoins(cost);
     const id = 'plant-' + hashStr('plant' + Object.keys(gardenLayout).length + Date.now() + Math.random());
     gardenLayout[id] = {
       row: cell.row,
@@ -13256,10 +13263,11 @@ const Garden = (function () {
       const noRoom = !findPottingSpot();
       const t = terms();
       const seedDisabled = coins < PLANT_COST || noRoom;
+      const packetCost = c => c.cost || PLANT_COST;
       const packets = (W().plantCategories || []).map(c => shopTile({
         icon: c.icon, label: c.label,
         desc: c.desc + ' Starts as a seedling - which one it grows into is a surprise.',
-        action: price(PLANT_COST), onclick: `buyPlant('${c.id}')`, disabled: seedDisabled
+        action: price(packetCost(c)), onclick: `buyPlant('${c.id}')`, disabled: coins < packetCost(c) || noRoom
       })).join('');
       plantsWrap.innerHTML =
         (noRoom ? '<div class="shop-info">No room for another - clear a square first.</div>' : '') +
@@ -17463,6 +17471,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-10-04', items: [
+      'Seed packets now cost more the rarer the plants are: Summer flowers and Fruit & veg 2 coins, Spring flowers and Desert plants 3, Winter plants 4, Tropical plants 5. The mystery seedling is still 1 coin.',
       'The shop on a computer now works like the phone: a tab each for Plants, Tools, Outfits and Pets, with big tiles and the price on the button, instead of everything in two long columns.'
     ]},
     { date: '2026-10-02', items: [

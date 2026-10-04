@@ -3256,8 +3256,9 @@ const Garden = (function () {
 
   /* With a category, the surprise is drawn from that packet's varieties only. */
   function buyPlant(categoryId) {
-    if (coins < PLANT_COST) return;
     const category = categoryId && (W().plantCategories || []).find(c => c.id === categoryId);
+    const cost = (category && category.cost) || PLANT_COST;
+    if (coins < cost) return;
     const pool = category ? category.varieties : null;
     /* Find the room before taking the coin. Buying with nowhere to stand used
        to spend the coin and lose the seedling. */
@@ -3267,7 +3268,7 @@ const Garden = (function () {
       renderShop();
       return;
     }
-    spendCoins(PLANT_COST);
+    spendCoins(cost);
     const id = 'plant-' + hashStr('plant' + Object.keys(gardenLayout).length + Date.now() + Math.random());
     gardenLayout[id] = {
       row: cell.row,
@@ -3408,10 +3409,11 @@ const Garden = (function () {
       const noRoom = !findPottingSpot();
       const t = terms();
       const seedDisabled = coins < PLANT_COST || noRoom;
+      const packetCost = c => c.cost || PLANT_COST;
       const packets = (W().plantCategories || []).map(c => shopTile({
         icon: c.icon, label: c.label,
         desc: c.desc + ' Starts as a seedling - which one it grows into is a surprise.',
-        action: price(PLANT_COST), onclick: `buyPlant('${c.id}')`, disabled: seedDisabled
+        action: price(packetCost(c)), onclick: `buyPlant('${c.id}')`, disabled: coins < packetCost(c) || noRoom
       })).join('');
       plantsWrap.innerHTML =
         (noRoom ? '<div class="shop-info">No room for another - clear a square first.</div>' : '') +
