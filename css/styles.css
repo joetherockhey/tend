@@ -2514,6 +2514,10 @@ body.gated { overflow: hidden; }
 .header-top-row .brand-row { margin-bottom: 0; margin-right: auto; }
 
 .account-menu { position: relative; }
+/* Your name and its menu are always the last thing on the line, to the right
+   of search, at every width. The search box is moved about by the narrow and
+   phone rules below; this keeps it on the near side of the name. */
+.header-top-row .account-menu { order: 8; }
 
 .header-top-row .nav-search { margin-left: 0; margin-right: 4px; }
 
@@ -2779,8 +2783,7 @@ body.gated { overflow: hidden; }
   .header-top-row { flex-wrap: wrap; }
 
   .nav-search {
-    /* Last in the row, so the magnifier sits hard against the right edge
-       rather than floating between the tabs and the garden button. */
+    /* Just before the account chip, at the right of the row. */
     order: 5;
     margin: 0 0 0 10px;
     width: auto;
@@ -2814,9 +2817,10 @@ body.gated { overflow: hidden; }
   }
 
 
-  /* Open: the full row, but only while it is being used. */
+  /* Open: the full row, but only while it is being used - on a line of its
+     own under the account chip. */
   .nav-search.open {
-    order: 3;
+    order: 9;
     width: 100%;
     margin: 0 0 8px;
     padding: 0 6px 0 10px;
@@ -4050,8 +4054,7 @@ html[data-mode="phone"] .header-inner { padding-bottom: 14px; }
 html[data-mode="phone"] h1 { font-size: 1.35rem; }
 html[data-mode="phone"] .header-top-row { flex-wrap: wrap; margin-bottom: 12px; }
 
-/* The magnifier goes to the far right, past the account chip, so it is under
-   the thumb rather than stranded in the middle of the bar. */
+/* The magnifier sits at the right, just before the account chip. */
 html[data-mode="phone"] .header-top-row .nav-search { order: 5; margin: 0 0 0 4px; }
 
 /* Opened, the box needs the width, so it drops to a line of its own. */

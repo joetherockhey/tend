@@ -2879,6 +2879,7 @@ const App = (function () {
 
   const UPDATES = [
     { date: '2026-10-07', items: [
+      'Your name and its menu now always sit at the top right, to the right of search, on every screen size.',
       'Fixed: choosing the Phone or Desktop layout on one device no longer changes it on your others. Each device keeps its own, and they all start back on Automatic.'
     ]},
     { date: '2026-10-06', items: [
