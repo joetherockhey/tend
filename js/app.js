@@ -1861,14 +1861,20 @@ const App = (function () {
   const PHONE_MAX_WIDTH = 900;
   let phoneView = false;
 
+  /* Per device. It used to live in prefs, which sync - so pinning Phone on a
+     phone pinned the laptop to the phone layout as well. The old synced value
+     is ignored; every device starts back on Auto. */
+  const VIEW_MODE_KEY = 'tend:view-mode';
+
   function viewModePref() {
-    const m = (Store.prefs() || {}).viewMode;
+    let m = null;
+    try { m = localStorage.getItem(VIEW_MODE_KEY); } catch (e) { /* private mode */ }
     return (m === 'phone' || m === 'desktop') ? m : 'auto';
   }
 
   function setViewMode(mode) {
-    Store.prefs().viewMode = (mode === 'phone' || mode === 'desktop') ? mode : 'auto';
-    Store.savePrefs();
+    const m = (mode === 'phone' || mode === 'desktop') ? mode : 'auto';
+    try { localStorage.setItem(VIEW_MODE_KEY, m); } catch (e) { /* private mode */ }
     applyLayoutMode();
     renderViewModePicker();
   }
@@ -2872,6 +2878,9 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-10-07', items: [
+      'Fixed: choosing the Phone or Desktop layout on one device no longer changes it on your others. Each device keeps its own, and they all start back on Automatic.'
+    ]},
     { date: '2026-10-06', items: [
       'Work mode. Tasks and Plan My Day now have a Personal / Work switch at the top. Each mode has its own task list, its own categories and its own plan for the day.',
       'Everything you already had is in Personal, categories included - your Work category is still there, unchanged.',
