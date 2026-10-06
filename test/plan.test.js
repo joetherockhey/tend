@@ -24,13 +24,15 @@ const CONSTS = ['PLAN_SLOT_MINUTES', 'PLAN_DAY_END', 'PLAN_LAST_SLOT'].map(n => 
 
 /* The three functions under test, wired to a fake clock and a fake store so
    the day can be moved about without waiting for one. */
-function build(nowMinutes, prefsObj, ticketList) {
+function build(nowMinutes, prefsObj, ticketList, mode) {
   const today = '2026-09-21';
   const Store = { prefs: () => prefsObj };
   const Util = { todayStr: () => today };
   const tickets = () => ticketList || [];
-  const factory = new Function('Store', 'Util', 'tickets', 'NOW', [
+  const factory = new Function('Store', 'Util', 'tickets', 'NOW', 'currentMode', [
     CONSTS,
+    grab('taskMode'),
+    grab('modeTickets'),
     grab('planState'),
     grab('planTasks'),
     grab('planDoneToday'),
@@ -38,7 +40,7 @@ function build(nowMinutes, prefsObj, ticketList) {
     grab('planSlots'),
     'return { planState, planTasks, planDoneToday, planSlots };'
   ].join('\n'));
-  return factory(Store, Util, tickets, nowMinutes);
+  return factory(Store, Util, tickets, nowMinutes, mode || 'personal');
 }
 
 /* --- a plan belongs to its day --- */
@@ -145,3 +147,17 @@ slots = slotsAt(23 * 60 + 50);
 assert.deepStrictEqual(slots, [23 * 60 + 30], 'ten to midnight leaves exactly one');
 
 console.log('plan ok');
+
+/* --- each mode plans its own day --- */
+{
+  const day = { plan: { date: '2026-09-21', mode: 'order', order: [], times: {} } };
+  const list = [
+    { id: 'home', priority: true },
+    { id: 'desk', priority: true, setting: 'work' },
+    { id: 'old', priority: true, setting: '' }
+  ];
+  const personal = build(9 * 60, day, list, 'personal').planTasks().map(t => t.id);
+  const work = build(9 * 60, day, list, 'work').planTasks().map(t => t.id);
+  assert.deepStrictEqual(personal.sort(), ['home', 'old'], 'personal mode plans the personal tasks, old ones included');
+  assert.deepStrictEqual(work, ['desk'], 'work mode plans the work tasks only');
+}

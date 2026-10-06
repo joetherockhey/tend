@@ -5732,3 +5732,57 @@ html:not([data-mode="phone"]) .garden-sheet #shop-panel { height: auto; flex: 1;
   .pond-creature.frog { transition: none; }
   .pond-creature.frog > span { animation: none !important; }
 }
+
+/* ---------------------------------------------------------------------------
+   Personal and Work modes.
+   --------------------------------------------------------------------------- */
+
+/* The switch between the two task lists. Bigger and bolder than the grouping
+   toggle beside it, because it changes which list you are looking at, not how
+   it is sorted. Work wears slate so the mode is obvious at a glance. */
+.mode-toggle {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.mode-toggle button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.mode-toggle button.on { background: var(--accent); color: #fff; }
+html[data-task-mode="work"] .mode-toggle button.on { background: #3b4a5c; }
+html[data-view]:not([data-view="list"]):not([data-view="plan"]) .mode-toggle { display: none; }
+
+/* In Work mode the task and plan panels carry a slate edge, so a glance at
+   the page says which list it is. */
+html[data-task-mode="work"][data-view="list"] .content-col .page-actions,
+html[data-task-mode="work"][data-view="plan"] .content-col .page-actions {
+  border-left: 4px solid #3b4a5c;
+  padding-left: 10px;
+}
+
+/* The two category lists on the Overview, and the two halves of Tasks by
+   category. */
+.category-mode-block + .category-mode-block {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.category-mode-title {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.by-category-mode + .category-mode-title { margin-top: 20px; }

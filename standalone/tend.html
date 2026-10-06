@@ -5721,6 +5721,60 @@ html:not([data-mode="phone"]) .garden-sheet #shop-panel { height: auto; flex: 1;
   .pond-creature.frog > span { animation: none !important; }
 }
 
+/* ---------------------------------------------------------------------------
+   Personal and Work modes.
+   --------------------------------------------------------------------------- */
+
+/* The switch between the two task lists. Bigger and bolder than the grouping
+   toggle beside it, because it changes which list you are looking at, not how
+   it is sorted. Work wears slate so the mode is obvious at a glance. */
+.mode-toggle {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.mode-toggle button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.mode-toggle button.on { background: var(--accent); color: #fff; }
+html[data-task-mode="work"] .mode-toggle button.on { background: #3b4a5c; }
+html[data-view]:not([data-view="list"]):not([data-view="plan"]) .mode-toggle { display: none; }
+
+/* In Work mode the task and plan panels carry a slate edge, so a glance at
+   the page says which list it is. */
+html[data-task-mode="work"][data-view="list"] .content-col .page-actions,
+html[data-task-mode="work"][data-view="plan"] .content-col .page-actions {
+  border-left: 4px solid #3b4a5c;
+  padding-left: 10px;
+}
+
+/* The two category lists on the Overview, and the two halves of Tasks by
+   category. */
+.category-mode-block + .category-mode-block {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.category-mode-title {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.by-category-mode + .category-mode-title { margin-top: 20px; }
+
 </style>
 </head>
 <body class="gated">
@@ -5992,6 +6046,9 @@ html:not([data-mode="phone"]) .garden-sheet #shop-panel { height: auto; flex: 1;
        which wrapped under the task list on a narrow window with the garden
        open - so the button pressed most was the furthest thing down. -->
   <div class="page-actions">
+    <!-- Personal or Work. Only the Tasks and Plan My Day pages follow it, so it
+         only shows on those two. -->
+    <div class="mode-toggle" id="mode-toggle" role="group" aria-label="Which tasks to show"></div>
     <div class="list-toolbar" id="list-toolbar">
       <div class="cat-toggle" id="list-group-toggle"></div>
     </div>
@@ -9618,8 +9675,12 @@ const Store = (function () {
     if (!Array.isArray(categories) || categories.length < 2) return;
     const seen = new Map();
     const kept = [];
+    /* Work and Personal keep separate lists (prefs.workCategories names the
+       Work ones), so the same name in each is two categories, not a copy. */
+    const work = new Set(Array.isArray(prefs && prefs.workCategories) ? prefs.workCategories : []);
     categories.forEach(c => {
-      const key = String(c.name || '').trim().toLowerCase();
+      const name = String(c.name || '').trim().toLowerCase();
+      const key = name && (work.has(c.id) ? 'work:' : 'personal:') + name;
       if (!key) return;
       if (seen.has(key)) return;
       seen.set(key, c);
@@ -14710,7 +14771,7 @@ const App = (function () {
 
   /* Which suggestion is armed for the next category. Null means "whichever is
      not in use yet", which is what it falls back to after each add. */
-  let pendingCategoryColor = null;
+  let pendingCategoryColor = {};   // per mode: the colour armed for the next new category
 
   let calYear, calMonth;              // calMonth is 0-indexed
   let showCompleted = false;
@@ -14721,16 +14782,71 @@ const App = (function () {
   /* ========================= convenience ========================= */
 
   function tickets() { return Store.tickets(); }
-  function categories() { return Store.categories(); }
 
-  function categoryColor(name) {
+  /* ========================= modes =========================
+
+     Personal and Work: two task lists, each with its own categories, one
+     garden. A task's mode rides in its `setting` field - a column the tickets
+     table has always had and nothing used - so no change to the database:
+     'work' is Work, anything else is Personal, which is every task made before
+     modes existed. A category's mode is the list of Work category ids in prefs,
+     for the same reason. Which mode you are in is per device, like which page
+     you are on, and only the Tasks and Plan My Day pages follow it; coins, the
+     garden, the calendar and the overview count both. */
+  const MODE_KEY = 'tend:mode';
+  const MODES = [['personal', 'Personal'], ['work', 'Work']];
+  let currentMode = (function () {
+    try { return localStorage.getItem(MODE_KEY) === 'work' ? 'work' : 'personal'; } catch (e) { return 'personal'; }
+  })();
+
+  function taskMode(t) { return t && t.setting === 'work' ? 'work' : 'personal'; }
+  function modeTickets() { return tickets().filter(t => taskMode(t) === currentMode); }
+
+  function workCategoryIds() {
+    const p = Store.prefs();
+    if (!Array.isArray(p.workCategories)) p.workCategories = [];
+    return p.workCategories;
+  }
+
+  function categoryMode(c) { return workCategoryIds().includes(c.id) ? 'work' : 'personal'; }
+
+  /* Every category, both modes - the array the store saves, so it is the one
+     to change. categories() is a copy filtered to one mode, for reading. */
+  function allCategories() { return Store.categories(); }
+  function categories(mode) {
+    const m = mode || currentMode;
+    return allCategories().filter(c => categoryMode(c) === m);
+  }
+
+  function setMode(mode) {
+    const next = mode === 'work' ? 'work' : 'personal';
+    if (next === currentMode) return;
+    currentMode = next;
+    try { localStorage.setItem(MODE_KEY, next); } catch (e) { /* private mode */ }
+    populateCategorySelects();
+    renderModeToggle();
+    renderList();
+    renderPlan();
+  }
+
+  function renderModeToggle() {
+    const host = document.getElementById('mode-toggle');
+    if (!host) return;
+    document.documentElement.dataset.taskMode = currentMode;
+    host.innerHTML = MODES.map(([key, label]) =>
+      `<button type="button" class="${currentMode === key ? 'on' : ''}" aria-pressed="${currentMode === key}"`
+      + ` onclick="App.setMode('${key}')">${key === 'work' ? '\u{1F4BC}' : '\u{1F3E1}'} ${label}</button>`
+    ).join('');
+  }
+
+  function categoryColor(name, mode) {
     if (!name) return DEFAULT_CATEGORY_COLOR;
-    const c = categories().find(x => x.name === name);
+    const c = categories(mode).find(x => x.name === name);
     return c ? c.color : DEFAULT_CATEGORY_COLOR;
   }
 
-  function nextCategoryColor() {
-    const used = new Set(categories().map(c => c.color));
+  function nextCategoryColor(mode) {
+    const used = new Set(categories(mode).map(c => c.color));
     return CATEGORY_PALETTE.find(c => !used.has(c)) || DEFAULT_CATEGORY_COLOR;
   }
 
@@ -14791,7 +14907,7 @@ const App = (function () {
         done ? "You've finished " + done + (done === 1 ? ' task' : ' tasks') + ' so far, and every one of them went into the ' + place + '.'
              : "Nothing finished yet. Tick a task off and I'll start on the " + place + '.',
         'The top card counts your open tasks, split into priority, active and archived, and how many you have finished altogether.',
-        'Categories are the labels your tasks use. Add one, drag the handle to change the order, or remove one. Each colour is also the colour of its pots in the ' + place + '.',
+        'Categories are the labels your tasks use, with a separate list for Personal and for Work. Add one, drag the handle to change the order, or remove one. Each colour is also the colour of its pots in the ' + place + '.',
         'Tasks by category shows every task grouped under its label.'
       ];
     }
@@ -14808,11 +14924,15 @@ const App = (function () {
       : "Nothing to do yet. Add a task and I'll fetch the watering can.");
   }
 
-  function addCategory(name, color) {
+  function addCategory(name, color, mode) {
+    const m = mode || currentMode;
     name = (name || '').trim();
     if (!name) return false;
-    if (categories().some(c => c.name.toLowerCase() === name.toLowerCase())) return false;
-    categories().push({ id: Util.uid(), name: name, color: color || nextCategoryColor() });
+    if (categories(m).some(c => c.name.toLowerCase() === name.toLowerCase())) return false;
+    const id = Util.uid();
+    /* Named as Work before it exists, so nothing ever sees it in the wrong list. */
+    if (m === 'work') { workCategoryIds().push(id); Store.savePrefs(); }
+    allCategories().push({ id: id, name: name, color: color || nextCategoryColor(m) });
     Store.saveCategories();
     return true;
   }
@@ -14827,21 +14947,26 @@ const App = (function () {
      one was ever created with the same name again. So the name is cleared for
      real. The snapshot above covers tickets as well as categories, so one Undo
      puts the category back and its tasks back into it. */
-  function removeCategoryByIndex(i) {
-    const list = categories();
+  /* The id stays on the Work list after the category goes, so Undo brings it
+     back as a Work category. */
+  function removeCategoryByIndex(i, mode) {
+    const m = mode || currentMode;
+    const list = categories(m);
     if (i < 0 || i >= list.length) return;
-    const name = list[i].name;
+    const cat = list[i];
+    const name = cat.name;
     snapshot('removing the ' + name + ' category');
 
     const key = (name || '').trim().toLowerCase();
     let moved = 0;
     tickets().forEach(t => {
-      if ((t.category || '').trim().toLowerCase() !== key) return;
+      if (taskMode(t) !== m || (t.category || '').trim().toLowerCase() !== key) return;
       t.category = '';
       moved++;
     });
 
-    list.splice(i, 1);
+    const all = allCategories();
+    all.splice(all.indexOf(cat), 1);
     Store.saveCategories();
     if (moved) Store.saveTickets();
     renderCategoryKey();
@@ -14950,35 +15075,43 @@ const App = (function () {
     }
 
     const grip = `<span class="key-grip" title="Drag to reorder" aria-hidden="true"><svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2.5" cy="3" r="1.3"/><circle cx="7.5" cy="3" r="1.3"/><circle cx="2.5" cy="8" r="1.3"/><circle cx="7.5" cy="8" r="1.3"/><circle cx="2.5" cy="13" r="1.3"/><circle cx="7.5" cy="13" r="1.3"/></svg></span>`;
-    const items = categories().map((c, i) =>
-      `<div class="key-item person-key-item cat-sortable-item" data-cat-index="${i}">
-        ${grip}
-        ${categoryPill(c.name, c.color)}
-        <button class="person-remove-btn" title="Remove ${Util.escapeHtml(c.name)}" onclick="App.removeCategoryByIndex(${i})">&times;</button>
-      </div>`
-    );
-    const chosen = pendingCategoryColor || nextCategoryColor();
-    const used = new Set(categories().map(c => c.color));
-    const swatches = CATEGORY_PALETTE.map(c =>
-      `<button type="button" class="swatch${c === chosen ? ' on' : ''}${used.has(c) ? ' used' : ''}"
-               style="--swatch:${c}" data-color="${c}"
-               title="${used.has(c) ? 'Already used by another category' : c}"
-               aria-label="Use ${c}"${c === chosen ? ' aria-pressed="true"' : ''}
-               onclick="App.pickCategoryColor('${c}')"></button>`).join('');
 
-    const addForm = `
-      <div class="person-add-row">
-        <input type="text" id="category-add-name" placeholder="Add category&hellip;" maxlength="100" onkeydown="if(event.key==='Enter')App.submitAddCategory()">
-        <button class="person-add-btn" onclick="App.submitAddCategory()">Add</button>
-      </div>
-      <div class="swatch-row" id="category-swatches" role="group" aria-label="Colour for the new category">${swatches}</div>`;
-    /* Only the real categories are draggable; Other is not a category anybody
-       owns, so it stays pinned at the bottom outside the sortable block. */
-    document.getElementById('category-key').innerHTML =
-      `<div class="key-sortable" id="category-order">${items.join('')}</div>`
-      + `<div class="key-item">${categoryPill('Other', DEFAULT_CATEGORY_COLOR)}</div>`
-      + addForm;
-    initCategoryDrag();
+    /* One list per mode, each with its own box to type a new one into. */
+    const block = mode => {
+      const list = categories(mode);
+      const items = list.map((c, i) =>
+        `<div class="key-item person-key-item cat-sortable-item" data-cat-index="${i}">
+          ${grip}
+          ${categoryPill(c.name, c.color)}
+          <button class="person-remove-btn" title="Remove ${Util.escapeHtml(c.name)}" onclick="App.removeCategoryByIndex(${i}, '${mode}')">&times;</button>
+        </div>`
+      );
+      const chosen = pendingCategoryColor[mode] || nextCategoryColor(mode);
+      const used = new Set(list.map(c => c.color));
+      const swatches = CATEGORY_PALETTE.map(c =>
+        `<button type="button" class="swatch${c === chosen ? ' on' : ''}${used.has(c) ? ' used' : ''}"
+                 style="--swatch:${c}" data-color="${c}"
+                 title="${used.has(c) ? 'Already used by another category' : c}"
+                 aria-label="Use ${c}"${c === chosen ? ' aria-pressed="true"' : ''}
+                 onclick="App.pickCategoryColor('${c}', '${mode}')"></button>`).join('');
+      const label = mode === 'work' ? 'work' : 'personal';
+      const addForm = `
+        <div class="person-add-row">
+          <input type="text" id="category-add-name-${mode}" placeholder="Add a ${label} category&hellip;" maxlength="100" onkeydown="if(event.key==='Enter')App.submitAddCategory('${mode}')">
+          <button class="person-add-btn" onclick="App.submitAddCategory('${mode}')">Add</button>
+        </div>
+        <div class="swatch-row" id="category-swatches-${mode}" role="group" aria-label="Colour for the new ${label} category">${swatches}</div>`;
+      /* Only the real categories are draggable; Other is not a category anybody
+         owns, so it stays pinned at the bottom outside the sortable block. */
+      return `<div class="category-mode-block" data-mode="${mode}">
+          <h3 class="category-mode-title">${mode === 'work' ? '\u{1F4BC} Work' : '\u{1F3E1} Personal'}</h3>
+          <div class="key-sortable category-order" data-mode="${mode}">${items.join('')}</div>
+          <div class="key-item">${categoryPill('Other', DEFAULT_CATEGORY_COLOR)}</div>
+          ${addForm}
+        </div>`;
+    };
+    document.getElementById('category-key').innerHTML = block('personal') + block('work');
+    document.querySelectorAll('#category-key .category-order').forEach(initCategoryDrag);
   }
 
   /* ---------------------------------------------------------------
@@ -15001,8 +15134,9 @@ const App = (function () {
   }
 
   function commitCategoryOrder(host) {
+    const mode = host.dataset.mode;
     const order = [...host.querySelectorAll('.cat-sortable-item')].map(el => Number(el.dataset.catIndex));
-    const list = categories();
+    const list = categories(mode);
     const moved = order.map(i => list[i]).filter(Boolean);
     /* If anything looks off, redraw from the stored order rather than saving
        a list that has lost or doubled an entry. */
@@ -15010,8 +15144,11 @@ const App = (function () {
     if (moved.every((c, i) => c === list[i])) return;      /* nothing actually moved */
 
     snapshot('reordering the categories');
-    list.length = 0;
-    moved.forEach(c => list.push(c));
+    /* Only this mode's places in the one stored list are refilled, in the new
+       order; the other mode's categories keep theirs. */
+    const all = allCategories();
+    let next = 0;
+    all.forEach((c, i) => { if (categoryMode(c) === mode) all[i] = moved[next++]; });
     Store.saveCategories();
 
     renderCategoryKey();
@@ -15020,8 +15157,7 @@ const App = (function () {
     renderList();
   }
 
-  function initCategoryDrag() {
-    const host = document.getElementById('category-order');
+  function initCategoryDrag(host) {
     if (!host || host.dataset.dndReady) return;
     host.dataset.dndReady = '1';
 
@@ -15058,9 +15194,10 @@ const App = (function () {
   /* Arming a colour must not redraw the panel: renderCategoryKey replaces the
      whole thing, which would throw away the name being typed and the caret with
      it. So the classes are moved by hand. */
-  function pickCategoryColor(color) {
-    pendingCategoryColor = color;
-    const host = document.getElementById('category-swatches');
+  function pickCategoryColor(color, mode) {
+    const m = mode || 'personal';
+    pendingCategoryColor[m] = color;
+    const host = document.getElementById('category-swatches-' + m);
     if (!host) return;
     host.querySelectorAll('.swatch').forEach(el => {
       const on = el.dataset.color === color;
@@ -15070,16 +15207,17 @@ const App = (function () {
     });
   }
 
-  function submitAddCategory() {
-    const nameInput = document.getElementById('category-add-name');
+  function submitAddCategory(mode) {
+    const m = mode || 'personal';
+    const nameInput = document.getElementById('category-add-name-' + m);
     const name = nameInput.value.trim();
     if (!name) { nameInput.focus(); return; }
     snapshot('adding the ' + name + ' category');
-    if (addCategory(name, pendingCategoryColor || nextCategoryColor())) {
+    if (addCategory(name, pendingCategoryColor[m] || nextCategoryColor(m), m)) {
       nameInput.value = '';
       /* Back to "next unused" so the following one does not silently reuse the
          colour just taken. */
-      pendingCategoryColor = null;
+      pendingCategoryColor[m] = null;
       renderCategoryKey();
       populateCategorySelects();
       renderList();
@@ -15088,10 +15226,15 @@ const App = (function () {
     }
   }
 
+  /* The task being edited keeps its own mode's categories, whichever mode you
+     opened it from - the calendar and the overview show both. */
+  let editingMode = null;
+
   function populateCategorySelects() {
     ['new-task-category', 'edit-task-category'].forEach(id => {
       const sel = document.getElementById(id);
       if (!sel) return;
+      const mode = id === 'edit-task-category' ? (editingMode || currentMode) : currentMode;
       const current = sel.value;
       const opts = ['<option value="">-- Select --</option>'];
       /* Each option carries its category's colour twice over: as a tint behind
@@ -15099,7 +15242,7 @@ const App = (function () {
          phones mostly ignore option styling and show a plain list, which is why
          the bullet is there as well - and why the select itself is tinted when
          a category is chosen, since that much every browser will draw. */
-      categories().forEach(c => {
+      categories(mode).forEach(c => {
         const col = c.color || DEFAULT_CATEGORY_COLOR;
         opts.push(`<option value="${Util.escapeHtml(c.name)}" data-color="${col}"`
           + ` style="background:${Util.hexToRgba(col, 0.16)};color:${Util.inkShade(col, 0.35)}">`
@@ -15107,7 +15250,7 @@ const App = (function () {
       });
       opts.push('<option value="other">Other&hellip;</option>');
       sel.innerHTML = opts.join('');
-      if (current && (categories().some(c => c.name === current) || current === 'other')) sel.value = current;
+      if (current && (categories(mode).some(c => c.name === current) || current === 'other')) sel.value = current;
       tintCategorySelect(sel);
     });
   }
@@ -15169,6 +15312,7 @@ const App = (function () {
       id: newId,
       title: title,
       notes: notesInput.value.trim(),
+      setting: currentMode === 'work' ? 'work' : '',
       category: category,
       priority: priorityCheckbox.checked,
       archived: false,
@@ -15374,7 +15518,7 @@ const App = (function () {
     undoStack.push({
       label: label,
       tickets: JSON.stringify(tickets()),
-      categories: JSON.stringify(categories())
+      categories: JSON.stringify(allCategories())
     });
     if (undoStack.length > UNDO_LIMIT) undoStack.shift();
     renderUndoButton();
@@ -15387,7 +15531,7 @@ const App = (function () {
     if (!step) return;
 
     Store.setTickets(JSON.parse(step.tickets));
-    const cats = categories();
+    const cats = allCategories();
     cats.length = 0;
     JSON.parse(step.categories).forEach(c => cats.push(c));
     Store.saveCategories();
@@ -15638,6 +15782,7 @@ const App = (function () {
       id: Util.uid(),
       title: t.title,
       notes: t.notes || '',
+      setting: t.setting || '',
       category: t.category || '',
       priority: !!t.priority,
       archived: false,
@@ -15940,10 +16085,10 @@ const App = (function () {
      anything uncategorised - or pointing at a category since deleted - under
      Other. Empty buckets are dropped: a column of "Nothing left to do." under
      categories you are not using was the mess on the overview page. */
-  function groupByCategory(list) {
-    const names = categories().map(c => c.name);
+  function groupByCategory(list, mode) {
+    const names = categories(mode).map(c => c.name);
     const known = new Set(names.map(n => n.toLowerCase()));
-    const groups = names.map(n => ({ name: n, color: categoryColor(n), list: [] }));
+    const groups = names.map(n => ({ name: n, color: categoryColor(n, mode), list: [] }));
     const index = {};
     groups.forEach(g => { index[g.name.toLowerCase()] = g; });
     const other = { name: 'Other', color: DEFAULT_CATEGORY_COLOR, list: [] };
@@ -15989,7 +16134,7 @@ const App = (function () {
 
   function renderList() {
     const query = (document.getElementById('search-input').value || '').trim().toLowerCase();
-    const filtered = tickets().filter(t => matchesSearch(t, query));
+    const filtered = modeTickets().filter(t => matchesSearch(t, query));
 
     const notArchived = filtered.filter(t => !t.archived);
     const openAll = notArchived.filter(t => !t.completedAt);
@@ -16266,7 +16411,7 @@ const App = (function () {
     const o = (opts && typeof opts === 'object') ? opts : {};
 
     const notesHtml = t.notes ? `<div class="task-notes">${Util.escapeHtml(t.notes)}</div>` : '';
-    const catColor = categoryColor(t.category);
+    const catColor = categoryColor(t.category, taskMode(t));
 
     const tags = [];
     if (t.category && !o.hideCategory) {
@@ -17003,7 +17148,7 @@ const App = (function () {
       rows.push(detailRow('Due', Util.formatDate(t.dueDate) + (overdue ? ' <span style="color:var(--danger)">(overdue)</span>' : '')));
     }
     if (t.category) {
-      rows.push(detailRow('Category', categoryPill(t.category, categoryColor(t.category))));
+      rows.push(detailRow('Category', categoryPill(t.category, categoryColor(t.category, taskMode(t)))));
     }
     const detailRule = repeatOf(t.id);
     if (detailRule) {
@@ -17106,8 +17251,10 @@ const App = (function () {
     const editRepeat = document.getElementById('edit-task-repeat');
     if (editRepeat) editRepeat.value = repeatOf(t.id);
 
+    editingMode = taskMode(t);
+    populateCategorySelects();
     const sel = document.getElementById('edit-task-category');
-    const known = categories().map(c => c.name);
+    const known = categories(editingMode).map(c => c.name);
     if (t.category && !known.includes(t.category)) {
       sel.value = 'other';
       document.getElementById('edit-task-category-other').value = t.category;
@@ -17134,7 +17281,7 @@ const App = (function () {
     const category = sel.value === 'other' ? document.getElementById('edit-task-category-other').value.trim() : sel.value;
 
     if (sel.value === 'other' && category) {
-      addCategory(category);
+      addCategory(category, null, taskMode(t));
       renderCategoryKey();
       populateCategorySelects();
     }
@@ -17470,6 +17617,12 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-10-06', items: [
+      'Work mode. Tasks and Plan My Day now have a Personal / Work switch at the top. Each mode has its own task list, its own categories and its own plan for the day.',
+      'Everything you already had is in Personal, categories included - your Work category is still there, unchanged.',
+      'Add Work categories on the Overview page, under Work. Tasks by category there shows both modes.',
+      'Finishing a work task pays a coin just like any other, and the garden is the same one in both modes.'
+    ]},
     { date: '2026-10-04', items: [
       'Seed packets now cost more the rarer the plants are: Summer flowers and Fruit & veg 2 coins, Spring flowers and Desert plants 3, Winter plants 4, Tropical plants 5. The mystery seedling is still 1 coin.',
       'The shop on a computer now works like the phone: a tab each for Plants, Tools, Outfits and Pets, with big tiles and the price on the button, instead of everything in two long columns.'
@@ -18302,7 +18455,7 @@ const App = (function () {
     const plan = planState();
     const rank = new Map(plan.order.map((id, i) => [id, i]));
     const last = rank.size + 1;
-    return tickets()
+    return modeTickets()
       .filter(t => t.priority && !t.archived && !t.completedAt)
       .sort((a, b) => (rank.has(a.id) ? rank.get(a.id) : last) - (rank.has(b.id) ? rank.get(b.id) : last));
   }
@@ -18311,7 +18464,7 @@ const App = (function () {
      them - "4 done, 2 to go" is the whole reason to look at it twice. */
   function planDoneToday() {
     const today = Util.todayStr();
-    return tickets().filter(t => t.priority && !t.archived && t.completedAt === today);
+    return modeTickets().filter(t => t.priority && !t.archived && t.completedAt === today);
   }
 
   function planMinutesNow() {
@@ -18696,6 +18849,7 @@ const App = (function () {
   }
 
   function renderAll() {
+    renderModeToggle();
     renderUndoButton();
     renderDueToday();
     renderCategoryKey();
@@ -18753,7 +18907,12 @@ const App = (function () {
     const scope = categoryScope();
     const live = tickets().filter(t => !t.archived);
     const shown = scope === 'all' ? live : live.filter(t => !t.completedAt);
-    const groups = groupByCategory(shown);
+    /* Both modes, Personal first. The headings only appear once there is
+       something in Work, so an account that never uses it sees no change. */
+    const blocks = MODES.map(([mode, label]) => ({
+      mode, label, groups: groupByCategory(shown.filter(t => taskMode(t) === mode), mode)
+    })).filter(b => b.groups.length);
+    const groups = blocks.flatMap(b => b.groups);
 
     if (!groups.length) {
       host.innerHTML = `<p class="cat-empty">${
@@ -18761,7 +18920,8 @@ const App = (function () {
       return;
     }
 
-    host.innerHTML = groups.map(g => {
+    const titled = blocks.some(b => b.mode === 'work');
+    const groupHtml = g => {
       const sorted = g.list.slice().sort((a, b) => {
         if (!!a.completedAt !== !!b.completedAt) return a.completedAt ? 1 : -1;
         if (!!a.priority !== !!b.priority) return a.priority ? -1 : 1;
@@ -18782,7 +18942,11 @@ const App = (function () {
           <div class="cat-group-head">${categoryPill(g.name, g.color)}</div>
           <ul class="cat-tasks">${items}</ul>
         </section>`;
-    }).join('');
+    };
+    host.innerHTML = blocks.map(b =>
+      (titled ? `<h3 class="category-mode-title">${b.mode === 'work' ? '\u{1F4BC}' : '\u{1F3E1}'} ${b.label}</h3>` : '')
+      + `<div class="by-category-mode">${b.groups.map(groupHtml).join('')}</div>`
+    ).join('');
   }
 
   /* A brief note when something arrives from another device, so the screen
@@ -19052,7 +19216,7 @@ const App = (function () {
     taskRowClick,
     openEditModal, saveEditedTask, closeEditModal, closeEditModalOnBackdrop,
     onCategoryChange, onEditCategoryChange,
-    submitAddCategory, removeCategoryByIndex,
+    submitAddCategory, removeCategoryByIndex, setMode,
     toggleSubtask, toggleSubtaskList, editorAdd, editorRemove, editorRename, editorToggle,
     switchView, changeMonth, goToday, showDayModal, showTaskDetail, toggleCalSeries,
     setCalView, toggleWeekends, showDueToday,

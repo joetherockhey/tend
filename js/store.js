@@ -1091,8 +1091,12 @@ const Store = (function () {
     if (!Array.isArray(categories) || categories.length < 2) return;
     const seen = new Map();
     const kept = [];
+    /* Work and Personal keep separate lists (prefs.workCategories names the
+       Work ones), so the same name in each is two categories, not a copy. */
+    const work = new Set(Array.isArray(prefs && prefs.workCategories) ? prefs.workCategories : []);
     categories.forEach(c => {
-      const key = String(c.name || '').trim().toLowerCase();
+      const name = String(c.name || '').trim().toLowerCase();
+      const key = name && (work.has(c.id) ? 'work:' : 'personal:') + name;
       if (!key) return;
       if (seen.has(key)) return;
       seen.set(key, c);
