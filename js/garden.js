@@ -4754,6 +4754,8 @@ const Garden = (function () {
   /* Inline handlers in generated markup call these by name. */
   window.buyItem = buyItem;
   window.buyPet = buyPet;
+  window.buyOutfit = buyOutfit;
+  window.equipOutfit = equipOutfit;
   window.buyPlant = buyPlant;
   window.buySapling = buySapling;
   window.buyFood = buyFood;
