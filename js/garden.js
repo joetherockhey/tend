@@ -3480,7 +3480,7 @@ const Garden = (function () {
       const tiles = Object.entries(W().outfits).map(([id, def]) => {
         const owned = ownedOutfits.includes(id);
         const equipped = equippedOutfit === id;
-        const desc = `Changes what your ${terms().hero} wears.`;
+        const desc = def.desc || `Changes what your ${terms().hero} wears.`;
         if (equipped) return shopTile({ icon: def.icon, label: def.label, desc, action: 'Equipped', disabled: true, dim: false, cls: 'equipped' });
         if (owned) return shopTile({ icon: def.icon, label: def.label, desc, action: 'Equip', onclick: `equipOutfit('${id}')` });
         return shopTile({ icon: def.icon, label: def.label, desc, action: price(def.cost), onclick: `buyOutfit('${id}')`, disabled: coins < def.cost });

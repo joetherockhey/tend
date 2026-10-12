@@ -2878,6 +2878,10 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-10-12', items: [
+      'Outfits now look like what they are called. Overalls have a bib and brass buttons, the flannel is checked, the explorer gets a pith helmet and vest, the robes come with a gold crown and ermine trim. In the reef: kelp fronds, woven coral, a dive mask and air tank, and pearls.',
+      'Each outfit in the shop now says what you get.'
+    ]},
     { date: '2026-10-07', items: [
       'Your name and its menu now always sit at the top right, to the right of search, on every screen size.',
       'Fixed: choosing the Phone or Desktop layout on one device no longer changes it on your others. Each device keeps its own, and they all start back on Automatic.'

@@ -7519,6 +7519,13 @@ const Worlds = (function () {
      itself from this, and garden.js lays the grid out with it. */
   const TILE = 34;
 
+  /* One pixel block of outfit art. An outfit's art(dir, gender) returns a run
+     of these, laid over the base sprite so the outfit is more than a recolour:
+     overalls have a bib, a vest has panels, a crown has points. */
+  function pr(x, y, w, h, fill) {
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
+  }
+
   /* ======================================================================
      GARDEN
      ====================================================================== */
@@ -7789,11 +7796,56 @@ const Worlds = (function () {
         desc: 'Brings more birds than a bath does. They sit on it and eat the seed.' }
     };
     const OUTFITS = {
-      classic: { label: 'Classic', icon: '\u{1F455}', cost: 0, hat: '#6b4423', shirt: '#3f9142', pants: '#2c3e8f' },
-      strawhat: { label: 'Straw Hat & Overalls', icon: '\u{1F33E}', cost: 15, hat: '#eda100', shirt: '#4361ee', pants: '#2c5aa0' },
-      flannel: { label: 'Red Flannel', icon: '\u{1F9E5}', cost: 12, hat: '#6b4423', shirt: '#d0353a', pants: '#3b3f45' },
-      explorer: { label: 'Explorer Vest', icon: '\u{1F9ED}', cost: 18, hat: '#b98a55', shirt: '#6b8e4e', pants: '#5a4a35' },
-      royal: { label: 'Royal Robes', icon: '\u{1F451}', cost: 25, hat: '#6a4fb0', shirt: '#7536ff', pants: '#4a3aa7' }
+      classic: { label: 'Classic', icon: '\u{1F455}', cost: 0, hat: '#6b4423', shirt: '#3f9142', pants: '#2c3e8f',
+        desc: 'A brown hat, green shirt and blue trousers.' },
+      strawhat: { label: 'Straw Hat & Overalls', icon: '\u{1F33E}', cost: 15, hat: '#e9c46a', shirt: '#c8553d', pants: '#3a5a98',
+        desc: 'A wide straw hat and denim overalls with brass buttons, over a red shirt.',
+        art: function (dir, g) {
+          const sb = g === 'female' ? 15 : 16, denim = '#3a5a98', band = '#b5651d', brass = '#f2c14e';
+          if (dir === 'side') return pr(5, 2, 11, 2, '#e9c46a') + pr(7, 1, 7, 1, band)
+            + pr(8, 10, 2, 2, denim) + pr(8, 12, 4, sb - 12, denim) + pr(9, 12, 1, 1, brass);
+          const hat = pr(2, 2, 15, 2, '#e9c46a') + pr(6, 1, 6, 1, band);
+          if (dir === 'back') return hat + pr(4, 10, 2, 1, denim) + pr(10, 10, 2, 1, denim)
+            + pr(6, 11, 1, 1, denim) + pr(9, 11, 1, 1, denim) + pr(7, 12, 2, 1, denim) + pr(5, 13, 6, sb - 13, denim);
+          return hat + pr(4, 10, 2, 1, denim) + pr(10, 10, 2, 1, denim) + pr(5, 11, 6, sb - 11, denim)
+            + pr(5, 11, 1, 1, brass) + pr(10, 11, 1, 1, brass) + pr(7, 13, 2, 1, '#2c4778');
+        } },
+      flannel: { label: 'Red Flannel', icon: '\u{1F9E5}', cost: 12, hat: '#5b3a29', shirt: '#c0392b', pants: '#3b3f45',
+        desc: 'A checked red flannel shirt and charcoal trousers.',
+        art: function (dir, g) {
+          const sb = g === 'female' ? 15 : 16, line = '#7a1d1d';
+          if (dir === 'side') return pr(12, 10, 3, 2, '#c0392b') + pr(8, 10, 1, sb - 10, line) + pr(11, 10, 1, sb - 10, line)
+            + pr(6, 12, 9, 1, line) + pr(6, 14, 6, 1, line);
+          const top = (dir === 'back' && g === 'female') ? 12 : 10;
+          return pr(1, 10, 2, 2, '#c0392b') + pr(13, 10, 2, 2, '#c0392b')
+            + pr(5, top, 1, sb - top, line) + pr(9, top, 1, sb - top, line) + pr(1, 12, 14, 1, line) + pr(3, 14, 10, 1, line);
+        } },
+      explorer: { label: 'Explorer Vest', icon: '\u{1F9ED}', cost: 18, hat: '#d8c9a3', shirt: '#efe3c2', pants: '#7a6a4a',
+        desc: 'A pith helmet and an olive vest with pockets, over a cream shirt.',
+        art: function (dir, g) {
+          const sb = g === 'female' ? 15 : 16, vest = '#6b8e4e', pocket = '#4f6b38', band = '#8a6f45';
+          if (dir === 'side') return pr(6, 0, 8, 2, '#d8c9a3') + pr(6, 1, 8, 1, band)
+            + pr(6, 10, 3, sb - 10, vest) + pr(7, 12, 1, 1, pocket);
+          const helmet = pr(5, 0, 8, 2, '#d8c9a3') + pr(6, 0, 6, 1, '#e6dabb') + pr(5, 1, 8, 1, band);
+          if (dir === 'back') { const t = g === 'female' ? 12 : 10; return helmet + pr(3, t, 10, sb - t, vest); }
+          return helmet + pr(3, 10, 3, sb - 10, vest) + pr(10, 10, 3, sb - 10, vest)
+            + pr(4, 12, 1, 1, pocket) + pr(11, 12, 1, 1, pocket);
+        } },
+      royal: { label: 'Royal Robes', icon: '\u{1F451}', cost: 25, hat: 'none', shirt: '#7536ff', pants: '#4a3aa7',
+        desc: 'A jewelled gold crown and a long purple robe trimmed with ermine.',
+        art: function (dir, g) {
+          const f = g === 'female', robe = '#7536ff', gold = '#e8b923', ruby = '#d0353a', erm = '#f4efe6', spot = '#1f2430';
+          if (dir === 'side') return pr(7, 2, 7, 2, gold) + pr(7, 0, 1, 2, gold) + pr(10, 0, 1, 2, gold) + pr(13, 0, 1, 2, gold)
+            + pr(10, 2, 1, 1, ruby) + pr(6, 10, 8, 1, erm) + pr(8, 10, 1, 1, spot)
+            + (f ? pr(5, 15, 10, 2, robe) + pr(5, 17, 10, 1, erm) : pr(6, 16, 8, 2, robe) + pr(6, 18, 8, 1, erm));
+          const crown = pr(4, 2, 8, 2, gold) + pr(4, 0, 1, 2, gold) + pr(7, 0, 2, 2, gold) + pr(11, 0, 1, 2, gold);
+          const collar = pr(3, 10, 10, 1, erm) + pr(5, 10, 1, 1, spot) + pr(8, 10, 1, 1, spot) + pr(11, 10, 1, 1, spot);
+          if (dir === 'back') return crown + collar
+            + (f ? pr(2, 11, 12, 6, robe) + pr(2, 17, 12, 1, erm) : pr(3, 11, 10, 7, robe) + pr(3, 18, 10, 1, erm));
+          return crown + pr(7, 2, 2, 1, ruby) + collar
+            + (f ? pr(2, 15, 12, 2, robe) + pr(2, 17, 12, 1, erm) : pr(3, 16, 10, 2, robe) + pr(3, 18, 10, 1, erm))
+            + pr(7, 11, 2, f ? 6 : 7, '#4a3aa7');
+        } }
     };
     const PLANT_VARIETIES = [
       { name: 'Rose', plant: '<rect x="6" y="8" width="1" height="6" fill="#3f9142"/><rect x="4" y="10" width="2" height="1" fill="#2f7a34"/><rect x="8" y="9" width="2" height="1" fill="#2f7a34"/><rect x="4" y="3" width="6" height="5" fill="#d0353a"/><rect x="5" y="2" width="1" height="1" fill="#d0353a"/><rect x="8" y="2" width="1" height="1" fill="#d0353a"/>' },
@@ -8327,11 +8379,50 @@ const Worlds = (function () {
   };
 
   const OCEAN_OUTFITS = {
-    classic: { label: 'Classic', icon: '\u{1F41A}', cost: 0, hat: '#f2e2d0', shirt: '#d4526b', pants: '#2f8f8a' },
-    strawhat: { label: 'Kelp Crown', icon: '\u{1F33F}', cost: 15, hat: '#56b07a', shirt: '#eda100', pants: '#2f6b46' },
-    flannel: { label: 'Coral Weave', icon: '\u{1FAB8}', cost: 12, hat: '#8a5a2e', shirt: '#e0705a', pants: '#c96a58' },
-    explorer: { label: 'Diver\'s Kit', icon: '\u{1F93F}', cost: 18, hat: '#3a4a5a', shirt: '#eda100', pants: '#5f6b78' },
-    royal: { label: 'Pearl Regalia', icon: '\u{1F451}', cost: 25, hat: '#c4aee6', shirt: '#f2e2d0', pants: '#8e6bb0' }
+    classic: { label: 'Classic', icon: '\u{1F41A}', cost: 0, hat: '#f2e2d0', shirt: '#d4526b', pants: '#2f8f8a',
+      desc: 'A shell band, a pink shell top and a teal tail.' },
+    strawhat: { label: 'Kelp Crown', icon: '\u{1F33F}', cost: 15, hat: '#56b07a', shirt: '#eda100', pants: '#2f6b46',
+      desc: 'A leafy kelp crown with trailing fronds, a kelp belt and a deep green tail.',
+      art: function (dir, g) {
+        const leaf = '#56b07a', frond = '#3f8f5c', belt = '#3f8f5c';
+        if (dir === 'side') return pr(6, 1, 1, 2, leaf) + pr(9, 1, 1, 1, leaf) + pr(13, 1, 1, 2, leaf)
+          + pr(g === 'female' ? 4 : 5, 1, 1, g === 'female' ? 11 : 5, frond) + pr(7, 13, 6, 1, belt);
+        const fronds = g === 'female' ? pr(2, 3, 1, 9, frond) + pr(14, 3, 1, 9, frond) : pr(4, 1, 1, 5, frond) + pr(13, 1, 1, 5, frond);
+        return pr(5, 1, 1, 2, leaf) + pr(8, 1, 2, 1, leaf) + pr(12, 1, 1, 2, leaf) + fronds + pr(5, 13, 7, 1, belt);
+      } },
+    flannel: { label: 'Coral Weave', icon: '\u{1FAB8}', cost: 12, hat: '#e0705a', shirt: '#e0705a', pants: '#c96a58',
+      desc: 'A branching coral crown and a tail and top woven from coral.',
+      art: function (dir, g) {
+        const hi = '#f4a48f', lo = '#9e4a3c';
+        if (dir === 'side') return pr(7, 1, 1, 1, hi) + pr(10, 1, 1, 1, hi) + pr(13, 1, 1, 1, hi)
+          + pr(8, 13, 1, 1, hi) + pr(10, 13, 1, 1, hi) + pr(12, 13, 1, 1, hi) + pr(9, 14, 1, 1, lo) + pr(11, 14, 1, 1, lo)
+          + pr(8, 15, 1, 1, hi) + pr(10, 15, 1, 1, hi) + pr(12, 15, 1, 1, hi) + pr(7, 16, 1, 1, lo) + pr(9, 16, 1, 1, lo);
+        return pr(5, 1, 1, 1, hi) + pr(8, 1, 1, 1, hi) + pr(12, 1, 1, 1, hi) + pr(g === 'female' ? 6 : 7, 10, 1, 1, lo)
+          + pr(6, 13, 1, 1, hi) + pr(8, 13, 1, 1, hi) + pr(10, 13, 1, 1, hi) + pr(7, 14, 1, 1, lo) + pr(9, 14, 1, 1, lo) + pr(11, 14, 1, 1, lo)
+          + pr(6, 15, 1, 1, hi) + pr(8, 15, 1, 1, hi) + pr(10, 15, 1, 1, hi) + pr(7, 16, 1, 1, lo) + pr(9, 16, 1, 1, lo);
+      } },
+    explorer: { label: 'Diver\'s Kit', icon: '\u{1F93F}', cost: 18, hat: '#3a4a5a', shirt: '#3a4a5a', pants: '#5f6b78',
+      desc: 'A dive mask and snorkel, with an air tank strapped to your back.',
+      art: function (dir, g) {
+        const strap = '#3a4a5a', glass = '#8fd0f0', eye = '#1f2430', tank = '#eda100', shine = '#f6c454', valve = '#8a8f98';
+        if (dir === 'side') return pr(3, 10, 3, 5, tank) + pr(3, 10, 1, 5, shine) + pr(4, 9, 1, 1, valve)
+          + pr(8, 2, 1, 6, tank) + pr(8, 6, 3, 1, strap) + pr(10, 6, 4, 3, strap) + pr(11, 7, 2, 1, glass) + pr(11, 7, 1, 1, eye);
+        if (dir === 'back') return pr(g === 'female' ? 3 : 5, 7, g === 'female' ? 11 : 8, 1, strap)
+          + pr(7, 9, 4, 6, tank) + pr(7, 9, 1, 6, shine) + pr(8, 8, 2, 1, valve) + pr(12, 2, 1, 6, tank);
+        return pr(5, 6, 7, 3, strap) + pr(6, 7, 2, 1, glass) + pr(9, 7, 2, 1, glass) + pr(6, 7, 1, 1, eye) + pr(10, 7, 1, 1, eye)
+          + pr(12, 2, 1, 6, tank) + pr(12, 2, 2, 1, tank) + pr(5, 10, 1, 3, strap) + pr(11, 10, 1, 3, strap);
+      } },
+    royal: { label: 'Pearl Regalia', icon: '\u{1F451}', cost: 25, hat: '#c4aee6', shirt: '#f2e2d0', pants: '#8e6bb0',
+      desc: 'A pearl-studded crown, a pearl necklace and lavender shoulder drapes over a regal tail.',
+      art: function (dir, g) {
+        const pearl = '#fbf7ef', drape = '#c4aee6', f = g === 'female';
+        if (dir === 'side') return pr(6, 0, 8, 2, drape) + pr(7, 0, 1, 1, pearl) + pr(10, 0, 1, 1, pearl) + pr(13, 0, 1, 1, pearl)
+          + pr(8, 12, 1, 1, pearl) + pr(10, 12, 1, 1, pearl) + pr(6, 10, 3, 2, drape);
+        const crown = pr(4, 0, 10, 2, drape) + pr(5, 0, 1, 1, pearl) + pr(8, 0, 1, 1, pearl) + pr(12, 0, 1, 1, pearl) + pr(8, 1, 1, 1, pearl);
+        if (dir === 'back') return crown + (f ? pr(1, 10, 3, 2, drape) + pr(13, 10, 3, 2, drape) : pr(4, 10, 9, 3, drape) + pr(8, 10, 1, 1, pearl));
+        return crown + pr(1, 10, 3, 2, drape) + pr(13, 10, 3, 2, drape)
+          + pr(5, 12, 1, 1, pearl) + pr(7, 12, 1, 1, pearl) + pr(9, 12, 1, 1, pearl) + pr(11, 12, 1, 1, pearl) + pr(8, 13, 1, 1, pearl);
+      } }
   };
 
   const OCEAN_STEP_SOUND = {
@@ -8547,9 +8638,9 @@ const Worlds = (function () {
     const w = get(worldId);
     const set = w.hero[gender === 'female' ? 'female' : 'male'];
     const o = outfit || w.outfits.classic;
-    if (direction === 'up') return set.back(o);
-    if (direction === 'left' || direction === 'right') return set.side(o);
-    return set.front(o);
+    const dir = direction === 'up' ? 'back' : (direction === 'left' || direction === 'right') ? 'side' : 'front';
+    const svg = set[dir](o);
+    return o.art ? svg.replace('</svg>', o.art(dir, gender === 'female' ? 'female' : 'male') + '</svg>') : svg;
   }
 
   /* A small scene of the world, for the sign-up chooser and settings. Shows the
@@ -13398,7 +13489,7 @@ const Garden = (function () {
       const tiles = Object.entries(W().outfits).map(([id, def]) => {
         const owned = ownedOutfits.includes(id);
         const equipped = equippedOutfit === id;
-        const desc = `Changes what your ${terms().hero} wears.`;
+        const desc = def.desc || `Changes what your ${terms().hero} wears.`;
         if (equipped) return shopTile({ icon: def.icon, label: def.label, desc, action: 'Equipped', disabled: true, dim: false, cls: 'equipped' });
         if (owned) return shopTile({ icon: def.icon, label: def.label, desc, action: 'Equip', onclick: `equipOutfit('${id}')` });
         return shopTile({ icon: def.icon, label: def.label, desc, action: price(def.cost), onclick: `buyOutfit('${id}')`, disabled: coins < def.cost });
@@ -17628,6 +17719,10 @@ const App = (function () {
      --------------------------------------------------------------- */
 
   const UPDATES = [
+    { date: '2026-10-12', items: [
+      'Outfits now look like what they are called. Overalls have a bib and brass buttons, the flannel is checked, the explorer gets a pith helmet and vest, the robes come with a gold crown and ermine trim. In the reef: kelp fronds, woven coral, a dive mask and air tank, and pearls.',
+      'Each outfit in the shop now says what you get.'
+    ]},
     { date: '2026-10-07', items: [
       'Your name and its menu now always sit at the top right, to the right of search, on every screen size.',
       'Fixed: choosing the Phone or Desktop layout on one device no longer changes it on your others. Each device keeps its own, and they all start back on Automatic.'
