@@ -16,6 +16,9 @@
 <meta name="apple-mobile-web-app-title" content="Tend">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="css/styles.css">
+<!-- ?embed=1: just the task list, for showing Tend inside another page
+     (Claude HQ's Life tab). The garden, tabs and friends stay in the full app. -->
+<script>if (/[?&]embed=1\b/.test(location.search)) document.documentElement.classList.add('embed');</script>
 </head>
 <body class="gated">
 

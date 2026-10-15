@@ -5778,7 +5778,22 @@ html[data-task-mode="work"][data-view="plan"] .content-col .page-actions {
 }
 .by-category-mode + .category-mode-title { margin-top: 20px; }
 
+/* ?embed=1 (set in index.html): only the task list. Tasks still earn coins;
+   the garden to spend them in is in the full app. */
+.embed .garden-col,
+.embed header .tabs,
+.embed #page-title,
+.embed #page-subtitle,
+.embed .bottom-nav { display: none !important; }
+.embed .app-layout {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "content";
+}
+
 </style>
+<!-- ?embed=1: just the task list, for showing Tend inside another page
+     (Claude HQ's Life tab). The garden, tabs and friends stay in the full app. -->
+<script>if (/[?&]embed=1\b/.test(location.search)) document.documentElement.classList.add('embed');</script>
 </head>
 <body class="gated">
 
