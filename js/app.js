@@ -2816,7 +2816,11 @@ const App = (function () {
      colour above, because seven of the eight ribbons are already dark and are
      picked to sit on a light page. It lands on <html> as data-dark and the
      stylesheet answers with one block of token overrides. */
-  function darkOn() { return !!Store.prefs().dark; }
+  function darkOn() {
+    // Embedded (Claude HQ), the host page decides: follow the system, not the saved pref.
+    if (document.documentElement.classList.contains('embed')) return matchMedia('(prefers-color-scheme: dark)').matches;
+    return !!Store.prefs().dark;
+  }
 
   function applyDark() {
     document.documentElement.toggleAttribute('data-dark', darkOn());

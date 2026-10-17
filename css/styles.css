@@ -5793,10 +5793,12 @@ html[data-task-mode="work"][data-view="plan"] .content-col .page-actions {
 /* ?embed=1 (set in index.html): only the task list. Tasks still earn coins;
    the garden to spend them in is in the full app. */
 .embed .garden-col,
-.embed header .tabs,
+.embed header,
 .embed #page-title,
 .embed #page-subtitle,
 .embed .bottom-nav { display: none !important; }
+/* No page of its own: the tasks sit straight on the host's card. */
+.embed body { background: transparent; min-height: 0; }
 .embed .app-layout {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "content";

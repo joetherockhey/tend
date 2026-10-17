@@ -18,7 +18,10 @@
 <link rel="stylesheet" href="css/styles.css">
 <!-- ?embed=1: just the task list, for showing Tend inside another page
      (Claude HQ's Life tab). The garden, tabs and friends stay in the full app. -->
-<script>if (/[?&]embed=1\b/.test(location.search)) document.documentElement.classList.add('embed');</script>
+<script>if (/[?&]embed=1\b/.test(location.search)) {
+  document.documentElement.classList.add('embed');
+  if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.setAttribute('data-dark', '');
+}</script>
 </head>
 <body class="gated">
 
